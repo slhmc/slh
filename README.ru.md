@@ -1,98 +1,121 @@
 <p align="center">
-  <img src="assets/readme/Smile_LauncHer_logo.png" width="360" alt="Smile LauncHer">
+  <img src="assets/readme/Smile_LauncHer_logo.png" width="112" alt="Smile LauncHer">
 </p>
 
-# Smile LauncHer
+<h1 align="center">Smile LauncHer</h1>
+<p align="center"><strong>Твои сборки. Твои настройки. Твой Minecraft.</strong></p>
+<p align="center">Minecraft Java Edition · Отдельные сборки · Моды и модпаки · Настраиваемый интерфейс</p>
 
-Локальный лаунчер Minecraft: Java Edition для Windows.
+<p align="center">
+  <a href="https://github.com/slhmc/slh/releases"><img src="assets/readme/buttons/download-ru.png" width="420" alt="Скачать SLH"></a>
+</p>
+<p align="center">
+  <a href="https://slhmc.github.io/"><img src="assets/readme/buttons/website-ru.png" width="200" alt="Сайт SLH"></a>
+  <a href="https://discord.gg/yhTvuB6U8n"><img src="assets/readme/buttons/discord.png" width="200" alt="Discord"></a>
+  <a href="https://github.com/slhmc/slh/issues/new"><img src="assets/readme/buttons/issues-ru.png" width="200" alt="Сообщить об ошибке"></a>
+</p>
 
-**Языки:** [English](README.md) · [Русский](README.ru.md) · [Deutsch](README.de.md)
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0--only-ff9635?style=flat-square" alt="GPL-3.0-only"></a>
+  <img src="https://img.shields.io/badge/Windows-10%20%2F%2011-454b52?style=flat-square" alt="Windows 10 / 11">
+  <img src="https://img.shields.io/badge/Tauri%202-Rust%20%2B%20React-454b52?style=flat-square" alt="Tauri 2 · Rust + React">
+</p>
 
-SLH изолирует сборки Minecraft, позволяет локально управлять аккаунтами и Java, а также устанавливает совместимый контент в выбранную сборку. Лаунчер создан на Tauri, React, TypeScript, Rust и SQLite.
+<p align="center"><a href="README.md">Русский</a> · <a href="README.en.md">English</a> · <a href="README.de.md">Deutsch</a></p>
 
-> **Статус:** версия в разработке. Перед использованием новой сборки сделайте резервную копию важных миров.
+<p align="center"><img src="assets/readme/ru/Home.png" width="100%" alt="Главная страница SLH"></p>
 
-## Возможности
+## Всё для твоего Minecraft
 
-- Отдельные сборки Minecraft: группы, режимы сетки и списка, логи, миры, скриншоты и индивидуальные настройки.
-- Vanilla, Fabric, Forge, NeoForge и Quilt.
-- Аккаунты Microsoft, Ely.by и офлайн-аккаунты.
-- Поиск и проверенная установка с Modrinth; CurseForge доступен при настройке доступа.
-- Управляемые Eclipse Temurin Java 8, 17, 21 и 25, а также поиск установленной Java.
-- Английский, русский и немецкий уже включены; поддерживаются пользовательские переводы.
-- Необязательный локальный обмен выбранными файлами между сборками с явной настройкой и резервными копиями.
-- Нет аналитики и рекламы: данные лаунчера остаются на компьютере.
+SLH объединяет игру, контент и настройки в одном лаунчере. Создавай отдельные сборки, выбирай загрузчик модов и настраивай каждую установку под себя.
 
-## Скриншоты
+| | Возможности |
+| :--- | :--- |
+| **Сборки** | Отдельные игровые папки, группы, сетка и список. Миры, скриншоты и логи рядом с игрой. |
+| **Загрузчики** | Vanilla, Fabric, Forge, NeoForge и Quilt. |
+| **Контент** | Каталог Modrinth, моды и модпаки. CurseForge — при настроенном доступе. |
+| **Аккаунты** | Microsoft, Ely.by и офлайн-профили. Переключение аккаунтов и просмотр скинов. |
+| **Java** | Подбор и загрузка подходящей Java, поиск уже установленных версий. |
+| **Внешний вид** | Темы, цвета и настройки интерфейса. Русский, английский и немецкий языки. |
+| **Локальные данные** | Настройки и игровые файлы на твоём компьютере. Без рекламы и аналитики. |
 
-<p align="center"><img src="assets/readme/Home.png" alt="Главная страница SLH" width="100%"></p>
-
-<p align="center"><img src="assets/readme/Library.png" alt="Библиотека сборок SLH" width="100%"></p>
-
-<p align="center"><img src="assets/readme/Discover.png" alt="Discover в SLH" width="100%"></p>
-
-<p align="center"><img src="assets/readme/SettingsAppearance.png" alt="Настройки внешнего вида SLH" width="100%"></p>
-
-<p align="center"><img src="assets/readme/SettingsSync.png" alt="Настройки синхронизации SLH" width="100%"></p>
+## Посмотри внутри
 
 <table>
   <tr>
-    <td width="50%"><img src="assets/readme/Skin1.png" alt="Выбор скина в SLH"></td>
-    <td width="50%"><img src="assets/readme/Skin2.png" alt="Настройки скина в SLH"></td>
+    <td width="50%"><strong>Библиотека сборок</strong><br><img src="assets/readme/ru/Library.png" alt="Библиотека сборок"></td>
+    <td width="50%"><strong>Каталог контента</strong><br><img src="assets/readme/ru/Discover.png" alt="Каталог контента"></td>
   </tr>
 </table>
 
-## Загрузка
+<details>
+<summary>Ещё один скриншот: настройки внешнего вида</summary>
 
-Скачайте подходящую сборку на [GitHub Releases](https://github.com/gareldd/slh/releases).
+<p><img src="assets/readme/ru/S-Appearance.png" width="100%" alt="Настройки внешнего вида"></p>
 
-| Файл | Когда выбирать |
-| --- | --- |
-| `*-setup.exe` | Нужна обычная установка с мастером. |
-| `*.msi` | Нужен MSI для ручного или централизованного развёртывания. |
-| `portable/` | Нужна самостоятельная папка. Распакуйте **всю** папку на доступный для записи локальный диск и запустите `SLH.exe`. |
+</details>
 
-Portable-версия содержит архив фиксированной среды WebView2. При первом запуске SLH распакует его автоматически — пользователю не нужно отдельно скачивать браузерный компонент.
+Полное интерактивное превью — [на сайте SLH](https://slhmc.github.io/#preview). Скриншоты показывают текущий интерфейс разработки; опубликованный релиз может отличаться.
 
-Релизные пакеты намеренно пустые: в них нет аккаунтов, сборок, Java, миров, логов и кэша.
+## Скачать и начать играть
 
-## Приватность и аккаунты
+Готовые файлы находятся в [GitHub Releases](https://github.com/slhmc/slh/releases). Сейчас опубликована тестовая версия [v0.1.2](https://github.com/slhmc/slh/releases/tag/v0.1.2).
 
-SLH хранит данные локально. Для входа Microsoft нужен настроенный client ID; доступность CurseForge зависит от настроенного способа доступа или ключа. Не коммитьте и не публикуйте папку `data/`: в ней могут быть аккаунты, токены, миры и сведения о приватных серверах.
+| Платформа | Установщик | Portable |
+| :--- | :--- | :--- |
+| **Windows 10 x64** | [Скачать .exe](https://github.com/slhmc/slh/releases/download/v0.1.2/SLH_0.1.2_win10x64-setup.exe) | [Скачать .zip](https://github.com/slhmc/slh/releases/download/v0.1.2/portable-SLH_0.1.2_win10x64.zip) |
+| **Windows 11 x64** | [Скачать .exe](https://github.com/slhmc/slh/releases/download/v0.1.2/SLH_0.1.2_11winx64-setup.exe) | [Скачать .zip](https://github.com/slhmc/slh/releases/download/v0.1.2/portable-SLH_0.1.2_win11x64.zip) |
+| **macOS · Intel / Apple Silicon** | Подготавливается | Подготавливается |
+| **Linux** | Подготавливается | Подготавливается |
 
-## Сборка из исходников
+**Установщик:** скачай файл для своей системы, запусти его и следуй шагам мастера.
 
-Для разработки на Windows нужны Node.js/npm, Rust с MSVC toolchain, Visual Studio Build Tools с **Desktop development with C++** и Microsoft Edge WebView2 Runtime.
+**Portable:** распакуй весь архив в доступную для записи папку и запусти `SLH.exe`. Сохраняй папку целиком при переносе.
 
-```powershell
-npm install
-npm run tauri:dev
-```
+Лаунчер находится в разработке. Перед тестированием новой версии сохрани резервную копию важных миров.
 
-Проверки:
+## Частые вопросы
 
-```powershell
-npm run build
-npm test
-cargo test --manifest-path src-tauri/Cargo.toml
-```
+<details>
+<summary><strong>Нужно отдельно устанавливать Java?</strong></summary>
 
-Инструкции по portable-версии и установщикам: [DEVELOPMENT.md](DEVELOPMENT.md), [PORTABLE.md](PORTABLE.md).
+SLH умеет подбирать и скачивать подходящую Java, а также находить уже установленные версии. Для загрузки нужен интернет.
 
-> **Не публикуйте личную папку `release/SLH-Portable`.** Скрипт portable-сборки специально сохраняет её `data/`, чтобы рабочий лаунчер разработчика не терял данные. Для GitHub создавайте чистую папку и перед загрузкой убедитесь, что в `data/` нет файлов.
+</details>
 
-## Архитектура
+<details>
+<summary><strong>Как войти в Minecraft?</strong></summary>
 
-Интерфейс React отображается встроенным WebView2. Rust/Tauri выполняет работу с повышенными правами: файлы, SQLite, Java, запуск Minecraft и сетевые запросы — через типизированный IPC-мост. В разработке может использоваться `localhost`; готовая версия открывает интерфейс из локально вложенных файлов и не поднимает публичный веб-сервер.
+Доступны Microsoft, Ely.by и офлайн-профили. Для игры через Microsoft нужен аккаунт с правом на Minecraft: Java Edition. Офлайн-профиль не даёт доступ к серверам с проверкой лицензии.
 
-## Документация
+</details>
 
-- [Архитектура](ARCHITECTURE.md)
-- [Аутентификация](AUTH.md)
-- [Языки](LANGUAGES.md)
-- [Portable-хранилище](PORTABLE.md)
-- [Сообщить об ошибке или предложить улучшение](https://github.com/gareldd/slh/issues)
+<details>
+<summary><strong>Где находятся мои данные?</strong></summary>
 
-## Лицензия
+Данные хранятся локально. В portable-версии папка `data/` расположена рядом с лаунчером. Не публикуй её: там могут быть аккаунты, токены, миры и сведения о серверах. После переноса на другой компьютер может потребоваться повторный вход. Подробнее — [PORTABLE.md](PORTABLE.md).
 
-SLH распространяется только по лицензии GNU General Public License v3.0 (GPL-3.0-only). См. файл [LICENSE](LICENSE).
+</details>
+
+<details>
+<summary><strong>Что делать, если что-то не работает?</strong></summary>
+
+Напиши в [Discord](https://discord.gg/yhTvuB6U8n) или создай [issue](https://github.com/slhmc/slh/issues/new). Укажи версию SLH, систему, шаги воспроизведения и ожидаемый результат. Перед прикреплением логов убери личные данные и токены.
+
+</details>
+
+## Код и разработка
+
+SLH разрабатывается на **Tauri 2, React, TypeScript, Rust и SQLite**. Лицензия проекта — [GPL-3.0-only](LICENSE).
+
+**Публикация исходников подготавливается.** Сейчас в этом репозитории находятся документация, изображения и релизы. Полный комплект исходников для самостоятельной сборки будет опубликован отдельным обновлением.
+
+[Архитектура](ARCHITECTURE.md) · [Разработка](DEVELOPMENT.md) · [Аккаунты](AUTH.md) · [Языки](LANGUAGES.md) · [Portable](PORTABLE.md)
+
+## Сообщество
+
+Есть идея, вопрос или проблема? Заходи в [Discord](https://discord.gg/yhTvuB6U8n). Ошибки и предложения удобно отслеживать в [GitHub Issues](https://github.com/slhmc/slh/issues).
+
+---
+
+<p align="center"><sub>Smile LauncHer — независимый проект, не связанный с Mojang или Microsoft. Minecraft принадлежит соответствующим правообладателям.</sub></p>
