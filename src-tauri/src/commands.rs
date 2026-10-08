@@ -1451,8 +1451,9 @@ pub async fn create_instance_desktop_shortcut(
         let _ = instance;
         return Err(crate::error::AppError::InvalidInput(
             "Desktop shortcuts are currently supported on Windows only".into(),
-        ));
+        ).into());
     }
+    #[cfg(windows)]
     Ok(())
 }
 
