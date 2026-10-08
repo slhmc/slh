@@ -1,0 +1,443 @@
+.layout {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.withPanel {
+  grid-template-columns: minmax(0, 1fr) 330px;
+  grid-template-rows: minmax(0, 1fr);
+  grid-template-areas: "library panel";
+}
+
+.library {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.withPanel .library { grid-area: library; }
+
+.panelSlot {
+  min-width: 0;
+  min-height: 0;
+  grid-area: panel;
+}
+
+.panelSlot > * {
+  width: 100%;
+  height: 100%;
+}
+
+.withPanel.panelLeft .panelSlot > * {
+  border-right: 1px solid var(--color-border);
+  border-left: 0;
+}
+
+.withPanel.panelRight .panelSlot > * {
+  border-left: 1px solid var(--color-border);
+}
+
+.withPanel.panelLeft {
+  grid-template-columns: 330px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  grid-template-areas: "panel library";
+}
+
+.withPanel.panelRight {
+  grid-template-columns: minmax(0, 1fr) 330px;
+  grid-template-rows: minmax(0, 1fr);
+  grid-template-areas: "library panel";
+}
+
+.pageHeader {
+  display: flex;
+  min-height: 124px;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 24px 28px 19px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.eyebrow {
+  margin: 0 0 7px;
+  color: var(--color-accent-hover);
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.pageHeader h1 {
+  margin: 0;
+  font-size: clamp(22px, 2vw, 29px);
+  font-weight: 720;
+  letter-spacing: -0.035em;
+}
+
+.pageHeader > div > span {
+  display: block;
+  margin-top: 7px;
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.toolbar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.groupMenu { position: relative; }
+.groupMenu summary { list-style: none; }
+.groupMenu summary::-webkit-details-marker { display: none; }
+
+.groupMenu form {
+  position: absolute;
+  z-index: 12;
+  top: calc(100% + 7px);
+  right: 0;
+  display: grid;
+  width: 224px;
+  gap: 8px;
+  padding: 11px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: 0 14px 32px color-mix(in srgb, var(--color-shadow) 88%, transparent);
+}
+
+.groupMenu form label {
+  color: var(--color-text-muted);
+  font-size: 11px;
+}
+
+.groupMenu form button { justify-content: center; }
+
+.viewSwitch {
+  display: flex;
+  padding: 3px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-2);
+}
+
+.viewSwitch button {
+  display: grid;
+  width: 30px;
+  height: 28px;
+  place-items: center;
+  border-radius: var(--radius-xs);
+  color: var(--color-text-muted);
+  background: transparent;
+  cursor: pointer;
+}
+
+.viewSwitch button:hover,
+.viewSwitch button.active {
+  color: var(--color-text);
+  background: var(--color-surface-2);
+}
+
+.scrollArea {
+  min-height: 0;
+  padding: 10px 27px 30px;
+  overflow: auto;
+}
+
+
+.group {
+  margin-top: 20px;
+}
+
+.dragging,
+.dragging * {
+  user-select: none;
+  cursor: grabbing !important;
+}
+
+.dropTarget .groupHeader {
+  padding-inline: 8px;
+  border-radius: var(--radius-sm);
+  color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 13%, var(--color-surface));
+  box-shadow: inset 3px 0 0 var(--color-accent);
+}
+
+.groupHeader {
+  position: relative;
+  display: flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 8px;
+  cursor: grab;
+  user-select: none;
+}
+.groupHeader:active { cursor: grabbing; }
+.groupInsertBefore::after, .groupInsertAfter::after { position: absolute; z-index: 2; right: 0; left: 0; height: 4px; border-radius: 99px; background: var(--color-accent); content: ""; pointer-events: none; }
+.groupInsertBefore::after { top: -3px; }
+.groupInsertAfter::after { bottom: -3px; }
+
+.groupHeader button {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border-radius: var(--radius-xs);
+  color: var(--color-text-muted);
+  background: transparent;
+  cursor: pointer;
+}
+
+.groupHeader button:hover,
+.groupHeader button:focus-visible { color: var(--color-text); background: var(--color-surface-2); }
+.groupHeader button svg { transition: transform 120ms ease; }
+.expandedArrow { transform: rotate(90deg); }
+.collapsedArrow { transform: rotate(0deg); }
+
+.groupHeader h2 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.groupHeader span {
+  color: var(--color-text-subtle);
+  font-size: 11px;
+}
+
+.dragPreview {
+  position: fixed;
+  z-index: 1000;
+  display: grid;
+  min-width: 146px;
+  max-width: 220px;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--color-accent) 72%, var(--color-border));
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  background: color-mix(in srgb, var(--color-surface) 90%, var(--color-accent));
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--color-shadow) 64%, transparent);
+  opacity: 0.9;
+  pointer-events: none;
+  transform: translate(14px, 14px) rotate(1deg);
+}
+
+.dragPreview span {
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dragPreview small {
+  color: var(--color-text-muted);
+  font-size: 10px;
+}
+
+.groupDragPreview {
+  position: fixed;
+  z-index: 1200;
+  min-width: 140px;
+  max-width: 230px;
+  overflow: hidden;
+  padding: 8px 10px;
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-xs);
+  color: var(--color-text);
+  background: color-mix(in srgb, var(--color-surface) 92%, var(--color-accent));
+  box-shadow: var(--shadow-dialog);
+  font-size: 11px;
+  font-weight: 700;
+  pointer-events: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transform: translate(12px, 12px);
+}
+
+.contextMenu {
+  position: fixed;
+  z-index: 1100;
+  display: grid;
+  gap: 2px;
+  min-width: 190px;
+  width: 236px;
+  max-width: min(236px, calc(100vw - 16px));
+  max-height: calc(100vh - 16px);
+  overflow: hidden;
+  padding: 6px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-dialog);
+  cursor: grab;
+  user-select: none;
+}
+
+.contextMenu:active { cursor: grabbing; }
+
+.contextMenu button {
+  display: grid;
+  grid-template-columns: 20px 20px minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+  min-height: 34px;
+  padding: 0 10px;
+  border-radius: var(--radius-xs);
+  color: var(--color-text);
+  text-align: left;
+  background: transparent;
+  cursor: pointer;
+}
+
+.contextMenu button:hover { background: var(--color-surface-2); }
+.contextMenu .contextDanger { color: var(--color-error); }
+.contextMenu > div { padding: 5px; }
+
+.contextTitle {
+  display: flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 9px;
+  padding: 0 9px 6px;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text);
+  background: var(--color-surface-2);
+  cursor: grab;
+  user-select: none;
+}
+.contextTitle:active { cursor: grabbing; }
+
+.contextTitle > svg { color: var(--color-accent); }
+.contextTitle strong { font-size: 12px; }
+
+.contextAction > svg {
+  flex: 0 0 16px;
+  color: var(--color-text-muted);
+}
+
+.contextAction.contextDanger > svg { color: var(--color-error); }
+
+.contextArrowCollapsed,
+.contextArrowExpanded { transition: transform 120ms ease; }
+.contextArrowExpanded { transform: rotate(90deg); }
+
+.contextCheck {
+  display: flex;
+  min-height: 31px;
+  align-items: center;
+  gap: 9px;
+  padding: 0 9px;
+  border-radius: var(--radius-xs);
+  color: var(--color-text);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.contextRow { position: relative; cursor: grab; user-select: none; }
+.contextRow[data-dragging="true"] { opacity: 0.45; }
+.contextInsertBefore::after, .contextInsertAfter::after { position: absolute; z-index: 2; right: 2px; left: 2px; height: 3px; border-radius: 99px; background: var(--color-accent); content: ""; pointer-events: none; }
+.contextInsertBefore::after { top: -1px; }
+.contextInsertAfter::after { bottom: -1px; }
+
+.contextCheck:hover { background: var(--color-surface-2); }
+.contextCheck input { accent-color: var(--color-accent); }
+.contextIcon {
+  display: grid;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  place-items: center;
+  color: var(--color-text-muted);
+}
+.contextCheckActive .contextIcon { color: var(--color-accent); }
+.contextSeparator { height: 1px; margin: 5px 0; background: var(--color-border); }
+
+.panelMenuItem { position: relative; }
+.panelMenuItem .contextCheckbox { position: absolute; width: 1px; height: 1px; margin: -1px; opacity: 0; pointer-events: none; }
+.panelMenuItem .contextIcon { color: var(--color-text-muted); }
+.panelMenuItem .contextIcon svg { color: inherit; }
+
+.renameForm {
+  display: grid;
+  gap: 12px;
+}
+
+.renameForm button { justify-self: end; }
+
+.emptyGroup {
+  margin: 0;
+  padding: 15px 8px 2px 30px;
+  color: var(--color-text-subtle);
+  font-size: 11px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(172px, 1fr));
+  gap: 11px;
+}
+
+.list {
+  display: grid;
+  gap: 2px;
+}
+
+.listHeader {
+  display: grid;
+  min-height: 28px;
+  grid-template-columns: 38px minmax(160px, 1.5fr) minmax(80px, 0.65fr) minmax(80px, 0.6fr) minmax(90px, 0.7fr) minmax(110px, 0.8fr);
+  align-items: center;
+  gap: 12px;
+  padding: 0 42px 0 8px;
+  color: var(--color-text-subtle);
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.empty {
+  display: grid;
+  width: min(430px, calc(100% - 48px));
+  place-items: center;
+  align-self: center;
+  justify-self: center;
+  padding: 34px;
+  text-align: center;
+}
+
+.empty img {
+  width: 72px;
+  height: 72px;
+  margin-bottom: 16px;
+  opacity: 0.88;
+}
+
+.empty h2 {
+  margin: 0;
+  font-size: 21px;
+}
+
+.empty p {
+  margin: 8px 0 20px;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+@media (max-width: 1320px) {
+  .withPanel.panelLeft { grid-template-columns: 300px minmax(0, 1fr); }
+  .withPanel.panelRight { grid-template-columns: minmax(0, 1fr) 300px; }
+
+  .pageHeader {
+    padding-inline: 20px;
+  }
+
+  .scrollArea {
+    padding-inline: 20px;
+  }
+}

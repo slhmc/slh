@@ -1,0 +1,71 @@
+.fileInput { position: fixed; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.loading { display: flex; min-height: 620px; align-items: center; justify-content: center; gap: 10px; color: var(--color-text-muted); }
+.spinner { animation: spin 850ms steps(8) infinite; }
+.errorBar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 18px; border-bottom: 1px solid color-mix(in srgb, var(--color-danger) 42%, var(--color-border)); color: var(--color-danger); background: color-mix(in srgb, var(--color-danger) 10%, var(--color-surface-deep)); }
+.errorBar span { display: grid; gap: 4px; font-size: 10px; line-height: 1.45; }
+.errorBar button { display: grid; padding: 5px; border: 0; color: inherit; background: transparent; cursor: pointer; }
+
+.catalogLayout, .editorLayout { display: grid; min-height: 660px; background: var(--color-surface-deeper); }
+.catalogLayout { grid-template-columns: 330px minmax(0, 1fr); }
+.heroPane, .editorPreview { display: flex; min-width: 0; align-items: center; flex-direction: column; padding: 34px 28px 28px; border-right: 1px solid var(--color-border); background: var(--color-surface-deeper); }
+.heroPane h2 { max-width: 100%; margin: 0; overflow: hidden; padding: 7px 12px; border-radius: var(--radius-sm); background: var(--color-surface); font-size: 22px; text-overflow: ellipsis; white-space: nowrap; }
+.heroViewer { width: 100%; height: 450px; margin-top: 16px; background: var(--color-surface-deeper); }
+.heroPane p, .editorPreview p { margin: 4px 0 22px; color: var(--color-text-muted); font-size: 11px; }
+.heroPane > button, .heroActions { width: 100%; margin-top: auto; }
+.heroActions { display: grid; gap: 10px; }
+.heroActions button { width: 100%; }
+
+.catalogPane { min-width: 0; max-height: 72vh; padding: 30px; overflow: auto; }
+.catalogPane section + section { margin-top: 32px; }
+.catalogPane header { display: flex; align-items: start; justify-content: space-between; gap: 16px; margin-bottom: 15px; }
+.catalogPane h3 { margin: 0; font-size: 22px; }
+.catalogPane header p { margin: 5px 0 0; color: var(--color-text-muted); font-size: 10px; }
+.savedGrid, .defaultGrid { display: grid; gap: 12px; }
+.savedGrid, .defaultGrid { grid-template-columns: repeat(auto-fill, minmax(175px, 1fr)); }
+.skinCard, .defaultCard { position: relative; display: grid; min-width: 0; overflow: hidden; border: 1px solid var(--color-border); border-radius: 16px; color: var(--color-text); background: var(--color-surface); cursor: pointer; transition: border-color 130ms ease, background 130ms ease, transform 130ms ease; }
+.skinCard, .defaultCard { height: 300px; grid-template-rows: minmax(0, 1fr) auto; padding: 7px 7px 13px; }
+.skinCard:hover:not(:disabled), .defaultCard:hover:not(:disabled) { border-color: var(--color-border-strong); background: var(--color-surface-hover); transform: translateY(-2px); }
+.skinCard:disabled, .defaultCard:disabled { cursor: default; }
+.skinCard > span, .defaultCard > span { overflow: hidden; padding: 8px 8px 0; font-size: 11px; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
+.skinCard i { position: absolute; top: 10px; right: 10px; z-index: 2; display: flex; align-items: center; gap: 4px; padding: 5px 7px; border-radius: var(--radius-xs); color: var(--color-accent-contrast); background: color-mix(in srgb, var(--color-accent) 82%, var(--color-surface-deeper)); font-size: 9px; font-style: normal; }
+.activeSkin { border-color: var(--color-accent); box-shadow: inset 0 0 0 1px var(--color-accent); background: linear-gradient(155deg, color-mix(in srgb, var(--color-accent) 28%, var(--color-surface-deep)), var(--color-surface) 72%); }
+.addCard { place-items: center; align-content: center; gap: 9px; border-style: dashed; color: var(--color-text-muted); }
+.addCard svg { color: var(--color-accent); }
+.addCard strong { color: var(--color-text); font-size: 13px; }
+.addCard span { padding: 0; font-size: 9px; }
+.defaultsSection { padding-top: 25px; border-top: 1px solid var(--color-border); }
+.cooldownBadge { display: inline-flex; align-items: center; min-width: 62px; justify-content: center; padding: 7px 9px; border: 1px solid var(--color-accent-border); border-radius: var(--radius-xs); color: var(--color-text); background: color-mix(in srgb, var(--color-accent) 18%, var(--color-surface)); font-size: 10px; white-space: nowrap; }
+.cooldownFlash { animation: cooldownFlash 180ms steps(2) 4; }
+.selectedDefault { border-color: var(--color-accent); box-shadow: inset 0 0 0 1px var(--color-accent); background: linear-gradient(155deg, color-mix(in srgb, var(--color-accent) 22%, var(--color-surface-deep)), var(--color-surface) 72%); }
+.selectedSkin { border-color: var(--color-accent); box-shadow: inset 0 0 0 1px var(--color-accent); }
+
+.editorLayout { grid-template-columns: minmax(330px, 42%) minmax(0, 1fr); }
+.editorPreview { justify-content: center; }
+.editorPreview > div { width: 100%; height: 525px; background: var(--color-surface-deeper); }
+.editorControls { display: flex; max-height: 72vh; min-width: 0; flex-direction: column; overflow: auto; }
+.editorControls section { padding: 24px 30px; border-bottom: 1px solid var(--color-border); }
+.editorControls h3 { margin: 0 0 15px; font-size: 20px; }
+.editorControls small { display: block; margin-top: 9px; color: var(--color-text-muted); font-size: 9px; }
+.armOptions { display: flex; flex-wrap: wrap; gap: 10px; }
+.armOptions button { display: flex; min-width: 145px; align-items: center; gap: 10px; padding: 12px 15px; border: 1px solid transparent; border-radius: var(--radius-md); color: var(--color-text-muted); background: var(--color-surface); cursor: pointer; }
+.armOptions i { width: 18px; height: 18px; border: 2px solid var(--color-text-muted); border-radius: 50%; }
+.armOptions .selectedOption { border-color: color-mix(in srgb, var(--color-accent) 65%, var(--color-border)); color: var(--color-text); background: var(--color-accent-soft); }
+.armOptions .selectedOption i { border: 5px solid var(--color-accent); }
+.capeGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; }
+.capeGrid button { position: relative; display: grid; height: 196px; place-items: center; align-content: center; gap: 12px; padding: 14px; overflow: hidden; border: 1px solid var(--color-border); border-radius: var(--radius-md); color: var(--color-text-muted); background: var(--color-surface); cursor: pointer; }
+.capePreview { display: grid; width: 86px; height: 132px; place-items: center; overflow: hidden; border-radius: 6px; background: var(--color-surface-deeper); }
+/* The backend supplies a single front cape panel for cards. Keep the complete
+   sheet for the 3D viewer, but never squeeze two cape faces into this tile. */
+.capePreview img { display: block; width: 100%; max-width: 100%; height: 100%; image-rendering: pixelated; object-fit: contain; object-position: center; transform: none; }
+.capeGrid span { max-width: 100%; overflow: hidden; font-size: 14px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.capeGrid .selectedCape { border-color: var(--color-accent); box-shadow: inset 0 0 0 1px var(--color-accent); color: var(--color-accent); background: var(--color-accent-soft); }
+.editorControls footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: auto; padding: 22px 30px; }
+.footerActions { display: flex; justify-content: flex-end; gap: 12px; }
+.deleteButton { display: inline-flex; align-items: center; gap: 8px; padding: 11px 16px; border: 1px solid color-mix(in srgb, var(--color-error) 72%, var(--color-border)); border-radius: var(--radius-sm); color: var(--color-text); background: var(--color-error); box-shadow: inset 0 1px 0 var(--color-highlight); font: inherit; cursor: pointer; }
+.deleteButton:hover:not(:disabled) { background: color-mix(in srgb, var(--color-error) 82%, var(--color-accent-hover)); }
+.deleteButton:disabled { opacity: .55; cursor: default; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes cooldownFlash { 50% { transform: translateY(-1px); color: var(--color-accent-contrast); background: color-mix(in srgb, var(--color-accent) 58%, var(--color-surface)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 30%, transparent); } }
+@media (max-width: 1050px) { .catalogLayout { grid-template-columns: 275px minmax(0, 1fr); } .heroViewer { height: 390px; } .catalogPane { padding: 22px; } .editorLayout { grid-template-columns: 340px minmax(0, 1fr); } }
+@media (max-width: 760px) { .catalogLayout, .editorLayout { grid-template-columns: 1fr; } .heroPane, .editorPreview { border-right: 0; border-bottom: 1px solid var(--color-border); } .heroViewer, .editorPreview > div { height: 340px; } .catalogPane, .editorControls { max-height: none; } }

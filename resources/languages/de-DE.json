@@ -1,0 +1,1325 @@
+{
+  "meta": {
+    "code": "de-DE",
+    "name": "Deutsch (Deutschland)",
+    "schemaVersion": 1
+  },
+  "onboarding": {
+    "continueMicrosoft": "Mit Microsoft fortfahren",
+    "microsoftRecommendation": "Empfohlen für Minecraft: Java Edition",
+    "addElyBy": "Ely.by-Konto hinzufügen",
+    "createOffline": "Offline-Konto erstellen",
+    "microsoftRecommended": "Microsoft-Konto empfohlen",
+    "warning": "Melde dich bitte bei Microsoft an, bevor du ein Offline- oder Ely.by-Konto hinzufügst.",
+    "commitment": "Ich verpflichte mich, mich später bei einem Microsoft-Konto anzumelden.",
+    "continue": "Weiter"
+  },
+  "common": {
+    "play": "Spielen",
+    "cancel": "Abbrechen",
+    "save": "Speichern",
+    "retry": "Erneut versuchen",
+    "close": "Schließen",
+    "delete": "Löschen",
+    "create": "Erstellen",
+    "import": "Importieren",
+    "folder": "Ordner",
+    "loading": "Wird geladen..."
+  },
+  "navigation": {
+    "title": "Navigation",
+    "visibility": "Sichtbarkeit der Navigation",
+    "visibilityHint": "Seitenleistenbereiche ein- oder ausblenden",
+    "home": "Startseite",
+    "library": "Bibliothek",
+    "discover": "Entdecken",
+    "mods": "Mods",
+    "servers": "Server",
+    "settings": "Einstellungen"
+  },
+  "titlebar": {
+    "searchInstances": "Instanzen durchsuchen",
+    "newInstance": "Neue Instanz",
+    "import": "Importieren",
+    "archive": "Archiv",
+    "archiveDescription": "Modrinth- oder CurseForge-Paket",
+    "existingFolder": "Vorhandener Ordner",
+    "folderDescription": "Welten, Mods, Konfigurationen und lokale Einstellungen",
+    "browserPreview": "Browser-Vorschau"
+  },
+  "library": {
+    "title": "Deine Instanzen",
+    "eyebrow": "Instanzbibliothek",
+    "heading": "Deine Minecraft-Welten, getrennt und startbereit",
+    "instanceCount": "{count} Instanzen in dieser Bibliothek",
+    "group": "Gruppe",
+    "newGroup": "Neue Gruppe",
+    "groupExample": "z. B. Survival",
+    "createGroup": "Gruppe erstellen",
+    "creating": "Wird erstellt...",
+    "filter": "Filter",
+    "libraryView": "Bibliotheksansicht",
+    "gridView": "Rasteransicht",
+    "listView": "Listenansicht",
+    "noMatching": "Keine passenden Instanzen",
+    "searchEmpty": "Ändere den Suchtext, um den Rest deiner Bibliothek zu sehen.",
+    "name": "Name",
+    "version": "Version",
+    "loader": "Loader",
+    "lastPlayed": "Zuletzt gespielt",
+    "ungrouped": "Ohne Gruppe",
+    "showUngrouped": "Nicht gruppierte anzeigen",
+    "emptyGroup": "Erstelle eine Instanz oder füge eine zu dieser Gruppe hinzu.",
+    "emptyTitle": "Noch keine Instanzen",
+    "emptyBody": "Erstelle deine erste Minecraft-Instanz oder importiere eine vorhandene.",
+    "create": "Instanz erstellen",
+    "import": "Importieren",
+    "browse": "Modpacks durchsuchen",
+    "downloading": "Wird heruntergeladen"
+  },
+  "settings": {
+    "preferences": "Launcher-Einstellungen",
+    "general": "Allgemein",
+    "generalDescription": "Sprache, Verhalten der Bibliothek und Lebenszyklus des Launchers.",
+    "appearance": "Darstellung",
+    "appearanceDescription": "Launcher-Farbpaletten mit integrierten und benutzerdefinierten Voreinstellungen.",
+    "appearanceNote": "Der Farbmodus folgt der ausgewählten Palette. Hintergrundbilder und animierte Hintergrundbilder werden nicht unterstützt.",
+    "minecraft": "Minecraft",
+    "java": "Java",
+    "accounts": "Konten",
+    "storage": "Speicher",
+    "downloads": "Herunterladen",
+    "notifications": "Benachrichtigungen",
+    "sync": "Synchronisierung",
+    "console": "Konsole",
+    "privacy": "Datenschutz",
+    "advanced": "Erweitert",
+    "language": "Sprache",
+    "languageDescription": "Installierte Sprachdateien werden aus den Launcher-Ressourcen geladen.",
+    "rememberLast": "Letzten Bereich merken",
+    "rememberLastDescription": "Nach einem Neustart zur vorherigen Hauptansicht zurückkehren.",
+    "hideOnLaunch": "Ausblenden, während Minecraft läuft",
+    "hideOnLaunchDescription": "SLH standardmäßig verfügbar lassen, während der Startstatus erfasst wird.",
+    "themePresets": "Design-Voreinstellungen",
+    "themePresetsDescription": "Beim Anwenden einer Voreinstellung wird sie sofort gespeichert.",
+    "presetName": "Name der Voreinstellung",
+    "saveCurrent": "Aktuelle speichern",
+    "interfaceScale": "Oberflächenskalierung",
+    "interfaceScaleDescription": "Ändert die Größe der gesamten Launcher-Oberfläche, ohne die Minecraft-Auflösung zu verändern.",
+    "interfaceFont": "Schriftart der Oberfläche",
+    "interfaceFontDescription": "Die ausgewählte Schriftart wird sofort angewendet. Lokale Dateien werden nach data/fonts kopiert und ohne Neustart geladen.",
+    "minimalism": "Minimalismus",
+    "minimalismDescription": "Blendet sekundäre Beschriftungen und Beschreibungen aus und behält wichtige Steuerelemente und Symbole bei.",
+    "navigationMenu": "Einstellungsnavigation",
+    "navigationMenuHint": "Einstellungsbereiche anzeigen, ausblenden oder neu anordnen",
+    "navigationSaveFailed": "Einstellungsnavigation konnte nicht gespeichert werden"
+  },
+  "legacy": {
+    "Sum of process working sets, including WebView2; shared pages may be counted more than once.": "Summe der Arbeitssätze von SLH und WebView2. Gemeinsam genutzte Speicherseiten können mehrfach gezählt werden.",
+    "release": "Release",
+    "snapshot": "Snapshot",
+    "old_alpha": "Alte Alpha",
+    "old_beta": "Alte Beta",
+    "Preparing launcher data": "Launcher-Daten werden vorbereitet",
+    "SLH could not start": "SLH konnte nicht gestartet werden",
+    "The launcher backend did not return startup data.": "Das Launcher-Backend hat keine Startdaten zurückgegeben.",
+    "Retry": "Erneut versuchen",
+    "Ready when you are": "Bereit, wenn du es bist",
+    "Continue an instance, check your runtime, or prepare something new without leaving your library.": "Setze eine Instanz fort, prüfe deine Laufzeitumgebung oder bereite etwas Neues vor, ohne deine Bibliothek zu verlassen.",
+    "New instance": "Neue Instanz",
+    "Search instances": "Instanzen durchsuchen",
+    "Only compatibility verified for Minecraft {version} can be selected.": "Es können nur Optionen ausgewählt werden, deren Kompatibilität mit Minecraft {version} bestätigt wurde.",
+    "Import": "Importieren",
+    "Main navigation": "Hauptnavigation",
+    "No account": "Kein Konto",
+    "Choose an identity": "Identität auswählen",
+    "Minimize": "Minimieren",
+    "Maximize": "Maximieren",
+    "Close": "Schließen",
+    "Continue playing": "Weiterspielen",
+    "recent": "kürzlich",
+    "Your recently played instances will appear here.": "Deine zuletzt gespielten Instanzen werden hier angezeigt.",
+    "Not played": "Nicht gespielt",
+    "Launcher status": "Launcher-Status",
+    "Local": "Lokal",
+    "Active account": "Aktives Konto",
+    "Not selected": "Nicht ausgewählt",
+    "Java selection": "Java-Auswahl",
+    "Automatic": "Automatisch",
+    "Custom": "Benutzerdefiniert",
+    "Downloads": "Herunterladen",
+    "concurrent": "gleichzeitig",
+    "Data folder": "Datenordner",
+    "Quick actions": "Schnellaktionen",
+    "Create instance": "Instanz erstellen",
+    "Install a clean Minecraft version": "Eine unveränderte Minecraft-Version installieren",
+    "Browse Discover": "Entdecken durchsuchen",
+    "Explore content from Modrinth": "Inhalte von Modrinth entdecken",
+    "Check Java": "Java prüfen",
+    "Review detected runtimes": "Erkannte Laufzeitumgebungen prüfen",
+    "No active downloads": "Keine aktiven Downloads",
+    "Private": "Privat",
+    "Ready": "Bereit",
+    "Loading": "Wird geladen",
+    "Loading projects from": "Projekte werden geladen von",
+    "Discover something worth playing": "Entdecke etwas, das sich zu spielen lohnt",
+    "Browse current projects with compatibility metadata, required dependencies, and installation decisions kept explicit.": "Durchsuche aktuelle Projekte mit Kompatibilitätsdaten, erforderlichen Abhängigkeiten und transparenten Installationsentscheidungen.",
+    "Discover is offline": "Entdecken ist offline",
+    "matching projects": "passende Projekte",
+    "Search": "Suchen",
+    "Modpacks": "Modpacks",
+    "Mods": "Mods",
+    "Resource packs": "Ressourcenpakete",
+    "Shaders": "Shader",
+    "Worlds": "Welten",
+    "Install as new instance": "Installieren",
+    "Load more": "Mehr laden",
+    "Choose target instance": "Zielinstanz auswählen",
+    "No installed compatible instance is available": "Keine installierte kompatible Instanz verfügbar",
+    "Install": "Installieren",
+    "Install from": "Installieren von",
+    "the archive defines Minecraft, its loader, files, and overrides for a new isolated instance.": "das Archiv definiert Minecraft, den Loader, Dateien und Überschreibungen für eine neue isolierte Instanz.",
+    "SLH resolves a compatible version, required dependencies, distribution permission, and conflicts before downloading.": "SLH ermittelt vor dem Download eine kompatible Version, erforderliche Abhängigkeiten, Verteilungsberechtigungen und Konflikte.",
+    "New isolated instance": "Neue isolierte Instanz",
+    "The verified archive remains in downloads for repair or re-import.": "Das geprüfte Archiv bleibt für Reparaturen oder einen erneuten Import in den Downloads.",
+    "Instance name": "Instanzname",
+    "Target instance": "Zielinstanz",
+    "Checking compatibility and dependencies": "Kompatibilität und Abhängigkeiten werden geprüft",
+    "files including dependencies": "Dateien einschließlich Abhängigkeiten",
+    "verified download": "geprüfter Download",
+    "conflicts": "Konflikte",
+    "Installation is running": "Installation läuft",
+    "You can close this window. SLH will notify you when it finishes.": "Du kannst dieses Fenster schließen. SLH benachrichtigt dich, sobald der Vorgang abgeschlossen ist.",
+    "Cancel": "Abbrechen",
+    "Installing": "Wird installiert",
+    "Download and install": "Herunterladen und installieren",
+    "Install verified files": "Geprüfte Dateien installieren",
+    "Default memory": "Standardspeicher",
+    "New instances inherit this maximum RAM value.": "Neue Instanzen übernehmen diesen maximalen RAM-Wert.",
+    "Instance groups": "Instanzgruppen",
+    "New group": "Neue Gruppe",
+    "Add": "Hinzufügen",
+    "Global launch defaults and instance organization.": "Globale Startvorgaben und Organisation der Instanzen.",
+    "SLH inspects runtime version output and validates compatibility before launch.": "SLH prüft die Versionsausgabe der Laufzeitumgebung und validiert die Kompatibilität vor dem Start.",
+    "Detected runtimes": "Erkannte Laufzeitumgebungen",
+    "Searches managed Java, JAVA_HOME, and PATH without modifying system settings.": "Durchsucht verwaltetes Java, JAVA_HOME und PATH, ohne Systemeinstellungen zu ändern.",
+    "Detecting": "Wird erkannt",
+    "Detect Java": "Java erkennen",
+    "Installing instance": "Instanz wird installiert",
+    "Instance ready": "Instanz bereit",
+    "Installation complete": "Installation abgeschlossen",
+    "Version {edition} {version} installed": "Version {edition} {version} installiert",
+    "Version {edition} {version} deleted": "Version {edition} {version} gelöscht",
+    "Bedrock package registered": "Bedrock-Paket registriert",
+    "Already installed from Microsoft Store": "Bereits über Microsoft Store installiert",
+    "Using the already installed Microsoft Store package. No download or Developer Mode is needed.": "Das bereits installierte Microsoft-Store-Paket wird verwendet. Kein Download und kein Entwicklermodus nötig.",
+    "Accounts": "Konten",
+    "No accounts have been added.": "Es wurden noch keine Konten hinzugefügt.",
+    "Choose the identity used by Play": "Identität für „Spielen“ auswählen",
+    "Offline username": "Offline-Benutzername",
+    "Player name": "Spielername",
+    "Add account": "Konto hinzufügen",
+    "Password": "Passwort",
+    "Two-factor code": "Zwei-Faktor-Code",
+    "Sign in": "Anmelden",
+    "Signing in": "Anmeldung läuft",
+    "Manage accounts": "Konten verwalten",
+    "Storage": "Speicher",
+    "data in use": "belegter Speicher",
+    "instances": "Instanzen",
+    "Notifications": "Benachrichtigungen",
+    "Sync": "Synchronisierung",
+    "Console": "Konsole",
+    "Privacy": "Datenschutz",
+    "Advanced": "Erweitert",
+    "Appearance saved": "Darstellung gespeichert",
+    "Save palette": "Palette speichern",
+    "Choose local font": "Lokale Schriftart auswählen",
+    "Preview: Aa Bb 0123": "Vorschau: Aa Bb 0123",
+    "Settings saved": "Einstellungen gespeichert",
+    "The settings database was updated.": "Die Einstellungsdatenbank wurde aktualisiert.",
+    "Launcher preferences": "Launcher-Einstellungen",
+    "The selected face is applied instantly. Local files are copied into data/fonts and loaded without restarting.": "Die ausgewählte Schriftart wird sofort angewendet. Lokale Dateien werden nach data/fonts kopiert und ohne Neustart geladen.",
+    "Minecraft": "Minecraft",
+    "custom groups in this library.": "benutzerdefinierte Gruppen in dieser Bibliothek.",
+    "Java": "Java",
+    "Run detection to inspect available Java executables.": "Starte die Erkennung, um verfügbare Java-Programmdateien zu prüfen.",
+    "Account metadata is stored in SQLite; token material belongs only in DPAPI-encrypted files.": "Kontometadaten werden in SQLite gespeichert; Token-Daten werden ausschließlich in DPAPI-verschlüsselten Dateien abgelegt.",
+    "Add an Offline account from the sidebar account switcher.": "Füge über den Kontowechsler in der Seitenleiste ein Offline-Konto hinzu.",
+    "Active": "Aktiv",
+    "Available": "Verfügbar",
+    "Unavailable": "Nicht verfügbar",
+    "Every mutable SLH file stays beside the executable.": "Alle veränderlichen SLH-Dateien bleiben neben der ausführbaren Datei.",
+    "Runtime cache is retained because installed instances can depend on its verified assets and libraries. Worlds, accounts, and shared files are never treated as disposable cache.": "Der Laufzeit-Cache wird beibehalten, da installierte Instanzen von seinen geprüften Assets und Bibliotheken abhängen können. Welten, Konten und freigegebene Dateien werden niemals als entbehrlicher Cache behandelt.",
+    "Verified downloads use retry, temporary files, and atomic rename.": "Geprüfte Downloads verwenden Wiederholungsversuche, temporäre Dateien und atomisches Umbenennen.",
+    "Choose which launcher messages appear and how long they stay visible.": "Lege fest, welche Launcher-Meldungen angezeigt werden und wie lange sie sichtbar bleiben.",
+    "Shared folders automatically feed current instances and every instance created later.": "Freigegebene Ordner versorgen automatisch aktuelle und später erstellte Instanzen.",
+    "Control how live Minecraft output is shown for every instance.": "Lege fest, wie die Live-Ausgabe von Minecraft für jede Instanz angezeigt wird.",
+    "This personal build has no analytics, advertising, telemetry, or background data collection.": "Dieser persönliche Build enthält keine Analysen, Werbung, Telemetrie oder Datenerfassung im Hintergrund.",
+    "Diagnostics and developer controls remain explicit and non-destructive.": "Diagnose- und Entwicklerfunktionen bleiben ausdrücklich und nicht destruktiv.",
+    "Create a Minecraft instance": "Minecraft-Instanz erstellen",
+    "Each instance keeps its own worlds, mods, settings, and launch history.": "Jede Instanz behält ihre eigenen Welten, Mods, Einstellungen und ihren eigenen Startverlauf.",
+    "Local instance": "Lokale Instanz",
+    "Pick a Minecraft release, select a compatible loader, and create it in one pass.": "Wähle eine Minecraft-Version und einen kompatiblen Loader aus und erstelle die Instanz in einem Schritt.",
+    "Official metadata": "Offizielle Metadaten",
+    "Isolated folder": "Isolierter Ordner",
+    "Verified install": "Geprüfte Installation",
+    "Choose Minecraft": "Minecraft auswählen",
+    "Minecraft edition": "Minecraft-Edition",
+    "Java": "Java",
+    "Bedrock": "Bedrock",
+    "Bedrock packages are resolved from Microsoft delivery metadata.": "Bedrock-Pakete werden aus Microsoft-Bereitstellungsmetadaten aufgelöst.",
+    "Select download mirror": "Downloadspiegel auswählen",
+    "Download mirrors could not be loaded": "Downloadspiegel konnten nicht geladen werden",
+    "No official download mirrors are available for this version.": "Für diese Version sind keine offiziellen Downloadspiegel verfügbar.",
+    "SLH checks official Microsoft CDN mirrors and selects the fastest one by default.": "SLH prüft offizielle Microsoft-CDN-Spiegel und wählt standardmäßig den schnellsten.",
+    "Official Microsoft CDN": "Offizielles Microsoft-CDN",
+    "The package is downloaded directly from Microsoft Xbox CDN. The mirror only changes the route and does not change the file.": "Das Paket wird direkt vom Microsoft-Xbox-CDN heruntergeladen. Der Spiegel ändert nur die Route, nicht die Datei.",
+    "Checking download mirrors": "Downloadspiegel werden geprüft",
+    "Retry check": "Prüfung wiederholen",
+    "Download selected mirror": "Ausgewählten Spiegel herunterladen",
+    "Fastest": "Schnellster",
+    "ms": "ms",
+    "Not checked": "Nicht geprüft",
+    "Unavailable": "Nicht verfügbar",
+    "Include preview builds": "Vorschauversionen einbeziehen",
+    "Microsoft package": "Microsoft-Paket",
+    "Choose a loader": "Loader auswählen",
+    "Choose a Bedrock core": "Bedrock-Kern auswählen",
+    "Bedrock uses the official Windows package; Java loaders do not apply.": "Bedrock verwendet das offizielle Windows-Paket; Java-Loader gelten hier nicht.",
+    "Name and organize": "Benennen und organisieren",
+    "Java and memory": "Java und Arbeitsspeicher",
+    "Bedrock runtime": "Bedrock-Laufzeit",
+    "Bedrock runs as a Windows package and does not use Java memory settings.": "Bedrock läuft als Windows-Paket und verwendet keine Java-Arbeitsspeichereinstellungen.",
+    "Microsoft account required": "Microsoft-Konto erforderlich",
+    "Xbox profile needs linking": "Xbox-Profil muss verknüpft werden",
+    "SLH could not yet read the Xbox profile for the selected Microsoft account. Choose Bind Store/Xbox account to refresh it; sign in again only if Windows says the saved Microsoft session has expired.": "SLH konnte das Xbox-Profil des ausgewählten Microsoft-Kontos noch nicht lesen. Wähle „Store-/Xbox-Konto verbinden“, um es zu aktualisieren; melde dich nur erneut an, wenn Windows meldet, dass die gespeicherte Microsoft-Sitzung abgelaufen ist.",
+    "Ely.by and offline accounts are Java-only. SLH will download the selected package, but Bedrock launch integration is not available yet.": "Ely.by- und Offline-Konten gelten nur für Java. SLH lädt das ausgewählte Paket herunter, aber die Bedrock-Startintegration ist noch nicht verfügbar.",
+    "Bedrock uses the registered Windows package. Ely.by and offline accounts remain Java-only.": "Bedrock verwendet das registrierte Windows-Paket. Ely.by- und Offline-Konten bleiben auf Java beschränkt.",
+    "Bedrock profile": "Bedrock-Profil",
+    "Isolated profile": "Isoliertes Profil",
+    "Shared Store data": "Gemeinsame Store-Daten",
+    "is ready to launch when Microsoft Store, Xbox, and Gaming Services are available.": "ist startbereit, sobald Microsoft Store, Xbox und Gaming Services verfügbar sind.",
+    "Windows deployment and Store/Xbox checks may still be required.": "Eine Windows-Bereitstellung und Store/Xbox-Prüfung können noch erforderlich sein.",
+    "Checking Bedrock runtime": "Bedrock-Laufzeit wird geprüft",
+    "Bedrock ready to launch": "Bedrock ist startbereit",
+    "Prepare Bedrock": "Bedrock vorbereiten",
+    "Automatic Bedrock setup": "Automatische Bedrock-Einrichtung",
+    "SLH will download official Microsoft components. Windows may show one UAC confirmation.": "SLH lädt offizielle Microsoft-Komponenten herunter. Windows kann einmal eine UAC-Bestätigung anzeigen.",
+    "SLH downloads and checks the required Windows components, then retries the launch automatically.": "SLH lädt und prüft die erforderlichen Windows-Komponenten und versucht den Start anschließend automatisch erneut.",
+    "A Microsoft Store license is required. Ely.by and offline accounts can only launch Java.": "Eine Microsoft-Store-Lizenz ist erforderlich. Ely.by- und Offline-Konten können nur Java starten.",
+    "Not required for Store package": "Für Store-Paket nicht erforderlich",
+    "Required for GDK packages": "Für GDK-Pakete erforderlich",
+    "Preparing Bedrock": "Bedrock wird vorbereitet",
+    "Download and prepare": "Herunterladen und vorbereiten",
+    "Bedrock is ready": "Bedrock ist bereit",
+    "The official Windows components are ready. SLH will start Bedrock now.": "Die offiziellen Windows-Komponenten sind bereit. SLH startet Bedrock jetzt.",
+    "Bedrock still needs a Microsoft Store license or Windows component.": "Für Bedrock wird weiterhin eine Microsoft-Store-Lizenz oder Windows-Komponente benötigt.",
+    "Bedrock needs Microsoft Store/Xbox setup": "Bedrock benötigt eine Store/Xbox-Einrichtung",
+    "Refresh": "Aktualisieren",
+    "Microsoft Store": "Microsoft Store",
+    "Xbox": "Xbox",
+    "Microsoft Store could not be opened": "Microsoft Store konnte nicht geöffnet werden",
+    "Xbox could not be opened": "Xbox konnte nicht geöffnet werden",
+    "Microsoft account": "Microsoft-Konto",
+    "Authenticated": "Authentifiziert",
+    "Required": "Erforderlich",
+    "Gaming Services": "Gaming Services",
+    "Installed": "Installiert",
+    "GameInput": "GameInput",
+    "Store/Xbox session": "Store/Xbox-Sitzung",
+    "Checked by Windows at launch": "Wird beim Start von Windows geprüft",
+    "License": "Lizenz",
+    "Windows Developer Mode": "Windows-Entwicklermodus",
+    "Required for downloaded UWP": "Für heruntergeladenes UWP erforderlich",
+    "Why?": "Warum?",
+    "Why is Developer Mode needed?": "Warum wird der Entwicklermodus benötigt?",
+    "Why can't this Bedrock package be installed?": "Warum kann dieses Bedrock-Paket nicht installiert werden?",
+    "This MSIXVC is a Microsoft Store submission package, not a local test package. Windows wdapp cannot install or convert it. The same version must be installed through Microsoft Store/Xbox, or you need a version that is already registered on this Windows account.": "Dieses MSIXVC ist ein Microsoft-Store-Einreichungspaket und kein lokales Testpaket. Windows wdapp kann es nicht installieren oder umwandeln. Dieselbe Version muss über Microsoft Store/Xbox installiert werden, oder es muss eine bereits für dieses Windows-Konto registrierte Version verwendet werden.",
+    "wdapp": "wdapp",
+    "Unknown": "Unbekannt",
+    "Save profile mode before launching.": "Profilspeicher vor dem Start sichern.",
+    "Save Bedrock settings": "Bedrock-Einstellungen speichern",
+    "Review instance": "Instanz prüfen",
+    "Create and install": "Erstellen und installieren",
+    "Bedrock package downloaded. Windows deployment and Store/Xbox checks may still be required.": "Bedrock-Paket heruntergeladen. Eine Windows-Bereitstellung und Store/Xbox-Prüfung können noch erforderlich sein.",
+    "Launch unavailable": "Start nicht verfügbar",
+    "Group": "Gruppe",
+    "Ungrouped": "Ohne Gruppe",
+    "Background": "Hintergrund",
+    "Icon": "Symbol",
+    "Maximum memory": "Maximaler Arbeitsspeicher",
+    "Automatic compatible runtime": "Automatisch gewählte kompatible Laufzeitumgebung",
+    "Custom executable": "Benutzerdefinierte ausführbare Datei",
+    "Installation": "Installation",
+    "Verified client, libraries, assets, and natives": "Geprüfter Client, Bibliotheken, Assets und native Dateien",
+    "Overview": "Übersicht",
+    "Instance tabs": "Instanz-Tabs",
+    "Screenshots": "Screenshots",
+    "Logs": "Protokolle",
+    "Folder": "Ordner",
+    "Status": "Status",
+    "Memory": "Arbeitsspeicher",
+    "Loader": "Loader",
+    "No recorded playtime": "Keine Spielzeit erfasst",
+    "played": "gespielt",
+    "Play": "Spielen",
+    "Running": "Läuft",
+    "Kill": "Beenden",
+    "Minecraft stopped": "Minecraft wurde beendet",
+    "was stopped": "wurde beendet",
+    "Stop failed": "Beenden fehlgeschlagen",
+    "Installed": "Installiert",
+    "Repair": "Reparieren",
+    "Export": "Exportieren",
+    "Minecraft log": "Minecraft-Protokoll",
+    "Indexing files": "Dateien werden indiziert",
+    "Preview unavailable": "Vorschau nicht verfügbar",
+    "Newest first": "Neueste zuerst",
+    "Oldest first": "Älteste zuerst",
+    "Browse content": "Inhalte durchsuchen",
+    "Browse CurseForge": "CurseForge durchsuchen",
+    "No mods found": "Keine Mods gefunden",
+    "No resource packs found": "Keine Ressourcenpakete gefunden",
+    "No shaders found": "Keine Shader gefunden",
+    "No worlds found": "Keine Welten gefunden",
+    "No screenshots found": "Keine Screenshots gefunden",
+    "Install compatible content from Discover or place files in the instance folder.": "Installiere kompatible Inhalte über „Entdecken“ oder lege Dateien im Instanzordner ab.",
+    "Find in log": "Im Protokoll suchen",
+    "Clear view": "Ansicht leeren",
+    "Log folder": "Protokollordner",
+    "Bottom": "Unten",
+    "Top": "Oben",
+    "Left": "Links",
+    "Right": "Rechts",
+    "Instance panel position": "Position des Instanzbereichs",
+    "Choose where the selected instance panel appears in the library.": "Wähle, wo der Bereich der ausgewählten Instanz in der Bibliothek angezeigt wird.",
+    "Instance tabs position": "Position der Instanz-Tabs",
+    "Choose where the Overview, Mods, and other instance tabs are shown.": "Wähle, wo Übersicht, Mods und andere Instanz-Tabs angezeigt werden.",
+    "Instance layout": "Instanzlayout",
+    "Tabs position": "Position der Tabs",
+    "Navigation position": "Navigationsposition",
+    "Choose where the main launcher navigation is docked.": "Wähle, wo die Hauptnavigation des Launchers angedockt wird.",
+    "Settings navigation position": "Position der Einstellungsnavigation",
+    "Choose where settings sections are shown.": "Wähle, wo die Einstellungsbereiche angezeigt werden.",
+    "Loading console": "Konsole wird geladen",
+    "Follow": "Folgen",
+    "Wrap": "Zeilenumbruch",
+    "Delete instance": "Instanz löschen",
+    "Game directory": "Spielverzeichnis",
+    "Health and portability": "Zustand und Portabilität",
+    "Attention": "Achtung",
+    "Install or repair this instance before launching.": "Installiere oder repariere diese Instanz vor dem Start.",
+    "Instance not found": "Instanz nicht gefunden",
+    "Back to Library": "Zurück zur Bibliothek",
+    "Mods across your library": "Mods in deiner gesamten Bibliothek",
+    "Installed-mod indexing stays scoped to each instance, while this page surfaces updates and compatibility across all of them.": "Die Indizierung installierter Mods bleibt auf die jeweilige Instanz beschränkt, während diese Seite Updates und Kompatibilität für alle Instanzen zusammenführt.",
+    "Browse compatible mods": "Kompatible Mods durchsuchen",
+    "Settings": "Einstellungen",
+    "Item could not be revealed": "Element konnte nicht angezeigt werden",
+    "Folder could not be opened": "Ordner konnte nicht geöffnet werden",
+    "Screenshot could not be opened": "Screenshot konnte nicht geöffnet werden",
+    "Log folder could not be opened": "Protokollordner konnte nicht geöffnet werden",
+    "Instance": "Instanz",
+    "to": "bis",
+    "Verified metadata and game files are installed.": "Geprüfte Metadaten und Spieldateien sind installiert.",
+    "Name and artwork": "Name und Gestaltung",
+    "Renaming also gives the instance folder the same readable name.": "Beim Umbenennen erhält auch der Instanzordner denselben lesbaren Namen.",
+    "Instance icon": "Instanzsymbol",
+    "Choose a pixel icon and two custom colors.": "Wähle ein Pixel-Symbol und zwei benutzerdefinierte Farben.",
+    "Save changes": "Änderungen speichern",
+    "Runtime and memory": "Laufzeitumgebung und Arbeitsspeicher",
+    "Memory is stored on this instance and is used the next time Minecraft starts.": "Der Arbeitsspeicherwert wird in dieser Instanz gespeichert und beim nächsten Start von Minecraft verwendet.",
+    "Minimum memory (MB)": "Minimaler Arbeitsspeicher (MB)",
+    "Maximum memory (MB)": "Maximaler Arbeitsspeicher (MB)",
+    "Remove this version and its local files immediately. This does not create a backup.": "Diese Version und ihre lokalen Dateien sofort entfernen. Dabei wird keine Sicherung erstellt.",
+    "Permanent deletion": "Endgültiges Löschen",
+    "Worlds, mods, resource packs, shaders, screenshots, settings, and logs will be removed.": "Welten, Mods, Ressourcenpakete, Shader, Screenshots, Einstellungen und Protokolle werden entfernt.",
+    "Minecraft output will appear here when the game starts.": "Die Minecraft-Ausgabe erscheint hier, sobald das Spiel startet.",
+    "The stable internal instance ID remains unchanged if you rename it later.": "Die stabile interne Instanz-ID bleibt auch nach einem späteren Umbenennen unverändert.",
+    "Choose a Minecraft release": "Minecraft-Version auswählen",
+    "Release metadata comes directly from Mojang's official manifest.": "Die Versionsmetadaten stammen direkt aus dem offiziellen Manifest von Mojang.",
+    "Not used by Bedrock": "Wird von Bedrock nicht verwendet",
+    "Include snapshots": "Snapshots einbeziehen",
+    "Search versions": "Versionen durchsuchen",
+    "Try again": "Erneut versuchen",
+    "Only compatibility verified for Minecraft": "Nur für Minecraft bestätigte Kompatibilität",
+    "Adapter pending": "Adapter ausstehend",
+    "Loading compatible versions": "Kompatible Versionen werden geladen",
+    "SLH validates the runtime again before every launch.": "SLH validiert die Laufzeitumgebung vor jedem Start erneut.",
+    "Detect the best compatible installed Java": "Bestes kompatibles installiertes Java erkennen",
+    "Use Java": "Java verwenden",
+    "from": "von",
+    "Use an explicit java.exe path for this instance": "Für diese Instanz einen expliziten java.exe-Pfad verwenden",
+    "Keep enough RAM available for Windows and other applications.": "Lasse ausreichend RAM für Windows und andere Anwendungen verfügbar.",
+    "Creation begins only after every local value passes backend validation.": "Die Erstellung beginnt erst, wenn alle lokalen Werte die Backend-Validierung bestanden haben.",
+    "Name": "Name",
+    "512 MB min ·": "Min. 512 MB ·",
+    "Back": "Zurück",
+    "Continue with Offline account": "Mit Offline-Konto fortfahren",
+    "Add Microsoft account": "Microsoft-Konto hinzufügen",
+    "Skip for now": "Vorerst überspringen",
+    "Microsoft client ID is not configured": "Microsoft-Client-ID ist nicht konfiguriert",
+    "Add an Offline account": "Offline-Konto hinzufügen",
+    "Ely.by username or email": "Ely.by-Benutzername oder E-Mail-Adresse",
+    "Used only for this request and never written to disk.": "Wird nur für diese Anfrage verwendet und niemals auf die Festplatte geschrieben.",
+    "No telemetry, no ads, no cloud account requirement.": "Keine Telemetrie, keine Werbung, kein Cloud-Konto erforderlich.",
+    "Welcome to Smile LauncHer": "Willkommen bei Smile LauncHer",
+    "Minecraft, on your terms.": "Minecraft nach deinen Vorstellungen.",
+    "Build isolated Minecraft instances and keep every launcher-owned file in one place.": "Erstelle isolierte Minecraft-Instanzen und bewahre alle vom Launcher verwalteten Dateien an einem Ort auf.",
+    "Offline identities cannot join normal online-mode servers.": "Offline-Identitäten können normalen Online-Mode-Servern nicht beitreten.",
+    "Servers": "Server",
+    "Edit each instance's real `servers.dat`. Writes are NBT-safe, blocked while the game runs, and backed up before replacement.": "Bearbeite die echte `servers.dat` jeder Instanz. Schreibvorgänge sind NBT-sicher, während das Spiel läuft gesperrt und werden vor dem Ersetzen gesichert.",
+    "No instances yet": "Noch keine Instanzen",
+    "Create or import an instance before managing its multiplayer server list.": "Erstelle oder importiere eine Instanz, bevor du ihre Multiplayer-Serverliste verwaltest.",
+    "Saved servers": "Gespeicherte Server",
+    "Reading NBT…": "NBT wird gelesen…",
+    "entries": "Einträge",
+    "This instance has no saved servers.": "Diese Instanz enthält keine gespeicherten Server.",
+    "Add server": "Server hinzufügen",
+    "Saved only to the selected instance": "Nur in der ausgewählten Instanz gespeichert",
+    "Address": "Adresse",
+    "Community server": "Community-Server",
+    "Cross-instance copying remains off until you explicitly create a Servers mapping in Settings → Sync.": "Das Kopieren zwischen Instanzen bleibt deaktiviert, bis du unter Einstellungen → Synchronisierung ausdrücklich eine Server-Zuordnung erstellst.",
+    "Original Minecraft output, safely redacted by SLH.": "Originale Minecraft-Ausgabe, von SLH sicher bereinigt.",
+    "Follow:": "Folgen:",
+    "on": "ein",
+    "off": "aus",
+    "Wrap:": "Zeilenumbruch:",
+    "Copy": "Kopieren",
+    "shown": "angezeigt",
+    "No sync mappings. Create one above to start sharing files.": "Keine Synchronisierungszuordnungen. Erstelle oben eine, um Dateien zu teilen.",
+    "Open shared folder": "Freigegebenen Ordner öffnen",
+    "Shared library": "Gemeinsame Bibliothek",
+    "All current and future instances": "Alle aktuellen und zukünftigen Instanzen",
+    "Enable automatic sync": "Automatische Synchronisierung aktivieren",
+    "Update now": "Jetzt aktualisieren",
+    "Font size": "Schriftgröße",
+    "Size of console text in pixels.": "Größe des Konsolentexts in Pixeln.",
+    "Telemetry": "Telemetrie",
+    "Always off": "Immer deaktiviert",
+    "Crash reporting": "Absturzberichte",
+    "Local only": "Nur lokal",
+    "Healthy": "Fehlerfrei",
+    "Preparing settings": "Einstellungen werden vorbereitet",
+    "World synchronization is off": "Welt-Synchronisierung ist deaktiviert",
+    "World overwrites require explicit acknowledgement, a backup, and a check that Minecraft is not running.": "Das Überschreiben von Welten erfordert eine ausdrückliche Bestätigung, eine Sicherung und die Prüfung, dass Minecraft nicht läuft.",
+    "Allow world mappings": "Welt-Zuordnungen erlauben",
+    "Still requires confirmation for every newly created mapping.": "Für jede neu erstellte Zuordnung ist weiterhin eine Bestätigung erforderlich.",
+    "options, servers, resourcepacks, screenshots, mod-configs, and worlds": "Optionen, Server, Ressourcenpakete, Screenshots, Mod-Konfigurationen und Welten",
+    "CONTENT": "INHALT",
+    "INITIAL SOURCE": "URSPRÜNGLICHE QUELLE",
+    "DESTINATION INSTANCES": "ZIELINSTANZEN",
+    "Options": "Optionen",
+    "Initial source": "Ursprüngliche Quelle",
+    "Recommended": "Empfohlen",
+    "After setup, SLH applies the shared copy when an instance is created or imported, before launch, and after Minecraft exits. Manual update remains optional.": "Nach der Einrichtung wendet SLH die gemeinsame Kopie an, wenn eine Instanz erstellt oder importiert wird, vor dem Start und nachdem Minecraft beendet wurde. Die manuelle Aktualisierung bleibt optional.",
+    "Automatic for all current and future instances": "Automatisch für alle aktuellen und zukünftigen Instanzen",
+    "selected instances": "ausgewählte Instanzen",
+    "Source for": "Quelle für",
+    "Remove": "Entfernen",
+    "Show notifications": "Benachrichtigungen anzeigen",
+    "Disabling this hides all toast messages. Activity progress remains available in the bottom bar.": "Wenn dies deaktiviert ist, werden alle Popup-Meldungen ausgeblendet. Der Aktivitätsfortschritt bleibt in der unteren Leiste sichtbar.",
+    "Maximum visible": "Maximal sichtbar",
+    "Older messages close automatically when this limit is reached.": "Ältere Meldungen werden automatisch geschlossen, sobald dieses Limit erreicht ist.",
+    "Display time": "Anzeigedauer",
+    "How long each message remains visible.": "Wie lange jede Meldung sichtbar bleibt.",
+    "Information": "Informationen",
+    "Setup hints and non-critical status messages.": "Einrichtungshinweise und unkritische Statusmeldungen.",
+    "Success": "Erfolg",
+    "Completed installs, repairs, imports, and saves.": "Abgeschlossene Installationen, Reparaturen, Importe und Speichervorgänge.",
+    "Errors": "Fehler",
+    "Failures that may require your attention.": "Fehler, die möglicherweise deine Aufmerksamkeit erfordern.",
+    "Concurrent downloads": "Gleichzeitige Downloads",
+    "Applied to library and asset batches.": "Wird auf Bibliotheks- und Asset-Batches angewendet.",
+    "Retry count": "Anzahl der Wiederholungsversuche",
+    "Transient failures use exponential backoff.": "Bei vorübergehenden Fehlern wird exponentielles Backoff verwendet.",
+    "Personal CurseForge API key (optional)": "Persönlicher CurseForge-API-Schlüssel (optional)",
+    "No personal key configured. CurseForge requests use the SLH relay.": "Kein persönlicher Schlüssel konfiguriert. CurseForge-Anfragen verwenden den SLH-Relay.",
+    "Checking local configuration": "Lokale Konfiguration wird geprüft",
+    "SLH relay": "SLH-Relay",
+    "Direct API": "Direkte API",
+    "Paste approved key locally": "Genehmigten Schlüssel lokal einfügen",
+    "Verify and save": "Prüfen und speichern",
+    "Checking": "Wird geprüft",
+    "The value never enters SQLite, logs, exports, or UI state after saving. Windows DPAPI ties it to your current Windows profile.": "Der Wert gelangt nach dem Speichern niemals in SQLite, Protokolle, Exporte oder den UI-Status. Windows DPAPI bindet ihn an dein aktuelles Windows-Profil.",
+    "Public API available; compatible installs use verified hashes.": "Öffentliche API verfügbar; kompatible Installationen verwenden geprüfte Hashes.",
+    "SLH relay configured; no personal API key is required. The first request verifies relay availability.": "SLH-Relay konfiguriert; kein persönlicher API-Schlüssel erforderlich. Die erste Anfrage prüft die Verfügbarkeit des Relays.",
+    "Content provider is configured.": "Inhaltsanbieter ist konfiguriert.",
+    "API key required": "API-Schlüssel erforderlich",
+    "Recent verified transfers": "Letzte geprüfte Übertragungen",
+    "records": "Einträge",
+    "No queued or completed content downloads.": "Keine ausstehenden oder abgeschlossenen Inhaltsdownloads.",
+    "Loading download history…": "Downloadverlauf wird geladen…",
+    "complete": "abgeschlossen",
+    "Instances": "Instanzen",
+    "Runtime cache": "Laufzeit-Cache",
+    "Managed Java": "Verwaltetes Java",
+    "Shared": "Gemeinsam",
+    "Backups": "Sicherungen",
+    "Database": "Datenbank",
+    "Storage summary is unavailable.": "Speicherübersicht ist nicht verfügbar.",
+    "Calculating storage…": "Speicher wird berechnet…",
+    "MB": "MB",
+    "ms": "ms",
+    "px": "px",
+    "Theme mode remains dark. Background images and animated wallpaper are intentionally unsupported.": "Der Designmodus bleibt dunkel. Hintergrundbilder und animierte Hintergrundbilder werden bewusst nicht unterstützt.",
+    "Custom preset": "Benutzerdefinierte Voreinstellung",
+    "Built-in preset": "Integrierte Voreinstellung",
+    "Pixeloid Sans (default)": "Pixeloid Sans (Standard)",
+    "System UI": "Systemoberfläche",
+    "Cascadia Mono": "Cascadia Mono",
+    "Local font": "Lokale Schriftart",
+    "Surface": "Fläche",
+    "Raised surface": "Erhöhte Fläche",
+    "Border": "Rahmen",
+    "Text": "Text",
+    "Muted text": "Gedämpfter Text",
+    "Accent": "Akzent",
+    "Accent hover": "Akzent bei Hover",
+    "Managed Temurin": "Verwaltetes Temurin",
+    "Verified Windows x64 JREs from Adoptium": "Geprüfte Windows-x64-JREs von Adoptium",
+    "Ready to add from the account switcher.": "Über den Kontowechsler zum Hinzufügen bereit.",
+    "Database reset, forced metadata refresh, and instance repair are withheld until each action has preview and confirmation.": "Datenbankzurücksetzung, erzwungene Metadatenaktualisierung und Instanzreparatur bleiben gesperrt, bis jede Aktion eine Vorschau und Bestätigung besitzt.",
+    "Services contacted only when needed": "Dienste werden nur bei Bedarf kontaktiert",
+    "Mojang metadata and assets, Microsoft authentication when configured, Modrinth, CurseForge when configured, Ely.by when used, and the chosen managed Java source.": "Mojang-Metadaten und -Assets, Microsoft-Authentifizierung wenn konfiguriert, Modrinth, CurseForge wenn konfiguriert, Ely.by bei Verwendung und die ausgewählte Quelle für verwaltetes Java.",
+    "Launcher version": "Launcher-Version",
+    "Development schema version 1.": "Entwicklungsschema Version 1.",
+    "Logging": "Protokollierung",
+    "Daily log files with secret redaction boundaries.": "Tägliche Protokolldateien mit Grenzen zur Schwärzung geheimer Daten.",
+    "Open on launch": "Beim Start öffnen",
+    "Switch to the instance console as soon as Minecraft starts.": "Zur Instanzkonsole wechseln, sobald Minecraft startet.",
+    "Show timestamps": "Zeitstempel anzeigen",
+    "Display the recorded time before each console line.": "Die aufgezeichnete Zeit vor jeder Konsolenzeile anzeigen.",
+    "Wrap long lines": "Lange Zeilen umbrechen",
+    "Keep long log lines inside the console width.": "Lange Protokollzeilen innerhalb der Konsolenbreite halten.",
+    "Follow output": "Ausgabe verfolgen",
+    "Scroll to new lines while the console is open.": "Zu neuen Zeilen scrollen, während die Konsole geöffnet ist.",
+    "Line history": "Zeilenverlauf",
+    "Maximum number of recent lines kept in the interface.": "Maximale Anzahl der zuletzt in der Oberfläche gespeicherten Zeilen.",
+    "Warnings": "Warnungen",
+    "Debug": "Debug",
+    "Timestamps": "Zeitstempel",
+    "Console settings saved": "Konsoleneinstellungen gespeichert",
+    "Show or hide sidebar pages": "Seiten der Seitenleiste ein- oder ausblenden",
+    "Navigation visibility": "Sichtbarkeit der Navigation",
+    "Account switcher": "Kontowechsler",
+    "No account selected": "Kein Konto ausgewählt",
+    "Account could not be added": "Konto konnte nicht hinzugefügt werden",
+    "Account was not selected": "Konto wurde nicht ausgewählt",
+    "Account removed": "Konto entfernt",
+    "The account was removed from this launcher.": "Das Konto wurde aus diesem Launcher entfernt.",
+    "was removed from this launcher.": "wurde aus diesem Launcher entfernt.",
+    "Account was not removed": "Konto wurde nicht entfernt",
+    "Account order was not saved": "Kontoreihenfolge wurde nicht gespeichert",
+    "Move account up": "Konto nach oben verschieben",
+    "Move account down": "Konto nach unten verschieben",
+    "Remove account": "Konto entfernen",
+    "Offline account added": "Offline-Konto hinzugefügt",
+    "Microsoft account added": "Microsoft-Konto hinzugefügt",
+    "Ely.by account added": "Ely.by-Konto hinzugefügt",
+    "Microsoft sign-in failed": "Microsoft-Anmeldung fehlgeschlagen",
+    "Ely.by sign-in failed": "Ely.by-Anmeldung fehlgeschlagen",
+    "Ely.by sign-in is not active in this build.": "Die Ely.by-Anmeldung ist in diesem Build nicht aktiv.",
+    "Two-factor code required": "Zwei-Faktor-Code erforderlich",
+    "Enter the current Ely.by TOTP code and submit again.": "Gib den aktuellen Ely.by-TOTP-Code ein und sende erneut.",
+    "Sign in with the system browser": "Mit dem Systembrowser anmelden",
+    "Continue in your browser": "Im Browser fortfahren",
+    "Microsoft authentication is not configured for this build.": "Die Microsoft-Authentifizierung ist für diesen Build nicht konfiguriert.",
+    "Minecraft profile verified. Refresh tokens are protected with Windows DPAPI.": "Minecraft-Profil bestätigt. Aktualisierungstokens sind mit Windows DPAPI geschützt.",
+    "Open folder": "Ordner öffnen",
+    "Folder imported": "Ordner importiert",
+    "Folder could not be imported": "Ordner konnte nicht importiert werden",
+    "Folder selection is available in the desktop application.": "Die Ordnerauswahl ist in der Desktop-Anwendung verfügbar.",
+    "Archive could not be imported": "Archiv konnte nicht importiert werden",
+    "Archive selection is available in the desktop application.": "Die Archivauswahl ist in der Desktop-Anwendung verfügbar.",
+    "Files could not be indexed": "Dateien konnten nicht indiziert werden",
+    "Mod indexing is not active yet": "Mod-Indizierung ist noch nicht aktiv",
+    "No matching instances": "Keine passenden Instanzen",
+    "No modded instances": "Keine modifizierten Instanzen",
+    "Change the search text to see the rest of your library.": "Ändere den Suchtext, um den Rest deiner Bibliothek zu sehen.",
+    "Create your first Minecraft instance or import an existing one.": "Erstelle deine erste Minecraft-Instanz oder importiere eine vorhandene.",
+    "Drop or create an instance in this group.": "Lege eine Instanz in dieser Gruppe ab oder erstelle eine.",
+    "Group created": "Gruppe erstellt",
+    "Group was not created": "Gruppe wurde nicht erstellt",
+    "Group view was not saved": "Gruppenansicht wurde nicht gespeichert",
+    "Create group": "Gruppe erstellen",
+    "Instance created": "Instanz erstellt",
+    "Instance was not created": "Instanz wurde nicht erstellt",
+    "Instance imported": "Instanz importiert",
+    "Instance deleted": "Instanz gelöscht",
+    "Instance was not deleted": "Instanz wurde nicht gelöscht",
+    "Instance created, but installation failed": "Instanz erstellt, aber Installation fehlgeschlagen",
+    "Installation complete": "Installation abgeschlossen",
+    "Installation failed": "Installation fehlgeschlagen",
+    "Install required": "Installation erforderlich",
+    "Metadata, checksums, libraries, assets, natives, and loader files were revalidated.": "Metadaten, Prüfsummen, Bibliotheken, Assets, native Dateien und Loader-Dateien wurden erneut validiert.",
+    "The initial source was copied and a hash snapshot was recorded.": "Die ursprüngliche Quelle wurde kopiert und ein Hash-Snapshot wurde gespeichert.",
+    "Sync complete": "Synchronisierung abgeschlossen",
+    "Sync failed": "Synchronisierung fehlgeschlagen",
+    "Operation failed": "Vorgang fehlgeschlagen",
+    "Bedrock is available only on Windows": "Bedrock ist nur unter Windows verfügbar",
+    "Sync mapping created": "Synchronisierungszuordnung erstellt",
+    "Sync mapping was not created": "Synchronisierungszuordnung wurde nicht erstellt",
+    "Sync mapping was not removed": "Synchronisierungszuordnung wurde nicht entfernt",
+    "Sync mapping was not updated": "Synchronisierungszuordnung wurde nicht aktualisiert",
+    "Sync mappings could not be loaded": "Synchronisierungszuordnungen konnten nicht geladen werden",
+    "Enable the world-sync safety switch before creating this mapping.": "Aktiviere den Sicherheitsschalter für die Welt-Synchronisierung, bevor du diese Zuordnung erstellst.",
+    "World sync is locked": "Welt-Synchronisierung ist gesperrt",
+    "World mapping gate enabled": "Schutz für Welt-Zuordnungen aktiviert",
+    "World mapping gate disabled": "Schutz für Welt-Zuordnungen deaktiviert",
+    "World synchronization can overwrite saves. SLH will back up every replaced file. Continue?": "Die Welt-Synchronisierung kann Spielstände überschreiben. SLH sichert jede ersetzte Datei. Fortfahren?",
+    "Create a Fabric, Forge, NeoForge, or Quilt instance after its loader adapter becomes available.": "Erstelle eine Fabric-, Forge-, NeoForge- oder Quilt-Instanz, sobald der entsprechende Loader-Adapter verfügbar ist.",
+    "Latest release": "Neueste Version",
+    "Compatible release": "Kompatible Version",
+    "Unmodified Minecraft from official metadata": "Unverändertes Minecraft aus offiziellen Metadaten",
+    "Established loader with a broad mod catalog": "Etablierter Loader mit umfangreichem Mod-Katalog",
+    "Modern continuation for Forge-style modding": "Moderne Weiterentwicklung für Modding im Forge-Stil",
+    "Lightweight loader for modern modding": "Leichtgewichtiger Loader für modernes Modding",
+    "Community-driven Fabric-compatible loader": "Community-entwickelter, Fabric-kompatibler Loader",
+    "Essential hooks and interoperability utilities for mods using Fabric.": "Wesentliche Hooks und Interoperabilitätswerkzeuge für Mods, die Fabric verwenden.",
+    "A modern rendering engine for Minecraft that improves frame rates and reduces micro-stutter.": "Eine moderne Rendering-Engine für Minecraft, die die Bildrate verbessert und Mikroruckler reduziert.",
+    "A performance-focused modpack with familiar quality-of-life features and broad compatibility.": "Ein leistungsorientiertes Modpack mit bekannten Komfortfunktionen und breiter Kompatibilität.",
+    "A refined resource pack that keeps the familiar Minecraft art direction.": "Ein verfeinertes Ressourcenpaket, das den vertrauten Grafikstil von Minecraft beibehält.",
+    "A downloadable Minecraft world distributed as a verified CurseForge archive.": "Eine herunterladbare Minecraft-Welt, die als geprüftes CurseForge-Archiv bereitgestellt wird.",
+    "A configurable shader pack focused on quality, performance, and broad hardware support.": "Ein konfigurierbares Shader-Paket mit Fokus auf Qualität, Leistung und breite Hardwareunterstützung.",
+    "Dark launcher palettes with reusable built-in and custom presets.": "Dunkle Launcher-Farbpaletten mit wiederverwendbaren integrierten und benutzerdefinierten Voreinstellungen.",
+    "Applying a preset saves it immediately.": "Beim Anwenden einer Voreinstellung wird sie sofort gespeichert.",
+    "Remove a custom preset before saving another one.": "Entferne eine benutzerdefinierte Voreinstellung, bevor du eine weitere speicherst.",
+    "Appearance preset saved": "Darstellungsvoreinstellung gespeichert",
+    "Appearance preset removed": "Darstellungsvoreinstellung entfernt",
+    "Preset limit reached": "Limit für Voreinstellungen erreicht",
+    "Interface font": "Schriftart der Oberfläche",
+    "Interface font saved": "Schriftart der Oberfläche gespeichert",
+    "Local interface font imported": "Lokale Schriftart der Oberfläche importiert",
+    "Font was not imported": "Schriftart wurde nicht importiert",
+    "Font files": "Schriftdateien",
+    "Delete and keep backup": "Löschen und Sicherung behalten",
+    "Delete permanently": "Endgültig löschen",
+    "Keep a recoverable backup": "Wiederherstellbare Sicherung behalten",
+    "Recommended. The full instance is moved into launcher backups.": "Empfohlen. Die vollständige Instanz wird in die Launcher-Sicherungen verschoben.",
+    "This removes the instance immediately and cannot be undone.": "Dadurch wird die Instanz sofort entfernt. Dies kann nicht rückgängig gemacht werden.",
+    "A recoverable backup was kept under data/backups/deleted-instances.": "Eine wiederherstellbare Sicherung wurde unter data/backups/deleted-instances gespeichert.",
+    "The instance and its game files were permanently removed.": "Die Instanz und ihre Spieldateien wurden endgültig entfernt.",
+    "Repair complete": "Reparatur abgeschlossen",
+    "Repair failed": "Reparatur fehlgeschlagen",
+    "Minecraft could not start": "Minecraft konnte nicht gestartet werden",
+    "Minecraft started": "Minecraft gestartet",
+    "Minecraft exited unexpectedly": "Minecraft wurde unerwartet beendet",
+    "Launch failed": "Start fehlgeschlagen",
+    "Java detection failed": "Java-Erkennung fehlgeschlagen",
+    "Console could not be loaded": "Konsole konnte nicht geladen werden",
+    "Diagnostics could not be loaded": "Diagnosedaten konnten nicht geladen werden",
+    "Server list could not be read": "Serverliste konnte nicht gelesen werden",
+    "Server added": "Server hinzugefügt",
+    "Server was not added": "Server wurde nicht hinzugefügt",
+    "Server was not removed": "Server wurde nicht entfernt",
+    "Add to servers.dat": "Zu servers.dat hinzufügen",
+    "Textures": "Texturen",
+    "Modified time unavailable": "Änderungszeit nicht verfügbar",
+    "Instance indexing is not active yet": "Instanzindizierung ist noch nicht aktiv",
+    "SLH leaves existing files untouched until this view has a safe reader, preview, and confirmed write path.": "SLH lässt vorhandene Dateien unverändert, bis diese Ansicht über einen sicheren Reader, eine Vorschau und einen bestätigten Schreibpfad verfügt.",
+    "Dismiss notification": "Benachrichtigung schließen",
+    "Close dialog": "Dialog schließen",
+    "Desktop action": "Desktop-Aktion",
+    "The safe default keeps a recoverable copy.": "Die sichere Standardeinstellung behält eine wiederherstellbare Kopie.",
+    "This action requires the SLH desktop backend. Browser mode is a visual preview only.": "Diese Aktion erfordert das SLH-Desktop-Backend. Der Browsermodus dient nur als visuelle Vorschau.",
+    "Browser preview": "Browser-Vorschau",
+    "Action failed": "Aktion fehlgeschlagen",
+    "Add and continue": "Hinzufügen und fortfahren",
+    "Appearance": "Darstellung",
+    "Content": "Inhalte",
+    "Content installation failed": "Inhaltsinstallation fehlgeschlagen",
+    "Content provider": "Inhaltsanbieter",
+    "Console copied": "Konsole kopiert",
+    "Console could not be copied": "Konsole konnte nicht kopiert werden",
+    "Console setting was not saved": "Konsoleneinstellung wurde nicht gespeichert",
+    "CurseForge connected": "CurseForge verbunden",
+    "CurseForge disconnected": "CurseForge getrennt",
+    "CurseForge key was not removed": "CurseForge-Schlüssel wurde nicht entfernt",
+    "CurseForge key was not saved": "CurseForge-Schlüssel wurde nicht gespeichert",
+    "Delete": "Löschen",
+    "Destination instances": "Zielinstanzen",
+    "Diagnostic output": "Diagnoseausgabe",
+    "Discover": "Entdecken",
+    "Example error message": "Beispiel-Fehlermeldung",
+    "Example warning message": "Beispiel-Warnmeldung",
+    "Export failed": "Export fehlgeschlagen",
+    "Fetching version manifest": "Versionsmanifest wird abgerufen",
+    "Filters": "Filter",
+    "Folder:": "Ordner:",
+    "Game": "Spiel",
+    "General": "Allgemein",
+    "Home": "Startseite",
+    "Info": "Info",
+    "Installation in progress": "Installation läuft",
+    "Instance exported": "Instanz exportiert",
+    "Instance updated": "Instanz aktualisiert",
+    "Instance was not updated": "Instanz wurde nicht aktualisiert",
+    "It is now available in the instance wizard.": "Sie ist jetzt im Instanzassistenten verfügbar.",
+    "Library": "Bibliothek",
+    "Local files from this instance. Symlinks are ignored.": "Lokale Dateien aus dieser Instanz. Symbolische Links werden ignoriert.",
+    "Memory saved": "Arbeitsspeicher gespeichert",
+    "Memory values are invalid": "Arbeitsspeicherwerte sind ungültig",
+    "Memory was not saved": "Arbeitsspeicher wurde nicht gespeichert",
+    "Minecraft client is starting": "Minecraft-Client wird gestartet",
+    "Minecraft instance": "Minecraft-Instanz",
+    "Minimum memory must be at least 256 MB and cannot exceed maximum memory.": "Der minimale Arbeitsspeicher muss mindestens 256 MB betragen und darf den maximalen Arbeitsspeicher nicht überschreiten.",
+    "Mod configs": "Mod-Konfigurationen",
+    "modpack": "Modpack",
+    "mod": "Mod",
+    "resourcepack": "Ressourcenpaket",
+    "shader": "Shader",
+    "world": "Welt",
+    "Allow invalid usernames": "Ungültige Benutzernamen zulassen",
+    "Any nickname is accepted locally. Online-mode servers may reject this identity.": "Lokal wird jeder Nickname akzeptiert. Online-Mode-Server können diese Identität ablehnen.",
+    "3 to 16 letters, numbers, or underscores. Online-mode servers will reject this identity.": "3 bis 16 Buchstaben, Zahlen oder Unterstriche. Online-Mode-Server werden diese Identität ablehnen.",
+    "Navigation was not saved": "Navigation wurde nicht gespeichert",
+    "New group name": "Neuer Gruppenname",
+    "No instances exist yet. Use the recommended all-instances scope to prepare shared content now.": "Es sind noch keine Instanzen vorhanden. Verwende den empfohlenen Bereich für alle Instanzen, um gemeinsame Inhalte jetzt vorzubereiten.",
+    "Only a DPAPI-encrypted access token was saved; the password was discarded.": "Nur ein DPAPI-verschlüsseltes Zugriffstoken wurde gespeichert; das Passwort wurde verworfen.",
+    "Pack": "Paket",
+    "SLH is downloading verified Minecraft files.": "SLH lädt geprüfte Minecraft-Dateien herunter.",
+    "SLH is waiting for the Microsoft redirect on a temporary localhost port.": "SLH wartet auf die Microsoft-Weiterleitung an einem temporären Localhost-Port.",
+    "SLH relay configured; the first request verifies availability.": "SLH-Relay konfiguriert; die erste Anfrage prüft die Verfügbarkeit.",
+    "Search Minecraft versions": "Minecraft-Versionen durchsuchen",
+    "Search already matches names, versions, and loaders. Advanced filters are being added.": "Die Suche berücksichtigt bereits Namen, Versionen und Loader. Erweiterte Filter werden noch hinzugefügt.",
+    "Server": "Server",
+    "Settings were not saved": "Einstellungen wurden nicht gespeichert",
+    "Shared folder could not be opened": "Freigegebener Ordner konnte nicht geöffnet werden",
+    "Smile LauncHer": "Smile LauncHer",
+    "The approved key was verified and encrypted for this Windows profile.": "Der genehmigte Schlüssel wurde geprüft und für dieses Windows-Profil verschlüsselt.",
+    "The local encrypted key file was removed.": "Die lokale verschlüsselte Schlüsseldatei wurde entfernt.",
+    "The new identity is now active.": "Die neue Identität ist jetzt aktiv.",
+    "Tools": "Werkzeuge",
+    "Wait for the current content installation to finish before starting another one.": "Warte, bis die aktuelle Inhaltsinstallation abgeschlossen ist, bevor du eine weitere startest.",
+    "Windows did not grant clipboard access.": "Windows hat keinen Zugriff auf die Zwischenablage gewährt.",
+    "World": "Welt",
+    "Never played": "Noch nie gespielt",
+    "Played": "Gespielt",
+    "Played recently": "Kürzlich gespielt",
+    "Importing": "Wird importiert",
+    "created": "erstellt",
+    "installing": "wird installiert",
+    "installed": "installiert",
+    "running": "läuft",
+    "ready": "bereit",
+    "error": "Fehler",
+    "Art": "Kunst",
+    "Block": "Block",
+    "Star": "Stern",
+    "Sword": "Schwert",
+    "Tree": "Baum",
+    "Version": "Version",
+    "maximum": "maximal",
+    "Keyboard interface scaling": "Tastatursteuerung der Oberflächenskalierung",
+    "Use Ctrl + and Ctrl - to change the interface scale by 5%.": "Verwende Strg + und Strg -, um die Oberflächenskalierung in 5-%-Schritten zu ändern.",
+    "No telemetry client exists in SLH.": "In SLH gibt es keinen Telemetrie-Client.",
+    "Crash data remains in local logs unless you copy it yourself.": "Absturzdaten verbleiben in lokalen Protokollen, sofern du sie nicht selbst kopierst.",
+    "Ely.by sign-in may request 2FA. The verified authentication agent is downloaded automatically on first launch.": "Bei der Ely.by-Anmeldung kann 2FA angefordert werden. Der geprüfte Authentifizierungsagent wird beim ersten Start automatisch heruntergeladen.",
+    "servers.dat was updated atomically. Existing data was backed up.": "servers.dat wurde atomisch aktualisiert. Vorhandene Daten wurden gesichert.",
+    "Content for": "Inhalte für", "Only content compatible with": "Es werden nur Inhalte angezeigt, die mit", "is shown.": "kompatibel sind.",
+    "Content provider": "Inhaltsanbieter", "Back to files": "Zurück zu den Dateien", "Filters": "Filter",
+    "Minecraft version": "Minecraft-Version", "All versions": "Alle Versionen", "All loaders": "Alle Loader", "Sort by": "Sortieren nach",
+    "Relevance": "Relevanz", "Most downloaded": "Meiste Downloads", "Most followed": "Meiste Follower", "Recently updated": "Kürzlich aktualisiert", "Newest": "Neueste",
+    "Mods require Fabric, Forge, NeoForge, or Quilt. Change this instance loader in Settings first.": "Mods benötigen Fabric, Forge, NeoForge oder Quilt. Ändere zuerst den Loader dieser Instanz in den Einstellungen.",
+    "Find compatible content": "Kompatible Inhalte finden", "Local files from this instance. Symlinks are ignored.": "Lokale Dateien dieser Instanz. Symbolische Links werden ignoriert.",
+    "item": "Element", "items": "Elemente", "Indexing files": "Dateien werden indiziert", "No compatible content found": "Keine kompatiblen Inhalte gefunden",
+    "Install content matched to this instance or place files in its folder.": "Installiere passende Inhalte oder lege Dateien im Instanzordner ab.",
+    "Snapshots": "Snapshots",
+    "Already installed in this instance": "Bereits in dieser Instanz installiert",
+    "Download mods": "Mods herunterladen",
+    "Download resource packs": "Ressourcenpakete herunterladen",
+    "Download shaders": "Shader herunterladen",
+    "Download worlds": "Welten herunterladen",
+    "Update": "Aktualisieren",
+    "Update installed content": "Installierte Inhalte aktualisieren",
+    "Choose the provider used to check tracked content for compatible updates.": "Wähle den Anbieter für die Suche nach kompatiblen Updates.",
+    "tracked item": "erfasster Inhalt",
+    "tracked items": "erfasste Inhalte",
+    "Only content installed through SLH or recorded by an imported manifest is updated. Manually added files remain untouched.": "Nur über SLH installierte oder in einem Importmanifest erfasste Inhalte werden aktualisiert. Manuell hinzugefügte Dateien bleiben unverändert.",
+    "Indexing installed content": "Installierte Inhalte werden erfasst",
+    "Updating": "Aktualisierung",
+    "Update all": "Alle aktualisieren",
+    "Some updates failed": "Einige Updates sind fehlgeschlagen",
+    "Content update complete": "Inhaltsaktualisierung abgeschlossen",
+    "files updated": "Dateien aktualisiert",
+    "failed": "fehlgeschlagen",
+    "already current": "bereits aktuell",
+    "Export instance": "Instanz exportieren",
+    "Choose an archive format and the files to include.": "Wähle ein Archivformat und die einzuschließenden Dateien.",
+    "Export format": "Exportformat",
+    "ZIP archive": "ZIP-Archiv",
+    "CurseForge ZIP": "CurseForge-ZIP",
+    "Modrinth mrpack": "Modrinth-mrpack",
+    "A regular archive with the selected game files.": "Ein normales Archiv mit den ausgewählten Spieldateien.",
+    "A CurseForge manifest with selected files in overrides.": "Ein CurseForge-Manifest mit ausgewählten Dateien in overrides.",
+    "A Modrinth index with selected files in overrides.": "Ein Modrinth-Index mit ausgewählten Dateien in overrides.",
+    "Files and folders": "Dateien und Ordner",
+    "Logs, crash reports, and account data are always excluded.": "Protokolle, Absturzberichte und Kontodaten werden immer ausgeschlossen.",
+    "Clear selection": "Auswahl aufheben",
+    "Select all": "Alle auswählen",
+    "file": "Datei",
+    "files": "Dateien",
+    "selected": "ausgewählt",
+    "Instance exported": "Instanz exportiert",
+    "Export failed": "Export fehlgeschlagen",
+    "Description": "Beschreibung",
+    "Gallery": "Galerie",
+    "Versions": "Versionen",
+    "Open image": "Bild öffnen",
+    "Image preview": "Bildvorschau",
+    "Previous image": "Vorheriges Bild",
+    "Next image": "Nächstes Bild",
+    "Loading versions": "Versionen werden geladen",
+    "Modpack version": "Modpack-Version",
+    "Choose a Minecraft version to continue": "Wähle eine Minecraft- und eine Modpack-Version aus, um fortzufahren",
+    "Choose a version": "Version auswählen",
+    "Select a Minecraft and modpack version before downloading this modpack.": "Wähle vor dem Herunterladen dieses Modpacks eine Minecraft- und eine Modpack-Version aus.",
+    "Choose a Minecraft version": "Minecraft-Version auswählen",
+    "Choose a modpack version": "Modpack-Version auswählen",
+    "Unchanged": "Unverändert",
+    "Select": "Auswählen",
+    "Select for batch installation": "Für Stapelinstallation auswählen",
+    "Install selected": "Ausgewählte installieren",
+    "Installing selected content": "Ausgewählte Inhalte werden installiert",
+    "content items selected": "Inhalte ausgewählt",
+    "Some installs failed": "Einige Installationen sind fehlgeschlagen",
+    "projects could not be installed": "Projekte konnten nicht installiert werden",
+    "Content installed": "Inhalt installiert",
+    "files installed": "Dateien installiert",
+    "Update this content": "Diesen Inhalt aktualisieren",
+    "Update every compatible file with a known source in this folder.": "Alle kompatiblen Dateien mit bekannter Quelle in diesem Ordner aktualisieren.",
+    "files without a known source": "Dateien ohne bekannte Quelle",
+    "files in this folder": "Dateien in diesem Ordner",
+    "All tracked content is updated in one run. Files without a known source are left intact so SLH never replaces a manually added mod with the wrong project.": "Alle erfassten Inhalte werden in einem Durchgang aktualisiert. Dateien ohne bekannte Quelle bleiben unverändert, damit SLH einen manuell hinzugefügten Mod nie durch das falsche Projekt ersetzt.",
+    "Could not check": "Prüfung nicht möglich",
+    "Minecraft version and loader": "Minecraft-Version und Loader",
+    "Change the Minecraft version or loader used by this instance. A change requires reinstallation.": "Ändere die Minecraft-Version oder den Loader dieser Instanz. Eine Änderung erfordert eine Neuinstallation.",
+    "Save version and loader": "Version und Loader speichern",
+    "Version and loader saved": "Version und Loader gespeichert",
+    "Install the instance again to apply the new Minecraft version and loader.": "Installiere die Instanz erneut, um die neue Minecraft-Version und den Loader zu übernehmen.",
+    "The version and loader were updated.": "Version und Loader wurden aktualisiert.",
+    "Review compatible updates before changing files in this instance.": "Prüfe kompatible Updates, bevor du Dateien in dieser Instanz änderst.",
+    "Verified content updates": "Geprüfte Inhaltsupdates",
+    "Only files matched to their exact project are replaced. Unknown files remain untouched.": "Nur Dateien, die ihrem exakten Projekt zugeordnet sind, werden ersetzt. Unbekannte Dateien bleiben unverändert.",
+    "updates available": "Updates verfügbar",
+    "already up to date": "bereits aktuell",
+    "Everything is up to date": "Alles ist aktuell",
+    "Some files could not be checked.": "Einige Dateien konnten nicht geprüft werden.",
+    "No compatible updates were found.": "Keine kompatiblen Updates gefunden.",
+    "New version": "Neue Version",
+    "Compatible update available": "Kompatibles Update verfügbar",
+    "Account appearance": "Konto-Erscheinungsbild",
+    "Manage skin and cape": "Skin und Cape verwalten",
+    "Manage the skin and cape used by this account.": "Verwalte den Skin und das Cape dieses Kontos.",
+    "Loading appearance": "Erscheinungsbild wird geladen",
+    "Appearance could not be loaded": "Erscheinungsbild konnte nicht geladen werden",
+    "Try again": "Erneut versuchen",
+    "Current account appearance": "Aktuelles Konto-Erscheinungsbild",
+    "Manage on Ely.by": "Auf Ely.by verwalten",
+    "Change cape": "Cape ändern",
+    "Saved skins": "Gespeicherte Skins",
+    "Saved skin": "Gespeicherter Skin",
+    "Choose an existing skin or add a PNG file.": "Wähle einen vorhandenen Skin oder füge eine PNG-Datei hinzu.",
+    "Add a skin": "Skin hinzufügen",
+    "Skin model": "Skin-Modell",
+    "Classic": "Klassisch",
+    "Slim": "Schmal",
+    "Skin and cape controls are unavailable for offline accounts.": "Für Offline-Konten können Skin und Cape nicht geändert werden.",
+    "This provider is read-only in third-party launchers.": "Dieser Anbieter ist in Drittanbieter-Launchern schreibgeschützt.",
+    "Capes": "Capes",
+    "Select a cape already owned by this account.": "Wähle ein Cape aus, das diesem Konto bereits gehört.",
+    "No cape": "Kein Cape",
+    "Skin settings": "Skin-Einstellungen",
+    "Skin selection": "Skin-Auswahl",
+    "Change texture, arm type, and cape.": "Textur, Armtyp und Cape ändern.",
+    "Choose a saved or default Minecraft skin.": "Wähle einen gespeicherten oder standardmäßigen Minecraft-Skin.",
+    "Skin could not be downloaded": "Skin konnte nicht heruntergeladen werden",
+    "Drag to rotate": "Zum Drehen ziehen",
+    "Edit": "Bearbeiten",
+    "Drop or choose a PNG file": "PNG-Datei ablegen oder auswählen",
+    "Default skins": "Standard-Skins",
+    "Official classic Minecraft characters.": "Offizielle klassische Minecraft-Charaktere.",
+    "Texture": "Textur",
+    "Replace texture": "Textur ersetzen",
+    "Arms": "Arme",
+    "Wide": "Breit",
+    "Cape": "Cape",
+    "None": "Keins",
+    "Save skin": "Skin speichern",
+    "Current skin": "Aktueller Skin",
+    "Current cape": "Aktuelles Cape",
+    "Ely.by does not document a third-party API for changing skins or capes. Manage appearance on the Ely.by website.": "Ely.by dokumentiert keine Drittanbieter-API zum Ändern von Skins oder Capes. Verwalte sie auf der Ely.by-Webseite.",
+    "Offline accounts do not have a remote skin profile.": "Offline-Konten haben kein entferntes Skin-Profil.",
+    "Minecraft, on your terms.": "Minecraft nach deinen Regeln.",
+    "No telemetry, no ads, no cloud account requirement.": "Keine Telemetrie, keine Werbung und kein Cloud-Konto erforderlich.",
+    "Build isolated Minecraft instances and keep every launcher-owned file in one place.": "Erstelle getrennte Minecraft-Instanzen und bewahre alle Launcher-Dateien an einem Ort auf.",
+    "Continue with Microsoft": "Mit Microsoft fortfahren",
+    "Recommended for Minecraft: Java Edition": "Empfohlen für Minecraft: Java Edition",
+    "Add Ely.by account": "Ely.by-Konto hinzufügen",
+    "Create Offline account": "Offline-Konto erstellen",
+    "Microsoft account recommended": "Microsoft-Konto empfohlen",
+    "Please sign in to Microsoft before adding an Offline or Ely.by account.": "Melde dich bitte bei Microsoft an, bevor du ein Offline- oder Ely.by-Konto hinzufügst.",
+    "I commit to sign in to a Microsoft account later.": "Ich verpflichte mich, mich später bei einem Microsoft-Konto anzumelden.",
+    "Continue": "Weiter",
+    "Language could not be changed": "Sprache konnte nicht geändert werden",
+    "Offline fallback for online accounts": "Offline-Start für Online-Konten",
+    "When there is no internet connection, launch Microsoft or Ely.by with a temporary offline identity using the same nickname. Turn this off to choose a nickname for each offline launch.": "Bei fehlender Internetverbindung startet Microsoft oder Ely.by mit einer temporären Offline-Identität mit demselben Namen. Deaktiviere dies, um für jeden Offline-Start einen Namen zu wählen.",
+    "Offline launch": "Offline-Start",
+    "No internet connection is available. The selected online account will remain selected; this launch uses a temporary offline identity only.": "Keine Internetverbindung verfügbar. Das ausgewählte Online-Konto bleibt aktiv; für diesen Start wird nur eine temporäre Offline-Identität verwendet.",
+    "Minecraft nickname": "Minecraft-Name",
+    "Use 3–16 Latin letters, numbers, or underscores.": "Verwende 3–16 lateinische Buchstaben, Zahlen oder Unterstriche.",
+    "Launch offline": "Offline starten",
+    "No internet connection": "Keine Internetverbindung",
+    "Minecraft was launched with a temporary offline identity.": "Minecraft wurde mit einer temporären Offline-Identität gestartet.",
+    "is ready to play.": "ist spielbereit.",
+    "is running.": "läuft."
+    ,"Rename group": "Gruppe umbenennen"
+    ,"Delete group": "Gruppe löschen"
+    ,"Instance panel": "Instanzbereich"
+    ,"Apply to every instance": "Für jede Instanz anwenden"
+    ,"Icon / artwork": "Symbol / Bild"
+    ,"Instances stay in the same group.": "Instanzen bleiben in derselben Gruppe."
+    ,"Desktop shortcut": "Desktop-Verknüpfung"
+    ,"Launching": "Wird gestartet"
+    ,"Disable": "Deaktivieren"
+    ,"Enable": "Aktivieren"
+    ,"item selected": "Element ausgewählt"
+    ,"items selected": "Elemente ausgewählt"
+    ,"Content enabled": "Inhalt aktiviert"
+    ,"Content disabled": "Inhalt deaktiviert"
+    ,"items updated": "Elemente aktualisiert"
+    ,"items removed": "Elemente entfernt"
+    ,"Some items could not be removed": "Einige Elemente konnten nicht entfernt werden"
+    ,"Some items could not be updated": "Einige Elemente konnten nicht aktualisiert werden"
+    ,"Content could not be updated": "Der Inhalt konnte nicht aktualisiert werden"
+    ,"Show ungrouped instances": "Nicht gruppierte Instanzen anzeigen"
+    ,"Keep the Ungrouped section visible in the library. You can also change this from its context menu.": "Den Bereich „Nicht gruppiert“ in der Bibliothek sichtbar halten. Dies kann auch über das Kontextmenü geändert werden."
+    ,"Check for launcher updates automatically": "Automatisch nach Launcher-Updates suchen"
+    ,"Check GitHub for a newer SLH release once when the launcher starts.": "Beim Start einmal auf GitHub nach einer neueren SLH-Version suchen."
+    ,"Launcher updates": "Launcher-Updates"
+    ,"Check the official GitHub releases page for a newer launcher build.": "Auf der offiziellen GitHub-Releases-Seite nach einer neueren Launcher-Version suchen."
+    ,"Check for updates": "Nach Updates suchen"
+    ,"Open release": "Release öffnen"
+    ,"Launcher update available": "Launcher-Update verfügbar"
+    ,"New version available": "Neue Version verfügbar"
+    ,"Open the release page to download it.": "Öffne die Release-Seite, um es herunterzuladen."
+    ,"Launcher is up to date": "Launcher ist aktuell"
+    ,"Current version": "Aktuelle Version"
+    ,"Update check failed": "Updateprüfung fehlgeschlagen"
+    ,"Hide ungrouped": "Nicht gruppierte ausblenden"
+    ,"Instances without a group": "Instanzen ohne Gruppe"
+    ,"Collapse group": "Gruppe einklappen"
+    ,"Expand group": "Gruppe ausklappen"
+    ,"Deselect": "Auswahl aufheben"
+    ,"Assign group": "Gruppe zuweisen"
+    ,"Choose a Minecraft version to continue": "Wähle eine Minecraft-Version, um fortzufahren"
+    ,"Choose a version": "Version auswählen"
+    ,"Content removed": "Inhalt entfernt"
+    ,"Content was not removed": "Inhalt konnte nicht entfernt werden"
+    ,"Description": "Beschreibung"
+    ,"Gallery": "Galerie"
+    ,"Group was not updated": "Gruppe konnte nicht aktualisiert werden"
+    ,"Image preview": "Bildvorschau"
+    ,"Instance tabs position was not saved": "Position der Instanz-Tabs konnte nicht gespeichert werden"
+    ,"Instance tabs were not saved": "Instanz-Tabs konnten nicht gespeichert werden"
+    ,"Loading versions": "Versionen werden geladen"
+    ,"Modpack version": "Modpack-Version"
+    ,"Previous image": "Vorheriges Bild"
+    ,"Save": "Speichern"
+    ,"Update failed": "Aktualisierung fehlgeschlagen"
+    ,"Username": "Benutzername"
+    ,"Versions": "Versionen"
+    ,"is ready on GitHub.": "ist auf GitHub verfügbar."
+    ,"Apply": "Anwenden"
+    ,"sec.": "Sek."
+    ,"deleted": "gelöscht"
+    ,"Choose where this instance appears in the library.": "Wähle, wo diese Instanz in der Bibliothek angezeigt wird."
+    ,"Navigation position was not saved": "Navigationsposition konnte nicht gespeichert werden"
+    ,"Select a Minecraft and modpack version before downloading this modpack.": "Wähle vor dem Download dieses Modpacks eine Minecraft- und Modpack-Version."
+    ,"downloads": "Downloads"
+    ,"Build files": "Dateien des Profils"
+    ,"Check files to copy. Expand folders to choose individual files. Updates are optional.": "Wähle Dateien zum Kopieren. Öffne Ordner für einzelne Dateien. Updates sind optional."
+    ,"root items selected": "Elemente ausgewählt"
+    ,"Collapse": "Zuklappen"
+    ,"Expand": "Aufklappen"
+    ,"Copy": "Kopieren"
+    ,"Copy as-is": "Unverändert kopieren"
+    ,"Update": "Aktualisieren"
+    ,"Update compatible": "Kompatible aktualisieren"
+    ,"Reading files": "Dateien werden gelesen"
+    ,"Mod": "Mod"
+    ,"Resource pack": "Ressourcenpaket"
+    ,"Shader pack": "Shaderpaket"
+    ,"No version for selected Minecraft release": "keine Version für die gewählte Minecraft-Version"
+    ,"Source unknown; compatibility not verified": "Quelle unbekannt; Kompatibilität nicht geprüft"
+    ,"Compatibility check failed": "Kompatibilitätsprüfung fehlgeschlagen"
+    ,"No build files found": "Keine Dateien gefunden"
+    ,"Copy as-is is the default. Choose Update only for compatible files. Unknown sources remain in the warning list.": "Dateien werden standardmäßig unverändert kopiert. Updates für kompatible Dateien sind optional. Dateien mit unbekannter Quelle erscheinen als Warnung."
+    ,"files need attention": "Dateien benötigen Aufmerksamkeit"
+    ,"These files will be copied as-is. Review compatibility before launching the new build.": "Diese Dateien werden unverändert kopiert. Prüfe die Kompatibilität vor dem Start."
+    ,"Source lookup failed for some files": "Quelle einiger Dateien konnte nicht ermittelt werden"
+    ,"Selected files were copied": "Ausgewählte Dateien wurden kopiert"
+    ,"followers": "Follower"
+    ,"Open image": "Bild öffnen"
+    ,"Next image": "Nächstes Bild"
+    ,"Open": "Öffnen"
+    ,"Delete without confirmation": "Ohne Bestätigung löschen"
+    ,"SLH will not claim installed content before every JAR is inspected.": "SLH zählt Inhalte erst nach der Prüfung jeder JAR-Datei als installiert."
+    ,"from this instance? The current servers.dat will be backed up.": "aus dieser Instanz entfernen? Die aktuelle servers.dat wird gesichert."
+    ,"Edit each instance&apos;s real `servers.dat`. Writes are NBT-safe, blocked while the game runs, and backed up before replacement.": "Bearbeite die echte `servers.dat` jeder Instanz. Schreibvorgänge sind NBT-sicher, während des Spiels gesperrt und werden vor dem Ersetzen gesichert."
+    ,"Saving…": "Wird gespeichert…"
+    ,"modded instance is ready for the filesystem indexer.": "Modded-Instanz ist für die Dateisystemindizierung bereit."
+    ,"modded instances are ready for the filesystem indexer.": "Modded-Instanzen sind für die Dateisystemindizierung bereit."
+    ,"can now be launched.": "kann jetzt gestartet werden."
+    ,"version": "Version"
+    ,"recommended": "empfohlen"
+    ,"Adding": "Wird hinzugefügt"
+    ,"Add group": "Gruppe hinzufügen"
+    ,"GB": "GB"
+    ,"Minimum": "Minimum"
+    ,"Creating": "Wird erstellt"
+    ,"Content could not be indexed": "Inhalt konnte nicht indiziert werden"
+    ,"and its local files were removed.": "und ihre lokalen Dateien wurden entfernt."
+    ,"The library entry and folder now use": "Bibliothekseintrag und Ordner verwenden jetzt"
+    ,"will be used on the next launch.": "werden beim nächsten Start verwendet."
+    ,"Loader was not saved": "Loader konnte nicht gespeichert werden"
+    ,"visible lines were copied.": "sichtbare Zeilen wurden kopiert."
+    ,"Loader type": "Loader-Typ"
+    ,"Select a compatible version": "Kompatible Version auswählen"
+    ,"Save memory": "Speicher speichern"
+    ,"indexing is not active yet": "Indizierung ist noch nicht aktiv"
+    ,"Settings navigation position was not saved": "Position der Einstellungsnavigation konnte nicht gespeichert werden"
+    ,"is available in the managed Java directory.": "ist im verwalteten Java-Ordner verfügbar."
+    ,"installation failed": "Installation fehlgeschlagen"
+    ,"copied": "kopiert"
+    ,"archive inspected": "Archiv geprüft"
+    ,"was imported. Run Install to verify and restore Minecraft runtime files.": "wurde importiert. Führe die Installation aus, um die Minecraft-Laufzeitdateien zu prüfen und wiederherzustellen."
+    ,"is ready for runtime installation and verification.": "ist für die Installation und Prüfung der Laufzeit bereit."
+    ,"ready in a new instance.": "ist in einer neuen Instanz bereit."
+    ,"Minecraft pack": "Minecraft-Paket"
+    ,"Unknown": "Unbekannt"
+    ,"is ready for your instances.": "ist für deine Instanzen bereit."
+    ,"Group was not renamed": "Gruppe konnte nicht umbenannt werden"
+    ,"Group deleted": "Gruppe gelöscht"
+    ,"instances moved to Ungrouped.": "Instanzen wurden nach „Nicht gruppiert“ verschoben."
+    ,"Group was not deleted": "Gruppe konnte nicht gelöscht werden"
+    ,"Panel preferences were not saved": "Panel-Einstellungen konnten nicht gespeichert werden"
+    ,"Library view was not saved": "Bibliotheksansicht konnte nicht gespeichert werden"
+    ,"Ungrouped view was not saved": "Ansicht „Nicht gruppiert“ konnte nicht gespeichert werden"
+    ,"Library sections were not reordered": "Bibliotheksbereiche konnten nicht neu angeordnet werden"
+    ,"Groups were not reordered": "Gruppen konnten nicht neu angeordnet werden"
+    ,"SLH relay configured; the first request verifies availability.": "Das SLH-Relay ist eingerichtet; die erste Anfrage prüft die Verfügbarkeit."
+    ,"is unavailable": "ist nicht verfügbar"
+    ,"Choose managed Java folder": "Verwalteten Java-Ordner auswählen"
+    ,"Managed Java download location": "Downloadordner für verwaltetes Java"
+    ,"Choose where SLH stores downloaded Temurin runtimes. Existing managed Java installations remain detectable.": "Wähle, wo SLH heruntergeladene Temurin-Laufzeiten speichert. Vorhandene verwaltete Java-Installationen bleiben erkennbar."
+    ,"Searches managed Java, JAVA_HOME, PATH and all local fixed disks without modifying system settings.": "Durchsucht verwaltetes Java, JAVA_HOME, PATH und alle lokalen Laufwerke, ohne Systemeinstellungen zu ändern."
+    ,"Cancel scan": "Scan abbrechen"
+    ,"Verified JREs from Adoptium for this Windows architecture": "Verifizierte JREs von Adoptium für diese Windows-Architektur"
+    ,"Applied to library, asset, loader, and modpack batches.": "Gilt für Stapel von Bibliotheks-, Asset-, Loader- und Modpack-Vorgängen."
+    ,"Download": "Download"
+    ,"pending": "ausstehend"
+    ,"Restore default colors": "Standardfarben wiederherstellen"
+    ,"Click the version to view this build's local date and time.": "Klicke auf die Version, um das lokale Datum und die lokale Uhrzeit dieses Builds anzuzeigen."
+    ,"Show build time": "Build-Zeit anzeigen"
+    ,"Java download location saved": "Java-Downloadordner gespeichert"
+    ,"Java download location reset": "Java-Downloadordner zurückgesetzt"
+    ,"Launcher scale saved": "Launcher-Skalierung gespeichert"
+    ,"Remove the locally encrypted CurseForge API key from this launcher?": "Den lokal verschlüsselten CurseForge-API-Schlüssel aus diesem Launcher entfernen?"
+    ,"World synchronization can overwrite saves. SLH will back up every replaced file. Continue?": "Die Weltsynchronisierung kann Spielstände überschreiben. SLH sichert jede ersetzte Datei. Fortfahren?"
+    ,"Remove the": "Entferne die"
+    ,"mapping? Shared files and backups will be kept.": "Zuordnung? Gemeinsame Dateien und Sicherungen bleiben erhalten."
+    ,"Minecraft client is starting": "Minecraft-Client wird gestartet"
+    ,"Example warning message": "Beispielwarnung"
+    ,"Example error message": "Beispielfehlermeldung"
+    ,"Diagnostic output": "Diagnoseausgabe"
+    ,"World downloads are provided by CurseForge": "Weltdownloads werden von CurseForge bereitgestellt"
+    ,"key required": "API-Schlüssel erforderlich"
+    ,"by": "von"
+    ,"Multiple versions": "Mehrere Versionen"
+    ,"Project": "Projekt"
+    ,"Player": "Spieler"
+    ,"Skin texture is invalid": "Skin-Textur ist ungültig"
+    ,"Open Microsoft Store": "Microsoft Store öffnen"
+    ,"Install Minecraft from Microsoft Store.": "Installiere Minecraft aus dem Microsoft Store."
+    ,"Microsoft Store versions could not be loaded": "Microsoft-Store-Versionen konnten nicht geladen werden"
+    ,"Store version could not be selected": "Store-Version konnte nicht ausgewählt werden"
+    ,"Try again. If it continues, check the app log.": "Versuche es erneut. Bleibt der Fehler bestehen, prüfe das App-Protokoll."
+    ,"Java download started": "Java-Download gestartet"
+    ,"Java runtime ready": "Java-Laufzeit ist bereit"
+    ,"Minecraft crashed": "Minecraft ist abgestürzt"
+    ,"Java {version} installed": "Java {version} installiert"
+    ,"Java {version} installation failed": "Java {version} konnte nicht installiert werden"
+    ,"{name} installed": "Installiert: {name}"
+    ,"Instance {name} imported": "Instanz „{name}“ importiert"
+    ,"Folder {name} imported": "Ordner „{name}“ importiert"
+    ,"Starting the installed Bedrock version.": "Installierte Bedrock-Version wird gestartet."
+    ,"Checking the Bedrock license.": "Bedrock-Lizenz wird geprüft."
+    ,"Downloading Minecraft files.": "Minecraft-Dateien werden heruntergeladen."
+    ,"Enter the current code, then try again.": "Gib den aktuellen Code ein und versuche es erneut."
+    ,"Finish signing in in your browser.": "Schließe die Anmeldung im Browser ab."
+    ,"View setting was not saved": "Ansichtseinstellung konnte nicht gespeichert werden"
+    ,"Unsupported archive": "Nicht unterstütztes Archiv"
+    ,"Archive cannot be imported": "Archiv kann nicht importiert werden"
+    ,"Wait for the current installation to finish.": "Warte, bis die aktuelle Installation abgeschlossen ist."
+    ,"How to fix": "So behebst du es"
+    ,"Microsoft Store license is required": "Microsoft-Store-Lizenz erforderlich"
+    ,"The Xbox account does not match": "Xbox-Konto stimmt nicht überein"
+    ,"Windows gaming components are missing": "Windows-Spielkomponenten fehlen"
+    ,"The Bedrock package is damaged": "Bedrock-Paket beschädigt"
+    ,"Bedrock requires Windows x64": "Bedrock benötigt Windows x64"
+    ,"Bedrock installation was canceled": "Bedrock-Installation abgebrochen"
+    ,"Sign in to Store and Xbox with the Minecraft owner account, then bind it here.": "Melde dich in Store und Xbox mit dem Minecraft-Konto an und verknüpfe es hier."
+    ,"Bedrock uses the Microsoft/Xbox account that owns Minecraft for Windows.": "Bedrock benötigt das Microsoft-/Xbox-Konto mit der Lizenz für Minecraft für Windows."
+    ,"Use the same Microsoft/Xbox account that installed this version.": "Verwende dasselbe Microsoft-/Xbox-Konto, mit dem diese Version installiert wurde."
+    ,"Install or repair Gaming Services and GameInput, then retry.": "Installiere oder repariere Gaming Services und GameInput und versuche es erneut."
+    ,"The downloaded package is damaged. Delete it and retry.": "Das heruntergeladene Paket ist beschädigt. Lösche es und versuche es erneut."
+    ,"This installer requires 64-bit Windows.": "Dieser Installer benötigt 64-Bit-Windows."
+    ,"Installation was canceled. Retry when Store and Xbox are ready.": "Die Installation wurde abgebrochen. Versuche es erneut, sobald Store und Xbox bereit sind."
+    ,"Developer Mode allows installation of older Bedrock packages; it does not bypass licensing.": "Der Entwicklermodus ermöglicht ältere Bedrock-Pakete, umgeht aber keine Lizenzprüfung."
+    ,"This package needs SLH's native installer. Update SLH and retry.": "Dieses Paket benötigt den nativen SLH-Installer. Aktualisiere den Launcher und versuche es erneut."
+    ,"Notification location": "Ort für Benachrichtigungen"
+    ,"Choose between launcher pop-ups and standard Windows notifications.": "Wähle zwischen Pop-ups im Launcher und normalen Windows-Benachrichtigungen."
+    ,"In the launcher": "Im Launcher"
+    ,"Windows notifications were not enabled": "Windows-Benachrichtigungen wurden nicht aktiviert"
+    ,"Allow notifications for SLH in Windows settings, then choose Windows again.": "Erlaube Benachrichtigungen für SLH in den Windows-Einstellungen und wähle erneut Windows aus."
+    ,"Windows notifications could not be enabled": "Windows-Benachrichtigungen konnten nicht aktiviert werden"
+    ,"Add-ons": "Add-ons"
+    ,"Bedrock version": "Bedrock-Version"
+    ,"Profile": "Profil"
+    ,"Worlds, add-ons, and resource packs are managed in Minecraft's Bedrock data folders.": "Welten, Add-ons und Ressourcenpakete werden in den Bedrock-Datenordnern von Minecraft verwaltet."
+    ,"Game data": "Spieldaten"
+    ,"Free add-ons catalog": "Kostenlose Add-ons"
+    ,"Resource pack catalog": "Ressourcenpakete"
+    ,"Worlds catalog": "Welten"
+    ,"Marketplace": "Minecraft Marketplace"
+    ,"Import pack": "Paket importieren"
+    ,"Import world": "Welt importieren"
+    ,"Refresh": "Aktualisieren"
+    ,"Bedrock logs": "Bedrock-Protokolle"
+    ,"Bedrock add-ons and resource packs": "Bedrock-Add-ons und Ressourcenpakete"
+    ,"Bedrock worlds": "Bedrock-Welten"
+    ,"Bedrock content could not be imported": "Bedrock-Inhalte konnten nicht importiert werden"
+    ,"Minecraft opened the selected content": "Minecraft hat die ausgewählten Inhalte geöffnet"
+    ,"Confirm the import in Minecraft, then refresh this list.": "Bestätige den Import in Minecraft und aktualisiere dann diese Liste."
+    ,"Catalog could not be opened": "Katalog konnte nicht geöffnet werden"
+    ,"Marketplace could not be opened": "Marketplace konnte nicht geöffnet werden"
+    ,"No Bedrock logs found": "Keine Bedrock-Protokolle gefunden"
+    ,"Import a Bedrock pack or open the free add-ons catalog to get started.": "Importiere ein Bedrock-Paket oder öffne den Katalog für kostenlose Add-ons."
+    ,"Import a Bedrock resource pack or browse the catalog. Bedrock uses resource packs for visual changes.": "Importiere ein Bedrock-Ressourcenpaket oder durchsuche den Katalog. Bedrock nutzt Ressourcenpakete für visuelle Änderungen."
+    ,"Import a .mcworld file or choose a world in Minecraft.": "Importiere eine .mcworld-Datei oder wähle eine Welt in Minecraft aus."
+    ,"Windows captures are shown here when they are saved in the standard Captures or Screenshots folder.": "Windows-Aufnahmen erscheinen hier, wenn sie im Standardordner Captures oder Screenshots gespeichert sind."
+    ,"Bedrock log files appear here when Minecraft creates them.": "Hier erscheinen Protokolldateien, die Minecraft Bedrock erstellt."
+    ,"Log could not be opened": "Protokoll konnte nicht geöffnet werden"
+    ,"Resource pack": "Ressourcenpaket"
+    ,"Choose the Bedrock release used by this launcher profile.": "Wähle die Bedrock-Version für dieses Launcher-Profil."
+    ,"Save Bedrock version": "Bedrock-Version speichern"
+    ,"Deleting this instance also removes its isolated Bedrock worlds and packs.": "Beim Löschen dieser Instanz werden auch ihre isolierten Bedrock-Welten und Pakete entfernt."
+    ,"Shared Minecraft worlds and packs stay on this PC when deleting the launcher profile.": "Gemeinsam genutzte Minecraft-Welten und Pakete bleiben beim Löschen des Launcher-Profils auf diesem PC."
+    ,"Export selected Bedrock worlds and packs as a ZIP archive.": "Exportiere ausgewählte Bedrock-Welten und Pakete als ZIP-Archiv."
+    ,"Bedrock ZIP export": "Bedrock-ZIP-Export"
+    ,"Only the selected Bedrock worlds, add-ons, and resource packs are included.": "Nur ausgewählte Bedrock-Welten, Add-ons und Ressourcenpakete werden einbezogen."
+    ,"Bedrock screenshots, logs, and account data are excluded.": "Bedrock-Screenshots, Protokolle und Kontodaten sind ausgeschlossen."
+    ,"Bedrock visuals use resource packs and Vibrant Visuals; Java shader packs are not compatible.": "Bedrock nutzt Ressourcenpakete und Vibrant Visuals für die Grafik; Java-Shaderpakete sind nicht kompatibel."
+    ,"File imports open Minecraft's shared app profile. Switch to Shared Store data before importing to this instance.": "Dateiimporte öffnen das gemeinsame Minecraft-App-Profil. Wechsle vor dem Import für diese Instanz zu den gemeinsamen Store-Daten."
+    ,"Change version": "Version ändern"
+    ,"Create a new copy of this build. The original and its worlds stay unchanged.": "Erstelle eine Kopie dieser Instanz für eine andere Version. Das Original und seine Welten bleiben unverändert."
+    ,"Folders to copy": "Zu kopierende Ordner"
+    ,"Select what to bring into the new build. Content updates are optional for each supported file.": "Wähle aus, was in die neue Instanz übernommen werden soll. Unterstützte Dateien lassen sich einzeln aktualisieren."
+    ,"folders selected": "Ordner ausgewählt"
+    ,"Reading build folders": "Instanzordner werden gelesen"
+    ,"Compatible update": "Kompatibles Update"
+    ,"Already compatible": "Bereits kompatibel"
+    ,"No compatible version; copied as-is": "Keine kompatible Version; wird unverändert kopiert"
+    ,"Could not check; copied as-is": "Prüfung fehlgeschlagen; wird unverändert kopiert"
+    ,"Only files with a known Modrinth or CurseForge source can be checked. Other files copy as-is; saves are never sent through the mod updater.": "Nur Dateien mit bekannter Modrinth- oder CurseForge-Quelle können geprüft werden. Andere Dateien werden unverändert kopiert; Spielstände werden nie über den Mod-Updater aktualisiert."
+    ,"Current build": "Aktuelle Instanz"
+    ,"New Minecraft version": "Neue Minecraft-Version"
+    ,"Latest release": "Neueste Version"
+    ,"Select a release": "Version auswählen"
+    ,"Loading Minecraft releases": "Minecraft-Versionen werden geladen"
+    ,"Checking compatible content": "Kompatibilität wird geprüft"
+    ,"Compatible loader selected": "Kompatibler Loader ausgewählt"
+    ,"Copy created with warnings": "Kopie mit Warnungen erstellt"
+    ,"Version copy created": "Versionskopie erstellt"
+    ,"content files updated": "Inhaltsdateien aktualisiert"
+    ,"Selected folders were copied without content updates.": "Ausgewählte Ordner wurden ohne Inhaltsupdates kopiert."
+    ,"compatible updates selected": "kompatible Updates ausgewählt"
+    ,"Choose a release to check installed content.": "Wähle eine Version, um installierte Inhalte zu prüfen."
+    ,"Create version copy": "Versionskopie erstellen"
+    ,"Creating copy": "Kopie wird erstellt"
+    ,"No user folders were found in this build.": "In dieser Instanz wurden keine Benutzerordner gefunden."
+    ,"Compatible": "Kompatibel"
+    ,"No update": "Kein Update"
+    ,"Unchecked": "Nicht geprüft"
+    ,"Current": "Aktuell"
+    ,"Adapt build": "Profil anpassen"
+    ,"Updating": "Aktualisierung"
+    ,"Some files": "Teilweise"
+    ,"Transfer as-is": "Unverändert übertragen"
+    ,"Transfer disabled (.off)": "Deaktiviert übertragen (.off)"
+    ,"Do not transfer": "Nicht übertragen"
+    ,"files could not be updated": "Dateien konnten nicht aktualisiert werden"
+    ,"Files without a compatible update": "Dateien ohne kompatibles Update"
+    ,"Choose how to transfer files without a compatible update. You can override the choice for each file.": "Wähle, was mit Dateien ohne kompatibles Update geschehen soll. Die Auswahl kann für einzelne Dateien geändert werden."
+    ,"Use general choice": "Allgemeine Auswahl"
+    ,"Action for": "Aktion für"
+    ,"The checkbox selects what to transfer. The Updating switch controls version changes. When it is off, files are copied as-is and update warnings are hidden.": "Das Kontrollkästchen wählt Dateien zum Übertragen. Der Schalter „Aktualisierung“ aktiviert neue Versionen. Ist er aus, werden Dateien unverändert kopiert und Update-Warnungen ausgeblendet."
+    ,"Beautiful Home Menu": "Schönes Hauptmenü"
+    ,"Show an interactive character and quick launch on the home page.": "Interaktiver Charakter und Schnellstart auf der Startseite."
+  ,"Drag to rotate. Ctrl + wheel to zoom.": "Zum Drehen ziehen. Strg + Mausrad zum Zoomen."
+  ,"Player FPS": "Spieler-FPS"
+  ,"Unlimited": "Unbegrenzt"
+  ,"Set 30 FPS": "30 FPS einstellen"
+  ,"1–60 FPS or unlimited. The slider snaps to 30 FPS. Rendering pauses when the window is minimized.": "1–60 FPS oder unbegrenzt. Der Regler rastet bei 30 FPS ein. Bei minimiertem Fenster pausiert das Rendering."
+    ,"Player character": "Spielerfigur"
+    ,"Customize skin": "Skin anpassen"
+    ,"Offline skin": "Offline-Skin"
+    ,"The standard skin is selected by the offline account UUID.": "Der Standard-Skin wird anhand der UUID des Offline-Kontos ausgewählt."
+    ,"Switch account": "Konto wechseln"
+    ,"Create your own Minecraft build": "Eigenes Minecraft-Profil erstellen"
+    ,"Find and install ready-made builds": "Fertige Modpacks finden und installieren"
+    ,"Manage your builds": "Profile verwalten"
+    ,"Add or switch an account": "Konto hinzufügen oder wechseln"
+    ,"Last launched build": "Zuletzt gestartetes Profil"
+    ,"Selected build": "Ausgewähltes Profil"
+    ,"Choose another": "Andere auswählen"
+    ,"Choose a build for your first launch.": "Wähle ein Profil für den ersten Start."
+    ,"Choose a build": "Profil auswählen"
+    ,"Build actions": "Profilaktionen"
+    ,"Open build": "Profil öffnen"
+    ,"Prepare Bedrock": "Bedrock vorbereiten"
+    ,"Bedrock is not ready": "Bedrock ist noch nicht startbereit."
+    ,"Offline username": "Offline-Spielername"
+    ,"No account": "Kein Konto"
+    ,"Authentication required": "Anmeldung erforderlich"
+    ,"Ready": "Bereit"
+    ,"Launcher": "Launcher"
+    ,"active": "aktiv"
+    ,"mods": "Mods"
+    ,"Discover": "Entdecken"
+    ,"Library": "Bibliothek"
+    ,"Accounts": "Konten"
+    ,"Offline": "Offline"
+    ,"Play": "Spielen"
+    ,"Running": "Läuft"
+    ,"Install": "Installieren"
+    ,"Open logs when launching from Home": "Protokolle beim Start von der Startseite öffnen"
+    ,"Switch to logs after launching the last build from the beautiful Home screen.": "Nach dem Start des letzten Profils von der schönen Startseite zu den Protokollen wechseln."
+    ,"Stop": "Stoppen"
+    ,"System load": "Systemauslastung"
+    ,"Whole computer": "Gesamter Computer"
+    ,"RAM": "RAM"
+    ,"Network": "Netzwerk"
+    ,"free": "frei"
+    ,"GPU counters are unavailable or still warming up.": "GPU-Zähler sind nicht verfügbar oder sammeln noch Daten."
+    ,"Launcher status layout was not saved": "Anordnung des Launcher-Status wurde nicht gespeichert"
+    ,"Launcher usage": "Launcher-Auslastung"
+    ,"Show whole computer usage": "Auslastung des gesamten Computers anzeigen"
+    ,"Input/output": "Ein-/Ausgabe"
+    ,"Size of the launcher folder, including builds, resources and backups.": "Größe des Launcher-Ordners einschließlich Profile, Ressourcen und Sicherungen."
+    ,"Launcher file, network and device I/O, including WebView2. This is not a separate network counter.": "Datei-, Netzwerk- und Geräte-E/A des Launchers einschließlich WebView2. Dies ist kein separater Netzwerkzähler."
+  }
+}

@@ -1,0 +1,29 @@
+.backdrop { position: fixed; inset: 0; z-index: 120; display: grid; place-items: center; padding: 30px; background: var(--color-overlay-strong); backdrop-filter: blur(8px); }
+.panel { display: grid; width: min(900px, 100%); min-height: 540px; grid-template-columns: 0.9fr 1.1fr; overflow: hidden; border: 1px solid var(--color-border-strong); border-radius: var(--radius-lg); background: var(--color-surface); box-shadow: var(--shadow-dialog); }
+.artwork { position: relative; display: grid; align-content: center; justify-items: center; padding: 46px; background: radial-gradient(circle at 35% 28%, color-mix(in srgb, var(--color-accent) 25%, transparent), transparent 40%), var(--color-surface-deeper); }
+.artwork img:first-child { width: 130px; height: 130px; margin-bottom: 22px; }
+.artwork img:nth-child(2) { width: 180px; }
+.artwork span { margin-top: 18px; color: var(--color-text-muted); font-size: 12px; }
+.content { display: grid; align-content: center; padding: 46px; }
+.security { display: flex; align-items: center; gap: 8px; margin-bottom: 20px; color: var(--color-success); font-size: 11px; }
+.content h1 { margin: 0; font-size: 30px; letter-spacing: -0.045em; }
+.content > p { margin: 10px 0 25px; color: var(--color-text-muted); line-height: 1.55; }
+.actions, .offlineForm, .warning { display: grid; gap: 14px; }
+.microsoftAction { display: grid; min-height: 82px; grid-template-columns: auto 1fr auto; align-items: center; gap: 13px; padding: 15px 18px; text-align: left; }
+.microsoftAction span { display: grid; gap: 3px; }
+.microsoftAction strong { font-size: 16px; }
+.microsoftAction small { color: color-mix(in srgb, var(--color-text) 78%, transparent); font-size: 11px; font-weight: 500; }
+.secondaryActions { display: grid; width: min(100%, 390px); grid-template-columns: 1fr 1fr; gap: 9px; }
+.secondaryActions button { min-height: 40px; font-size: 12px; }
+.languagePicker { display: grid; width: min(100%, 390px); gap: 6px; margin-top: 2px; color: var(--color-text-muted); font-size: 11px; }
+.languagePicker select { min-height: 38px; font-size: 12px; }
+.warningOverlay { position: absolute; inset: 0; display: grid; place-items: center; padding: 28px; background: color-mix(in srgb, var(--color-overlay-strong) 66%, transparent); backdrop-filter: blur(5px); }
+.warning { display: grid; width: min(470px, 100%); gap: 14px; border: 1px solid color-mix(in srgb, var(--color-accent) 60%, var(--color-border)); border-radius: var(--radius-md); padding: 24px; background: var(--color-surface); box-shadow: var(--shadow-dialog); }
+.warningHeading { display: flex; align-items: center; gap: 10px; color: var(--color-accent); }
+.warning h2, .offlineForm h2 { margin: 0; font-size: 19px; }
+.warning > p { margin: -2px 0 2px; color: var(--color-text-muted); line-height: 1.5; }
+.commitment { display: flex; align-items: center; gap: 12px; min-height: 55px; padding: 11px 13px; border: 1px solid var(--color-accent); border-radius: var(--radius-sm); background: color-mix(in srgb, var(--color-accent) 14%, transparent); color: var(--color-text); cursor: pointer; font-size: 12px; line-height: 1.4; }
+.commitment input { width: 21px; height: 21px; margin: 0; accent-color: var(--color-accent); cursor: pointer; }
+.offlineForm { gap: 15px; }
+.formActions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 2px; }
+@media (max-width: 720px) { .backdrop { padding: 16px; overflow: auto; } .panel { grid-template-columns: 1fr; min-height: 0; } .artwork { display: none; } .content { padding: 32px 25px; } .secondaryActions { width: 100%; } }

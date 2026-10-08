@@ -1,0 +1,283 @@
+diff --git a/cmd/msixvc-native/main_windows.go b/cmd/msixvc-native/main_windows.go
+index 2a99906..ea4cc94 100644
+--- a/cmd/msixvc-native/main_windows.go
++++ b/cmd/msixvc-native/main_windows.go
+@@ -19,33 +19,59 @@ import (
+ func main() {
+ 	cache := flag.String("cache", "", "LeviLauncher device authorization cache directory (required; account comes from Windows)")
+ 	market := flag.String("market", "US", "Two-letter Store market")
++	expectedXUID := flag.String("xuid", "", "Expected Xbox XUID from the launcher account binding (required)")
++	bind := flag.Bool("bind", false, "Bind the current Windows Store/Xbox account and verify Minecraft entitlements")
+ 	full := flag.Bool("require-full", true, "Reject trial licenses")
+ 	flag.Parse()
+-	if flag.NArg() != 2 || *cache == "" {
+-		fmt.Fprintln(os.Stderr, "Usage: msixvc-native [-cache directory] [-market US] [-require-full] input.msixvc new-output-directory")
++	if *bind {
++		if flag.NArg() != 0 || *cache == "" {
++			fmt.Fprintln(os.Stderr, "Usage: msixvc-native -bind -cache directory [-market US]")
++			os.Exit(2)
++		}
++		ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
++		defer cancel()
++		enc := json.NewEncoder(os.Stdout)
++		xuid, gamertag, err := nativeinstall.SignInDefaultSharedAccount(ctx, *cache)
++		if err != nil {
++			_ = enc.Encode(map[string]any{"error": errorCode(err)})
++			os.Exit(1)
++		}
++		licenses := nativeinstall.RefreshGameLicensesForMarket(ctx, *cache, xuid, *market)
++		_ = enc.Encode(map[string]any{
++			"stage": "account", "xuid": xuid, "gamertag": gamertag,
++			"release": licenses.Release, "preview": licenses.Preview,
++		})
++		return
++	}
++	if flag.NArg() != 2 || *cache == "" || *expectedXUID == "" {
++		fmt.Fprintln(os.Stderr, "Usage: msixvc-native [-cache directory] [-market US] -xuid xbox-xuid [-require-full] input.msixvc new-output-directory")
+ 		os.Exit(2)
+ 	}
+ 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+ 	defer cancel()
+ 	enc := json.NewEncoder(os.Stdout)
+ 	result, err := nativeinstall.Install(ctx, flag.Arg(0), flag.Arg(1), nativeinstall.Options{
+-		CacheDir: *cache, Market: *market, RequireFullLicense: *full,
++		CacheDir: *cache, Market: *market, ExpectedXUID: *expectedXUID, RequireFullLicense: *full,
+ 		Progress: func(p nativeinstall.Progress) {
+ 			_ = enc.Encode(map[string]any{"stage": "extract", "bytes": p.Current, "total": p.Total})
+ 		},
+ 		Diagnostic: func(d map[string]any) { _ = enc.Encode(d) },
+ 	})
+ 	if err != nil {
+-		code := "ERR_NATIVE_MSIXVC"
+-		var native *nativeinstall.Error
+-		if errors.As(err, &native) {
+-			code = native.Code
+-		}
+-		if errors.Is(err, context.Canceled) {
+-			code = "ERR_CANCELED"
+-		}
+-		_ = enc.Encode(map[string]any{"error": code})
++		_ = enc.Encode(map[string]any{"error": errorCode(err)})
+ 		os.Exit(1)
+ 	}
+ 	_ = enc.Encode(result)
+ }
++
++func errorCode(err error) string {
++	code := "ERR_NATIVE_MSIXVC"
++	var native *nativeinstall.Error
++	if errors.As(err, &native) {
++		code = native.Code
++	}
++	if errors.Is(err, context.Canceled) {
++		code = "ERR_CANCELED"
++	}
++	return code
++}
+diff --git a/internal/nativeinstall/account_selection_windows.go b/internal/nativeinstall/account_selection_windows.go
+index 8c561ed..f3829cf 100644
+--- a/internal/nativeinstall/account_selection_windows.go
++++ b/internal/nativeinstall/account_selection_windows.go
+@@ -5,6 +5,7 @@ package nativeinstall
+ import (
+ 	"context"
+ 	"crypto/rand"
++	"errors"
+ 	"os"
+ 	"path/filepath"
+ 	"sync"
+@@ -50,6 +51,23 @@ func SignInSharedAccount(ctx context.Context, dir string, hwnd uintptr, dispatch
+ 	}, dispatch)
+ }
+ 
++// SignInDefaultSharedAccount binds the helper to the Windows user's current
++// Store/Xbox account without trying to display UI from the helper process.
++// Only the opaque WAM account id and license keys are persisted with DPAPI.
++func SignInDefaultSharedAccount(ctx context.Context, dir string) (xuid, gamertag string, err error) {
++	if ctx == nil || dir == "" {
++		return "", "", errors.New("invalid account operation")
++	}
++	defer recoverFailure(&err)
++	xuid, gamertag, err = xbox.SignInDefault(ctx, func(id string) error {
++		return saveSharedAccountSelection(dir, id)
++	})
++	if err != nil {
++		accountAuthorizationFailed(err)
++	}
++	return xuid, gamertag, nil
++}
++
+ func saveSharedAccountSelection(dir, id string) (err error) {
+ 	selectionMu.Lock()
+ 	defer selectionMu.Unlock()
+diff --git a/internal/nativeinstall/entitlements_windows.go b/internal/nativeinstall/entitlements_windows.go
+index bee88e2..0a7525f 100644
+--- a/internal/nativeinstall/entitlements_windows.go
++++ b/internal/nativeinstall/entitlements_windows.go
+@@ -9,6 +9,7 @@ import (
+ 	"encoding/json"
+ 	"errors"
+ 	"net/http"
++	"net/url"
+ 	"strings"
+ 	"time"
+ 
+@@ -49,9 +50,9 @@ type catalogProduct struct {
+ }
+ 
+ // Use the current public catalog rather than hardcoding version-specific content IDs.
+-func catalogContentID(ctx context.Context, productID, family string) string {
++func catalogContentID(ctx context.Context, productID, family, market string) string {
+ 	req, err := http.NewRequestWithContext(ctx, http.MethodGet,
+-		"https://displaycatalog.mp.microsoft.com/v7.0/products/"+productID+"?market=US&languages=en-us", nil)
++		"https://displaycatalog.mp.microsoft.com/v7.0/products/"+productID+"?market="+url.QueryEscape(market)+"&languages=en-us", nil)
+ 	must(err)
+ 	res, err := httpClient().Do(req)
+ 	must(err)
+@@ -153,7 +154,7 @@ func checkChannelLicense(ctx context.Context, device, productID, family string)
+ 		}
+ 	}()
+ 	defer recoverFailure(&err)
+-	id := catalogContentID(ctx, productID, family)
++	id := catalogContentID(ctx, productID, family, active.options.Market)
+ 	parsed := requestContentLicense(device, id)
+ 	state = contentLicenseState(parsed)
+ 	checkCanceled()
+@@ -171,16 +172,22 @@ func checkChannelLicense(ctx context.Context, device, productID, family string)
+ // CheckGameLicenses reuses verified Full keys for the selected account. Missing
+ // channels are acquired online; negative and trial responses are not cached.
+ func CheckGameLicenses(ctx context.Context, dir, expectedXUID string) GameLicenses {
+-	return checkGameLicenses(ctx, dir, expectedXUID, false)
++	return checkGameLicenses(ctx, dir, expectedXUID, false, "US")
+ }
+ 
+ // RefreshGameLicenses explicitly checks both channels online, updating keys or
+ // removing a channel's cached keys if Microsoft no longer grants a Full license.
+ func RefreshGameLicenses(ctx context.Context, dir, expectedXUID string) GameLicenses {
+-	return checkGameLicenses(ctx, dir, expectedXUID, true)
++	return checkGameLicenses(ctx, dir, expectedXUID, true, "US")
+ }
+ 
+-func checkGameLicenses(ctx context.Context, dir, expectedXUID string, forceRefresh bool) GameLicenses {
++// RefreshGameLicensesForMarket is the helper-facing entitlement preflight.
++// It verifies ownership before SLH downloads a multi-gigabyte archive.
++func RefreshGameLicensesForMarket(ctx context.Context, dir, expectedXUID, market string) GameLicenses {
++	return checkGameLicenses(ctx, dir, expectedXUID, true, market)
++}
++
++func checkGameLicenses(ctx context.Context, dir, expectedXUID string, forceRefresh bool, market string) GameLicenses {
+ 	result := GameLicenses{XUID: expectedXUID, Release: "error", Preview: "error"}
+ 	if expectedXUID == "" {
+ 		return result
+@@ -189,7 +196,11 @@ func checkGameLicenses(ctx context.Context, dir, expectedXUID string, forceRefre
+ 	defer cancel()
+ 	var account *licenseAccount
+ 	err := accountOperation(ctx, dir, func() {
+-		active.options.Market = "US"
++		market = strings.ToUpper(strings.TrimSpace(market))
++		if len(market) != 2 {
++			market = "US"
++		}
++		active.options.Market = market
+ 		beginLicenseAccount(ctx, expectedXUID)
+ 		account = active.account
+ 		if !forceRefresh {
+diff --git a/internal/nativeinstall/entitlements_windows_test.go b/internal/nativeinstall/entitlements_windows_test.go
+index d47ccca..4a661e0 100644
+--- a/internal/nativeinstall/entitlements_windows_test.go
++++ b/internal/nativeinstall/entitlements_windows_test.go
+@@ -76,10 +76,13 @@ func TestCatalogRejectsWrongProductAndUnsupportedPackages(t *testing.T) {
+ func TestChannelLicenseHTTPFailuresAreNotMissingEntitlements(t *testing.T) {
+ 	original := http.DefaultTransport
+ 	defer func() { http.DefaultTransport = original; clearOperation() }()
+-	active = &installation{ctx: context.Background(), options: Options{Market: "US"}}
++	active = &installation{ctx: context.Background(), options: Options{Market: "DE"}}
+ 	userTicket, userReference = "test-ticket", "test-account"
+ 	for _, status := range []int{401, 403, 429, 500} {
+ 		http.DefaultTransport = licenseTransport(func(req *http.Request) (*http.Response, error) {
++			if req.URL.Host == "displaycatalog.mp.microsoft.com" && req.URL.Query().Get("market") != "DE" {
++				t.Fatalf("catalog used Store market %q, want DE", req.URL.Query().Get("market"))
++			}
+ 			body := catalogFixture("release", "family", "7792d9ce-355a-493c-afbd-768f4a77c3b0")
+ 			code := 200
+ 			if req.URL.Host == "licensing.mp.microsoft.com" {
+diff --git a/internal/nativeinstall/install_windows.go b/internal/nativeinstall/install_windows.go
+index 7687466..fd58573 100644
+--- a/internal/nativeinstall/install_windows.go
++++ b/internal/nativeinstall/install_windows.go
+@@ -24,6 +24,7 @@ import (
+ type Options struct {
+ 	CacheDir           string
+ 	Market             string
++	ExpectedXUID       string
+ 	RequireFullLicense bool
+ 	Prepare            func(string) error
+ 	Progress           func(Progress)
+@@ -135,6 +136,9 @@ func Install(ctx context.Context, sourcePath, outputPath string, options Options
+ 			must(e)
+ 			active.options.CacheDir = filepath.Join(cache, "LeviLauncher", "native-msixvc")
+ 		}
++		if active.options.ExpectedXUID == "" {
++			failCode("ERR_AUTH_ACCOUNT_SELECTION", "the launcher did not provide an Xbox account binding")
++		}
+ 		secureCache(active.options.CacheDir)
+ 		lockPath, e := windows.UTF16PtrFromString(filepath.Join(active.options.CacheDir, "device.lock"))
+ 		must(e)
+@@ -146,9 +150,11 @@ func Install(ctx context.Context, sourcePath, outputPath string, options Options
+ 		if err := RestoreSharedAccount(ctx, active.options.CacheDir); err != nil {
+ 			panic(err)
+ 		}
+-		beginLicenseAccount(ctx, "")
++		beginLicenseAccount(ctx, active.options.ExpectedXUID)
+ 		if !restoreContentKey() {
+-			acquireUserTicket(ctx, xbox.GetStoreTicket)
++			acquireUserTicket(ctx, func(ctx context.Context) (string, string, error) {
++				return xbox.GetStoreTicketForUser(ctx, active.options.ExpectedXUID)
++			})
+ 			ensureDevice()
+ 			ticket := ownDeviceTicket()
+ 			license(ticket, active.report.ContentID)
+diff --git a/internal/xbox/auth_windows.go b/internal/xbox/auth_windows.go
+index c169b48..544b102 100644
+--- a/internal/xbox/auth_windows.go
++++ b/internal/xbox/auth_windows.go
+@@ -290,6 +290,39 @@ func SignIn(ctx context.Context, hwnd uintptr, persist func(string) error, dispa
+ 	}, persist)
+ }
+ 
++// SignInDefault selects the Microsoft account that Windows can authorize
++// silently for the current user. This is intended for companion/helper
++// processes which do not own the launcher's UI thread and therefore cannot
++// safely host AccountsSettingsPane. The caller must surface
++// ErrInteractionRequired and ask the user to sign in to Store/Xbox first.
++func SignInDefault(ctx context.Context, persist func(string) error) (xuid, gamertag string, err error) {
++	if persist == nil {
++		return "", "", ErrAuthenticationFailed
++	}
++	var selected *session
++	err = signInSession(ctx, func() (*session, error) {
++		ticket, id, err := requestWAMToken(ctx, xblScope, "", 0, nil)
++		if err != nil {
++			return nil, err
++		}
++		userToken, err := xblUserAuth(ctx, ticket)
++		if err != nil {
++			return nil, err
++		}
++		s, err := xblXSTS(ctx, userToken)
++		if err != nil {
++			return nil, err
++		}
++		s.accountID = id
++		selected = s
++		return s, nil
++	}, persist)
++	if err != nil || selected == nil {
++		return "", "", err
++	}
++	return selected.xuid, selected.gtg, nil
++}
++
+ // A canceled picker, failed token exchange or failed persistence must preserve
+ // both the displayed profile and the account used by Store authorization.
+ func signInSession(ctx context.Context, acquire func() (*session, error), persist func(string) error) error {

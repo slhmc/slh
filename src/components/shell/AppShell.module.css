@@ -1,0 +1,57 @@
+.app {
+  display: grid;
+  width: 100%;
+  height: 100dvh;
+  grid-template-rows: var(--titlebar-height) minmax(0, 1fr) var(--activitybar-height);
+  overflow: hidden;
+  background: var(--color-bg);
+}
+
+.workspace {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+  grid-template-areas: "nav content";
+}
+
+.content {
+  min-width: 0;
+  min-height: 0;
+  grid-area: content;
+  overflow: hidden;
+}
+
+.navLeft {
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  grid-template-areas: "nav content";
+}
+
+.navRight {
+  grid-template-columns: minmax(0, 1fr) var(--sidebar-width);
+  grid-template-rows: minmax(0, 1fr);
+  grid-template-areas: "content nav";
+}
+
+.navTop {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas: "nav" "content";
+}
+
+.navBottom {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-areas: "content" "nav";
+}
+
+@media (max-width: 1240px) {
+  .navLeft {
+    grid-template-columns: 76px minmax(0, 1fr);
+  }
+
+  .navRight {
+    grid-template-columns: minmax(0, 1fr) 76px;
+  }
+}

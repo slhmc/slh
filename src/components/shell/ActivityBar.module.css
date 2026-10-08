@@ -1,0 +1,57 @@
+.bar {
+  position: relative;
+  z-index: 35;
+  display: grid;
+  height: var(--activitybar-height);
+  grid-template-columns: minmax(0, 1fr) minmax(120px, 280px) auto;
+  align-items: center;
+  gap: 18px;
+  padding: 0 12px;
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  background: var(--color-sidebar);
+  font-size: 11px;
+}
+
+.status {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
+}
+
+.status span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status small {
+  color: var(--color-text-subtle);
+}
+
+.progress {
+  height: 3px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--color-surface-2);
+}
+
+.progress span {
+  display: block;
+  height: 100%;
+  background: var(--color-accent);
+  transition: width 180ms ease;
+}
+
+.network {
+  white-space: nowrap;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

@@ -1,0 +1,22 @@
+.menu { position: fixed; z-index: 1000; width: 236px; max-height: calc(100vh - 16px); overflow: auto; border: 1px solid var(--color-border-strong); border-radius: var(--radius-sm); color: var(--color-text); background: var(--color-surface); box-shadow: var(--shadow-dialog); user-select: none; }
+.instanceTabsMenu { max-height: none; overflow: visible; }
+.menu header { display: flex; min-height: 34px; align-items: center; gap: 9px; padding: 0 9px 6px; border-bottom: 1px solid var(--color-border); background: var(--color-surface-2); user-select: none; }
+.instanceTabsMenu header { cursor: grab; }
+.instanceTabsMenu header:active { cursor: grabbing; }
+.menu header > svg { color: var(--color-accent); }
+.menu header strong { font-size: 12px; }
+.menu header span { color: var(--color-text-muted); font-size: 9px; }
+.menu > div { padding: 5px; }
+.separator { height: 1px; margin: 5px 4px; background: var(--color-border-strong); }
+.itemRow { position: relative; display: flex; align-items: center; gap: 3px; cursor: grab; user-select: none; }
+.itemRow.dragging { opacity: 0.45; }
+.itemRow.insertBefore::after, .itemRow.insertAfter::after { position: absolute; z-index: 2; right: 2px; left: 2px; height: 3px; border-radius: 99px; background: var(--color-accent); content: ""; pointer-events: none; }
+.itemRow.insertBefore::after { top: -1px; }
+.itemRow.insertAfter::after { bottom: -1px; }
+.itemToggle { display: grid; flex: 1; min-width: 0; min-height: 34px; grid-template-columns: 20px 20px minmax(0, 1fr); align-items: center; gap: 9px; padding: 0 9px; border-radius: var(--radius-xs); color: var(--color-text); text-align: left; background: transparent; cursor: pointer; }
+.itemToggle:hover { background: var(--color-surface-3); }
+.itemToggle:active { transform: translateY(1px); }
+.check { display: grid; width: 18px; place-items: center; color: var(--color-accent); }
+.itemToggle > svg { color: var(--color-text-muted); }
+.itemToggle > span:last-child { font-size: 11px; }
+.dragPreview { position: fixed; z-index: 1200; min-width: 130px; padding: 8px 10px; border: 1px solid var(--color-accent); border-radius: var(--radius-xs); color: var(--color-text); background: color-mix(in srgb, var(--color-surface) 92%, var(--color-accent)); box-shadow: var(--shadow-dialog); font-size: 11px; font-weight: 700; pointer-events: none; transform: translate(12px, 12px); }

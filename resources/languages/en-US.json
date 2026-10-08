@@ -1,0 +1,1350 @@
+{
+  "meta": {
+    "code": "en-US",
+    "name": "English (United States)",
+    "schemaVersion": 1
+  },
+  "onboarding": {
+    "continueMicrosoft": "Continue with Microsoft",
+    "microsoftRecommendation": "Recommended for Minecraft: Java Edition",
+    "addElyBy": "Add Ely.by account",
+    "createOffline": "Create Offline account",
+    "microsoftRecommended": "Microsoft account recommended",
+    "warning": "Please sign in to Microsoft before adding an Offline or Ely.by account.",
+    "commitment": "I commit to sign in to a Microsoft account later.",
+    "continue": "Continue"
+  },
+  "common": {
+    "play": "Play",
+    "cancel": "Cancel",
+    "save": "Save",
+    "retry": "Retry",
+    "close": "Close",
+    "delete": "Delete",
+    "create": "Create",
+    "import": "Import",
+    "folder": "Folder",
+    "loading": "Loading..."
+  },
+  "navigation": {
+    "title": "Navigation",
+    "visibility": "Navigation visibility",
+    "visibilityHint": "Show or hide sidebar sections",
+    "home": "Home",
+    "library": "Library",
+    "discover": "Discover",
+    "mods": "Mods",
+    "servers": "Servers",
+    "settings": "Settings"
+  },
+  "titlebar": {
+    "searchInstances": "Search instances",
+    "newInstance": "New instance",
+    "import": "Import",
+    "archive": "Archive",
+    "archiveDescription": "Modrinth or CurseForge pack",
+    "existingFolder": "Existing folder",
+    "folderDescription": "Worlds, mods, configs, and local settings",
+    "browserPreview": "Browser preview"
+  },
+  "library": {
+    "title": "Your instances",
+    "eyebrow": "Instance library",
+    "heading": "Your Minecraft worlds, separated and ready",
+    "instanceCount": "{count} instances in this library",
+    "group": "Group",
+    "newGroup": "New group",
+    "groupExample": "e.g. Survival",
+    "createGroup": "Create group",
+    "creating": "Creating...",
+    "filter": "Filter",
+    "libraryView": "Library view",
+    "gridView": "Grid view",
+    "listView": "List view",
+    "noMatching": "No matching instances",
+    "searchEmpty": "Change the search text to see the rest of your library.",
+    "name": "Name",
+    "version": "Version",
+    "loader": "Loader",
+    "lastPlayed": "Last played",
+    "ungrouped": "Ungrouped",
+    "showUngrouped": "Show ungrouped",
+    "emptyGroup": "Create or add an instance to this group.",
+    "emptyTitle": "No instances yet",
+    "emptyBody": "Create your first Minecraft instance or import an existing one.",
+    "create": "Create instance",
+    "import": "Import",
+    "browse": "Browse modpacks",
+    "downloading": "Downloading"
+  },
+  "settings": {
+    "preferences": "Launcher preferences",
+    "general": "General",
+    "generalDescription": "Language, library behavior, and launcher lifecycle.",
+    "appearance": "Appearance",
+    "appearanceDescription": "Launcher palettes with reusable built-in and custom presets.",
+    "appearanceNote": "Theme mode follows the selected palette. Background images and animated wallpaper are intentionally unsupported.",
+    "minecraft": "Minecraft",
+    "java": "Java",
+    "accounts": "Accounts",
+    "storage": "Storage",
+    "downloads": "Downloads",
+    "notifications": "Notifications",
+    "sync": "Sync",
+    "console": "Console",
+    "privacy": "Privacy",
+    "advanced": "Advanced",
+    "language": "Language",
+    "languageDescription": "Installed locale files are loaded from launcher resources.",
+    "rememberLast": "Remember last section",
+    "rememberLastDescription": "Return to your previous main view after restart.",
+    "hideOnLaunch": "Hide while Minecraft runs",
+    "hideOnLaunchDescription": "Keep SLH available by default while capturing launch state.",
+    "themePresets": "Theme presets",
+    "themePresetsDescription": "Applying a preset saves it immediately.",
+    "presetName": "Preset name",
+    "saveCurrent": "Save current",
+    "interfaceScale": "Interface scale",
+    "interfaceScaleDescription": "Changes the whole launcher without changing the Minecraft resolution.",
+    "interfaceFont": "Interface font",
+    "interfaceFontDescription": "The selected font applies immediately. Local files are copied to data/fonts and loaded without restarting.",
+    "minimalism": "Minimalism",
+    "minimalismDescription": "Hide secondary labels and descriptions while keeping essential controls and icons.",
+    "navigationMenu": "Settings navigation",
+    "navigationMenuHint": "Show, hide, or reorder settings sections",
+    "navigationSaveFailed": "Settings navigation was not saved"
+  },
+  "legacy": {
+    "Sum of process working sets, including WebView2; shared pages may be counted more than once.": "Sum of process working sets, including WebView2; shared pages may be counted more than once.",
+    "release": "release",
+    "snapshot": "snapshot",
+    "old_alpha": "old alpha",
+    "old_beta": "old beta",
+    "Preparing launcher data": "Preparing launcher data",
+    "SLH could not start": "SLH could not start",
+    "The launcher backend did not return startup data.": "The launcher backend did not return startup data.",
+    "Retry": "Retry",
+    "Ready when you are": "Ready when you are",
+    "Continue an instance, check your runtime, or prepare something new without leaving your library.": "Continue an instance, check your runtime, or prepare something new without leaving your library.",
+    "New instance": "New instance",
+    "Search instances": "Search instances",
+    "Only compatibility verified for Minecraft {version} can be selected.": "Only compatibility verified for Minecraft {version} can be selected.",
+    "Import": "Import",
+    "Main navigation": "Main navigation",
+    "No account": "No account",
+    "Choose an identity": "Choose an identity",
+    "Minimize": "Minimize",
+    "Maximize": "Maximize",
+    "Close": "Close",
+    "Continue playing": "Continue playing",
+    "recent": "recent",
+    "Your recently played instances will appear here.": "Your recently played instances will appear here.",
+    "Not played": "Not played",
+    "Launcher status": "Launcher status",
+    "Local": "Local",
+    "Active account": "Active account",
+    "Not selected": "Not selected",
+    "Java selection": "Java selection",
+    "Automatic": "Automatic",
+    "Custom": "Custom",
+    "Downloads": "Downloads",
+    "concurrent": "concurrent",
+    "Data folder": "Data folder",
+    "Quick actions": "Quick actions",
+    "Create instance": "Create instance",
+    "Install a clean Minecraft version": "Install a clean Minecraft version",
+    "Browse Discover": "Browse Discover",
+    "Explore content from Modrinth": "Explore content from Modrinth",
+    "Check Java": "Check Java",
+    "Review detected runtimes": "Review detected runtimes",
+    "No active downloads": "No active downloads",
+    "Private": "Private",
+    "Ready": "Ready",
+    "Loading": "Loading",
+    "Loading projects from": "Loading projects from",
+    "Discover something worth playing": "Discover something worth playing",
+    "Browse current projects with compatibility metadata, required dependencies, and installation decisions kept explicit.": "Browse current projects with compatibility metadata, required dependencies, and installation decisions kept explicit.",
+    "Discover is offline": "Discover is offline",
+    "matching projects": "matching projects",
+    "Search": "Search",
+    "Modpacks": "Modpacks",
+    "Mods": "Mods",
+    "Resource packs": "Resource packs",
+    "Shaders": "Shaders",
+    "Worlds": "Worlds",
+    "Install as new instance": "Install",
+    "Load more": "Load more",
+    "Choose target instance": "Choose target instance",
+    "No installed compatible instance is available": "No installed compatible instance is available",
+    "Install": "Install",
+    "Install from": "Install from",
+    "the archive defines Minecraft, its loader, files, and overrides for a new isolated instance.": "the archive defines Minecraft, its loader, files, and overrides for a new isolated instance.",
+    "SLH resolves a compatible version, required dependencies, distribution permission, and conflicts before downloading.": "SLH resolves a compatible version, required dependencies, distribution permission, and conflicts before downloading.",
+    "New isolated instance": "New isolated instance",
+    "The verified archive remains in downloads for repair or re-import.": "The verified archive remains in downloads for repair or re-import.",
+    "Instance name": "Instance name",
+    "Target instance": "Target instance",
+    "Checking compatibility and dependencies": "Checking compatibility and dependencies",
+    "files including dependencies": "files including dependencies",
+    "verified download": "verified download",
+    "conflicts": "conflicts",
+    "Installation is running": "Installation is running",
+    "You can close this window. SLH will notify you when it finishes.": "You can close this window. SLH will notify you when it finishes.",
+    "Close": "Close",
+    "Cancel": "Cancel",
+    "Installing": "Installing",
+    "Download and install": "Download and install",
+    "Install verified files": "Install verified files",
+    "Default memory": "Default memory",
+    "New instances inherit this maximum RAM value.": "New instances inherit this maximum RAM value.",
+    "Instance groups": "Instance groups",
+    "New group": "New group",
+    "Add": "Add",
+    "Global launch defaults and instance organization.": "Global launch defaults and instance organization.",
+    "SLH inspects runtime version output and validates compatibility before launch.": "SLH inspects runtime version output and validates compatibility before launch.",
+    "Detected runtimes": "Detected runtimes",
+    "Searches managed Java, JAVA_HOME, and PATH without modifying system settings.": "Searches managed Java, JAVA_HOME, and PATH without modifying system settings.",
+    "Detecting": "Detecting",
+    "Detect Java": "Detect Java",
+    "Installing instance": "Installing instance",
+    "Instance ready": "Instance ready",
+    "Installation complete": "Installation complete",
+    "Version {edition} {version} installed": "Version {edition} {version} installed",
+    "Version {edition} {version} deleted": "Version {edition} {version} deleted",
+    "Bedrock package registered": "Bedrock package registered",
+    "Already installed from Microsoft Store": "Already installed from Microsoft Store",
+    "Using the already installed Microsoft Store package. No download or Developer Mode is needed.": "Using the already installed Microsoft Store package. No download or Developer Mode is needed.",
+    "Open Microsoft Store": "Open Microsoft Store",
+    "Install or update Minecraft for Windows in Microsoft Store, then return here.": "Install or update Minecraft for Windows in Microsoft Store, then return here.",
+    "Microsoft Store versions could not be loaded": "Microsoft Store versions could not be loaded",
+    "Store version could not be selected": "Store version could not be selected",
+    "Checking Microsoft Store": "Checking Microsoft Store",
+    "Use Store version": "Use Store version",
+    "Select installed Store version": "Select installed Store version",
+    "Choose a version already installed by Microsoft Store. SLH launches it directly, without downloading or Developer Mode.": "Choose a version already installed by Microsoft Store. SLH launches it directly, without downloading or Developer Mode.",
+    "No supported Minecraft for Windows package is installed for this Windows user.": "No supported Minecraft for Windows package is installed for this Windows user.",
+    "SLH is connecting to the installed Microsoft Store package.": "SLH is connecting to the installed Microsoft Store package.",
+    "SLH is checking Store/Xbox ownership before downloading the Bedrock package.": "SLH is checking Store/Xbox ownership before downloading the Bedrock package.",
+    "The historical Bedrock version is registered and ready to launch.": "The historical Bedrock version is registered and ready to launch.",
+    "Bedrock must first be installed through Microsoft Store.": "Bedrock must first be installed through Microsoft Store.",
+    "Bedrock is installed and updated by Microsoft Store. SLH lists only versions that Windows has already registered.": "Bedrock is installed and updated by Microsoft Store. SLH lists only versions that Windows has already registered.",
+    "Bedrock versions come from Microsoft delivery metadata. Downloads require a licensed Store/Xbox account; extracted MSIXVC versions also require Windows Developer Mode.": "Bedrock versions come from Microsoft delivery metadata. Downloads require a licensed Store/Xbox account; extracted MSIXVC versions also require Windows Developer Mode.",
+    "Using the registered Microsoft Store package. Developer Mode is not used.": "Using the registered Microsoft Store package. Developer Mode is not used.",
+    "Store package detected": "Store package detected",
+    "Accounts": "Accounts",
+    "No accounts have been added.": "No accounts have been added.",
+    "Choose the identity used by Play": "Choose the identity used by Play",
+    "Offline username": "Offline username",
+    "Player name": "Player name",
+    "Add account": "Add account",
+    "Password": "Password",
+    "Two-factor code": "Two-factor code",
+    "Sign in": "Sign in",
+    "Signing in": "Signing in",
+    "Manage accounts": "Manage accounts",
+    "Storage": "Storage",
+    "data in use": "data in use",
+    "instances": "instances",
+    "Notifications": "Notifications",
+    "Sync": "Sync",
+    "Console": "Console",
+    "Privacy": "Privacy",
+    "Advanced": "Advanced",
+    "Appearance saved": "Appearance saved",
+    "Save palette": "Save palette",
+    "Choose local font": "Choose local font",
+    "Preview: Aa Bb 0123": "Preview: Aa Bb 0123",
+    "Settings saved": "Settings saved",
+    "The settings database was updated.": "The settings database was updated.",
+    "Launcher preferences": "Launcher preferences",
+    "The selected face is applied instantly. Local files are copied into data/fonts and loaded without restarting.": "The selected face is applied instantly. Local files are copied into data/fonts and loaded without restarting.",
+    "Minecraft": "Minecraft",
+    "custom groups in this library.": "custom groups in this library.",
+    "Java": "Java",
+    "Run detection to inspect available Java executables.": "Run detection to inspect available Java executables.",
+    "Account metadata is stored in SQLite; token material belongs only in DPAPI-encrypted files.": "Account metadata is stored in SQLite; token material belongs only in DPAPI-encrypted files.",
+    "Add an Offline account from the sidebar account switcher.": "Add an Offline account from the sidebar account switcher.",
+    "Active": "Active",
+    "Available": "Available",
+    "Unavailable": "Unavailable",
+    "Every mutable SLH file stays beside the executable.": "Every mutable SLH file stays beside the executable.",
+    "Runtime cache is retained because installed instances can depend on its verified assets and libraries. Worlds, accounts, and shared files are never treated as disposable cache.": "Runtime cache is retained because installed instances can depend on its verified assets and libraries. Worlds, accounts, and shared files are never treated as disposable cache.",
+    "Verified downloads use retry, temporary files, and atomic rename.": "Verified downloads use retry, temporary files, and atomic rename.",
+    "Choose which launcher messages appear and how long they stay visible.": "Choose which launcher messages appear and how long they stay visible.",
+    "Shared folders automatically feed current instances and every instance created later.": "Shared folders automatically feed current instances and every instance created later.",
+    "Control how live Minecraft output is shown for every instance.": "Control how live Minecraft output is shown for every instance.",
+    "This personal build has no analytics, advertising, telemetry, or background data collection.": "This personal build has no analytics, advertising, telemetry, or background data collection.",
+    "Diagnostics and developer controls remain explicit and non-destructive.": "Diagnostics and developer controls remain explicit and non-destructive.",
+    "Create a Minecraft instance": "Create a Minecraft instance",
+    "Each instance keeps its own worlds, mods, settings, and launch history.": "Each instance keeps its own worlds, mods, settings, and launch history.",
+    "Local instance": "Local instance",
+    "Pick a Minecraft release, select a compatible loader, and create it in one pass.": "Pick a Minecraft release, select a compatible loader, and create it in one pass.",
+    "Official metadata": "Official metadata",
+    "Isolated folder": "Isolated folder",
+    "Verified install": "Verified install",
+    "Choose Minecraft": "Choose Minecraft",
+    "Minecraft edition": "Minecraft edition",
+    "Java": "Java",
+    "Bedrock": "Bedrock",
+    "Bedrock packages are resolved from Microsoft delivery metadata.": "Bedrock packages are resolved from Microsoft delivery metadata.",
+    "Select download mirror": "Select download mirror",
+    "Download mirrors could not be loaded": "Download mirrors could not be loaded",
+    "No official download mirrors are available for this version.": "No official download mirrors are available for this version.",
+    "SLH checks official Microsoft CDN mirrors and selects the fastest one by default.": "SLH checks official Microsoft CDN mirrors and selects the fastest one by default.",
+    "Official Microsoft CDN": "Official Microsoft CDN",
+    "The package is downloaded directly from Microsoft Xbox CDN. The mirror only changes the route and does not change the file.": "The package is downloaded directly from Microsoft Xbox CDN. The mirror only changes the route and does not change the file.",
+    "Checking download mirrors": "Checking download mirrors",
+    "Retry check": "Retry check",
+    "Download selected mirror": "Download selected mirror",
+    "Fastest": "Fastest",
+    "ms": "ms",
+    "Not checked": "Not checked",
+    "Unavailable": "Unavailable",
+    "Include preview builds": "Include preview builds",
+    "Microsoft package": "Microsoft package",
+    "Available from Microsoft CDN": "Available from Microsoft CDN",
+    "Downloaded; installation can resume": "Downloaded; installation can resume",
+    "Choose a loader": "Choose a loader",
+    "Choose a Bedrock core": "Choose a Bedrock core",
+    "Bedrock uses the official Windows package; Java loaders do not apply.": "Bedrock uses the official Windows package; Java loaders do not apply.",
+    "Name and organize": "Name and organize",
+    "Java and memory": "Java and memory",
+    "Bedrock runtime": "Bedrock runtime",
+    "Bedrock runs as a Windows package and does not use Java memory settings.": "Bedrock runs as a Windows package and does not use Java memory settings.",
+    "Microsoft account required": "Microsoft account required",
+    "Store/Xbox account required": "Store/Xbox account required",
+    "Bound Xbox gamertag": "Bound Xbox gamertag",
+    "Xbox app": "Xbox app",
+    "The Xbox player inside Bedrock can differ from the Store account. Check the Xbox app gamertag, then sign out and back in inside Minecraft if it shows the wrong player.": "The Xbox player inside Bedrock can differ from the Store account. Check the Xbox app gamertag, then sign out and back in inside Minecraft if it shows the wrong player.",
+    "Bedrock licensing uses the Windows Store/Xbox account. It is independent from the Java account selected in SLH.": "Bedrock licensing uses the Windows Store/Xbox account. It is independent from the Java account selected in SLH.",
+    "Xbox profile needs linking": "Xbox profile needs linking",
+    "SLH could not read the Windows Store/Xbox profile. Sign in to Microsoft Store and Xbox with the game owner, launch Minecraft for Windows once, then choose Bind Store/Xbox account.": "SLH could not read the Windows Store/Xbox profile. Sign in to Microsoft Store and Xbox with the game owner, launch Minecraft for Windows once, then choose Bind Store/Xbox account.",
+    "Sign in to Microsoft Store and Xbox with the account that owns Minecraft for Windows. SLH verifies that Windows account before downloading; Java, Ely.by, and offline identities are not used for the Bedrock license.": "Sign in to Microsoft Store and Xbox with the account that owns Minecraft for Windows. SLH verifies that Windows account before downloading; Java, Ely.by, and offline identities are not used for the Bedrock license.",
+    "SLH could not yet read the Xbox profile for the selected Microsoft account. Choose Bind Store/Xbox account to refresh it; sign in again only if Windows says the saved Microsoft session has expired.": "SLH could not yet read the Xbox profile for the selected Microsoft account. Choose Bind Store/Xbox account to refresh it; sign in again only if Windows says the saved Microsoft session has expired.",
+    "Ely.by and offline accounts are Java-only. SLH will download the selected package, but Bedrock launch integration is not available yet.": "Ely.by and offline accounts are Java-only. SLH will download the selected package, but Bedrock launch integration is not available yet.",
+    "Bedrock uses the registered Windows package. Ely.by and offline accounts remain Java-only.": "Bedrock uses the registered Windows package. Ely.by and offline accounts remain Java-only.",
+    "Bedrock uses the official Microsoft Store package and shared Windows game data. Ely.by and offline accounts remain Java-only.": "Bedrock uses the official Microsoft Store package and shared Windows game data. Ely.by and offline accounts remain Java-only.",
+    "Bedrock profile": "Bedrock profile",
+    "Isolated profile": "Isolated profile",
+    "Shared Store data": "Shared Store data",
+    "is ready to launch when Microsoft Store, Xbox, and Gaming Services are available.": "is ready to launch when Microsoft Store, Xbox, and Gaming Services are available.",
+    "Windows deployment and Store/Xbox checks may still be required.": "Windows deployment and Store/Xbox checks may still be required.",
+    "Checking Bedrock runtime": "Checking Bedrock runtime",
+    "Bedrock ready to launch": "Bedrock ready to launch",
+    "Prepare Bedrock": "Prepare Bedrock",
+    "Automatic Bedrock setup": "Automatic Bedrock setup",
+    "SLH will download official Microsoft components. Windows may show one UAC confirmation.": "SLH will download official Microsoft components. Windows may show one UAC confirmation.",
+    "SLH downloads and checks the required Windows components, then retries the launch automatically.": "SLH downloads and checks the required Windows components, then retries the launch automatically.",
+    "A Microsoft Store license is required. Ely.by and offline accounts can only launch Java.": "A Microsoft Store license is required. Ely.by and offline accounts can only launch Java.",
+    "Not required for Store package": "Not required for Store package",
+    "Required for GDK packages": "Required for GDK packages",
+    "Preparing Bedrock": "Preparing Bedrock",
+    "Download and prepare": "Download and prepare",
+    "Bedrock is ready": "Bedrock is ready",
+    "The official Windows components are ready. SLH will start Bedrock now.": "The official Windows components are ready. SLH will start Bedrock now.",
+    "Bedrock still needs a Microsoft Store license or Windows component.": "Bedrock still needs a Microsoft Store license or Windows component.",
+    "Bedrock needs Microsoft Store/Xbox setup": "Bedrock needs Microsoft Store/Xbox setup",
+    "Refresh": "Refresh",
+    "Microsoft Store": "Microsoft Store",
+    "Xbox": "Xbox",
+    "Microsoft Store could not be opened": "Microsoft Store could not be opened",
+    "Xbox could not be opened": "Xbox could not be opened",
+    "Microsoft account": "Microsoft account",
+    "Store/Xbox account": "Store/Xbox account",
+    "A licensed Windows Store/Xbox account is required. Java account providers do not affect Bedrock licensing.": "A licensed Windows Store/Xbox account is required. Java account providers do not affect Bedrock licensing.",
+    "Authenticated": "Authenticated",
+    "Required": "Required",
+    "Gaming Services": "Gaming Services",
+    "Installed": "Installed",
+    "GameInput": "GameInput",
+    "Store/Xbox session": "Store/Xbox session",
+    "Checked by Windows at launch": "Checked by Windows at launch",
+    "License": "License",
+    "Windows Developer Mode": "Windows Developer Mode",
+    "Required for downloaded UWP": "Required for downloaded UWP",
+    "Not required for signed UWP package": "Not required for signed UWP package",
+    "Why?": "Why?",
+    "Why is Developer Mode needed?": "Why is Developer Mode needed?",
+    "Developer Mode lets Windows register a downloaded legacy Bedrock UWP package from the launcher. It is not a license and does not bypass Microsoft Store or Xbox checks. Signed Bedrock packages normally use standard Windows installation and do not need it.": "Developer Mode lets Windows register a downloaded legacy Bedrock UWP package from the launcher. It is not a license and does not bypass Microsoft Store or Xbox checks. Signed Bedrock packages normally use standard Windows installation and do not need it.",
+    "Why can't this Bedrock package be installed?": "Why can't this Bedrock package be installed?",
+    "This MSIXVC is a Microsoft Store submission package, not a local test package. Windows wdapp cannot install or convert it. The same version must be installed through Microsoft Store/Xbox, or you need a version that is already registered on this Windows account.": "This MSIXVC is a Microsoft Store submission package, not a local test package. Windows wdapp cannot install or convert it. The same version must be installed through Microsoft Store/Xbox, or you need a version that is already registered on this Windows account.",
+    "wdapp": "wdapp",
+    "Unknown": "Unknown",
+    "Save profile mode before launching.": "Save profile mode before launching.",
+    "Save Bedrock settings": "Save Bedrock settings",
+    "Review instance": "Review instance",
+    "Create and install": "Create and install",
+    "Bedrock package downloaded. Windows deployment and Store/Xbox checks may still be required.": "Bedrock package downloaded. Windows deployment and Store/Xbox checks may still be required.",
+    "Launch unavailable": "Launch unavailable",
+    "Group": "Group",
+    "Ungrouped": "Ungrouped",
+    "Background": "Background",
+    "Icon": "Icon",
+    "Maximum memory": "Maximum memory",
+    "Automatic compatible runtime": "Automatic compatible runtime",
+    "Custom executable": "Custom executable",
+    "Installation": "Installation",
+    "Verified client, libraries, assets, and natives": "Verified client, libraries, assets, and natives",
+    "Overview": "Overview",
+    "Instance tabs": "Instance tabs",
+    "Screenshots": "Screenshots",
+    "Logs": "Logs",
+    "Folder": "Folder",
+    "Status": "Status",
+    "Memory": "Memory",
+    "Loader": "Loader",
+    "No recorded playtime": "No recorded playtime",
+    "played": "played",
+    "Play": "Play",
+    "Running": "Running",
+    "Kill": "Kill",
+    "Minecraft stopped": "Minecraft stopped",
+    "was stopped": "was stopped",
+    "Stop failed": "Stop failed",
+    "Installed": "Installed",
+    "Repair": "Repair",
+    "Export": "Export",
+    "Minecraft log": "Minecraft log",
+    "Indexing files": "Indexing files",
+    "Preview unavailable": "Preview unavailable",
+    "Newest first": "Newest first",
+    "Oldest first": "Oldest first",
+    "Browse content": "Browse content",
+    "Browse CurseForge": "Browse CurseForge",
+    "No mods found": "No mods found",
+    "No resource packs found": "No resource packs found",
+    "No shaders found": "No shaders found",
+    "No worlds found": "No worlds found",
+    "No screenshots found": "No screenshots found",
+    "Install compatible content from Discover or place files in the instance folder.": "Install compatible content from Discover or place files in the instance folder.",
+    "Find in log": "Find in log",
+    "Clear view": "Clear view",
+    "Log folder": "Log folder",
+    "Bottom": "Bottom",
+    "Top": "Top",
+    "Left": "Left",
+    "Right": "Right",
+    "Instance panel position": "Instance panel position",
+    "Choose where the selected instance panel appears in the library.": "Choose where the selected instance panel appears in the library.",
+    "Instance tabs position": "Instance tabs position",
+    "Choose where the Overview, Mods, and other instance tabs are shown.": "Choose where the Overview, Mods, and other instance tabs are shown.",
+    "Instance layout": "Instance layout",
+    "Tabs position": "Tabs position",
+    "Navigation position": "Navigation position",
+    "Choose where the main launcher navigation is docked.": "Choose where the main launcher navigation is docked.",
+    "Settings navigation position": "Settings navigation position",
+    "Choose where settings sections are shown.": "Choose where settings sections are shown.",
+    "Loading console": "Loading console",
+    "Follow": "Follow",
+    "Wrap": "Wrap",
+    "Delete instance": "Delete instance",
+    "Game directory": "Game directory",
+    "Health and portability": "Health and portability",
+    "Attention": "Attention",
+    "Install or repair this instance before launching.": "Install or repair this instance before launching.",
+    "Instance not found": "Instance not found",
+    "Back to Library": "Back to Library",
+    "Mods across your library": "Mods across your library",
+    "Installed-mod indexing stays scoped to each instance, while this page surfaces updates and compatibility across all of them.": "Installed-mod indexing stays scoped to each instance, while this page surfaces updates and compatibility across all of them.",
+    "Browse compatible mods": "Browse compatible mods",
+    "Settings": "Settings",
+    "Item could not be revealed": "Item could not be revealed",
+    "Folder could not be opened": "Folder could not be opened",
+    "Screenshot could not be opened": "Screenshot could not be opened",
+    "Log folder could not be opened": "Log folder could not be opened",
+    "Instance": "Instance",
+    "to": "to",
+    "Verified metadata and game files are installed.": "Verified metadata and game files are installed.",
+    "Name and artwork": "Name and artwork",
+    "Renaming also gives the instance folder the same readable name.": "Renaming also gives the instance folder the same readable name.",
+    "Instance icon": "Instance icon",
+    "Choose a pixel icon and two custom colors.": "Choose a pixel icon and two custom colors.",
+    "Save changes": "Save changes",
+    "Runtime and memory": "Runtime and memory",
+    "Memory is stored on this instance and is used the next time Minecraft starts.": "Memory is stored on this instance and is used the next time Minecraft starts.",
+    "Minimum memory (MB)": "Minimum memory (MB)",
+    "Maximum memory (MB)": "Maximum memory (MB)",
+    "Remove this version and its local files immediately. This does not create a backup.": "Remove this version and its local files immediately. This does not create a backup.",
+    "Permanent deletion": "Permanent deletion",
+    "Worlds, mods, resource packs, shaders, screenshots, settings, and logs will be removed.": "Worlds, mods, resource packs, shaders, screenshots, settings, and logs will be removed.",
+    "Minecraft output will appear here when the game starts.": "Minecraft output will appear here when the game starts.",
+    "The stable internal instance ID remains unchanged if you rename it later.": "The stable internal instance ID remains unchanged if you rename it later.",
+    "Choose a Minecraft release": "Choose a Minecraft release",
+    "Release metadata comes directly from Mojang's official manifest.": "Release metadata comes directly from Mojang's official manifest.",
+    "Not used by Bedrock": "Not used by Bedrock",
+    "Include snapshots": "Include snapshots",
+    "Search versions": "Search versions",
+    "Try again": "Try again",
+    "Only compatibility verified for Minecraft": "Only compatibility verified for Minecraft",
+    "Adapter pending": "Adapter pending",
+    "Loading compatible versions": "Loading compatible versions",
+    "SLH validates the runtime again before every launch.": "SLH validates the runtime again before every launch.",
+    "Detect the best compatible installed Java": "Detect the best compatible installed Java",
+    "Use Java": "Use Java",
+    "from": "from",
+    "Use an explicit java.exe path for this instance": "Use an explicit java.exe path for this instance",
+    "Keep enough RAM available for Windows and other applications.": "Keep enough RAM available for Windows and other applications.",
+    "Creation begins only after every local value passes backend validation.": "Creation begins only after every local value passes backend validation.",
+    "Name": "Name",
+    "512 MB min ·": "512 MB min ·",
+    "Back": "Back",
+    "Continue with Offline account": "Continue with Offline account",
+    "Add Microsoft account": "Add Microsoft account",
+    "Skip for now": "Skip for now",
+    "Microsoft client ID is not configured": "Microsoft client ID is not configured",
+    "Add an Offline account": "Add an Offline account",
+    "Ely.by username or email": "Ely.by username or email",
+    "Used only for this request and never written to disk.": "Used only for this request and never written to disk.",
+    "No telemetry, no ads, no cloud account requirement.": "No telemetry, no ads, no cloud account requirement.",
+    "Welcome to Smile LauncHer": "Welcome to Smile LauncHer",
+    "Minecraft, on your terms.": "Minecraft, on your terms.",
+    "Build isolated Minecraft instances and keep every launcher-owned file in one place.": "Build isolated Minecraft instances and keep every launcher-owned file in one place.",
+    "Offline identities cannot join normal online-mode servers.": "Offline identities cannot join normal online-mode servers.",
+    "Servers": "Servers",
+    "Edit each instance's real `servers.dat`. Writes are NBT-safe, blocked while the game runs, and backed up before replacement.": "Edit each instance's real `servers.dat`. Writes are NBT-safe, blocked while the game runs, and backed up before replacement.",
+    "No instances yet": "No instances yet",
+    "Create or import an instance before managing its multiplayer server list.": "Create or import an instance before managing its multiplayer server list.",
+    "Saved servers": "Saved servers",
+    "Reading NBT…": "Reading NBT…",
+    "entries": "entries",
+    "This instance has no saved servers.": "This instance has no saved servers.",
+    "Add server": "Add server",
+    "Saved only to the selected instance": "Saved only to the selected instance",
+    "Address": "Address",
+    "Community server": "Community server",
+    "Cross-instance copying remains off until you explicitly create a Servers mapping in Settings → Sync.": "Cross-instance copying remains off until you explicitly create a Servers mapping in Settings → Sync.",
+    "Original Minecraft output, safely redacted by SLH.": "Original Minecraft output, safely redacted by SLH.",
+    "Follow:": "Follow:",
+    "on": "on",
+    "off": "off",
+    "Wrap:": "Wrap:",
+    "Copy": "Copy",
+    "shown": "shown",
+    "No sync mappings. Create one above to start sharing files.": "No sync mappings. Create one above to start sharing files.",
+    "Open shared folder": "Open shared folder",
+    "Shared library": "Shared library",
+    "All current and future instances": "All current and future instances",
+    "Enable automatic sync": "Enable automatic sync",
+    "Update now": "Update now",
+    "Font size": "Font size",
+    "Size of console text in pixels.": "Size of console text in pixels.",
+    "Telemetry": "Telemetry",
+    "Always off": "Always off",
+    "Crash reporting": "Crash reporting",
+    "Local only": "Local only",
+    "Healthy": "Healthy",
+    "Preparing settings": "Preparing settings",
+    "World synchronization is off": "World synchronization is off",
+    "World overwrites require explicit acknowledgement, a backup, and a check that Minecraft is not running.": "World overwrites require explicit acknowledgement, a backup, and a check that Minecraft is not running.",
+    "Allow world mappings": "Allow world mappings",
+    "Still requires confirmation for every newly created mapping.": "Still requires confirmation for every newly created mapping.",
+    "options, servers, resourcepacks, screenshots, mod-configs, and worlds": "options, servers, resourcepacks, screenshots, mod-configs, and worlds",
+    "CONTENT": "CONTENT",
+    "INITIAL SOURCE": "INITIAL SOURCE",
+    "DESTINATION INSTANCES": "DESTINATION INSTANCES",
+    "Options": "Options",
+    "Initial source": "Initial source",
+    "Recommended": "Recommended",
+    "After setup, SLH applies the shared copy when an instance is created or imported, before launch, and after Minecraft exits. Manual update remains optional.": "After setup, SLH applies the shared copy when an instance is created or imported, before launch, and after Minecraft exits. Manual update remains optional.",
+    "Automatic for all current and future instances": "Automatic for all current and future instances",
+    "selected instances": "selected instances",
+    "Source for": "Source for",
+    "Remove": "Remove",
+    "Show notifications": "Show notifications",
+    "Disabling this hides all toast messages. Activity progress remains available in the bottom bar.": "Disabling this hides all toast messages. Activity progress remains available in the bottom bar.",
+    "Maximum visible": "Maximum visible",
+    "Older messages close automatically when this limit is reached.": "Older messages close automatically when this limit is reached.",
+    "Display time": "Display time",
+    "How long each message remains visible.": "How long each message remains visible.",
+    "Information": "Information",
+    "Setup hints and non-critical status messages.": "Setup hints and non-critical status messages.",
+    "Success": "Success",
+    "Completed installs, repairs, imports, and saves.": "Completed installs, repairs, imports, and saves.",
+    "Errors": "Errors",
+    "Failures that may require your attention.": "Failures that may require your attention.",
+    "Concurrent downloads": "Concurrent downloads",
+    "Applied to library and asset batches.": "Applied to library and asset batches.",
+    "Retry count": "Retry count",
+    "Transient failures use exponential backoff.": "Transient failures use exponential backoff.",
+    "Personal CurseForge API key (optional)": "Personal CurseForge API key (optional)",
+    "No personal key configured. CurseForge requests use the SLH relay.": "No personal key configured. CurseForge requests use the SLH relay.",
+    "Checking local configuration": "Checking local configuration",
+    "SLH relay": "SLH relay",
+    "Direct API": "Direct API",
+    "Paste approved key locally": "Paste approved key locally",
+    "Verify and save": "Verify and save",
+    "Checking": "Checking",
+    "The value never enters SQLite, logs, exports, or UI state after saving. Windows DPAPI ties it to your current Windows profile.": "The value never enters SQLite, logs, exports, or UI state after saving. Windows DPAPI ties it to your current Windows profile.",
+    "Public API available; compatible installs use verified hashes.": "Public API available; compatible installs use verified hashes.",
+    "SLH relay configured; no personal API key is required. The first request verifies relay availability.": "SLH relay configured; no personal API key is required. The first request verifies relay availability.",
+    "Content provider is configured.": "Content provider is configured.",
+    "API key required": "API key required",
+    "Recent verified transfers": "Recent verified transfers",
+    "records": "records",
+    "No queued or completed content downloads.": "No queued or completed content downloads.",
+    "Loading download history…": "Loading download history…",
+    "complete": "complete",
+    "Instances": "Instances",
+    "Runtime cache": "Runtime cache",
+    "Managed Java": "Managed Java",
+    "Shared": "Shared",
+    "Backups": "Backups",
+    "Database": "Database",
+    "Storage summary is unavailable.": "Storage summary is unavailable.",
+    "Calculating storage…": "Calculating storage…",
+    "MB": "MB",
+    "ms": "ms",
+    "px": "px",
+    "Theme mode remains dark. Background images and animated wallpaper are intentionally unsupported.": "Theme mode remains dark. Background images and animated wallpaper are intentionally unsupported.",
+    "Custom preset": "Custom preset",
+    "Built-in preset": "Built-in preset",
+    "Pixeloid Sans (default)": "Pixeloid Sans (default)",
+    "System UI": "System UI",
+    "Cascadia Mono": "Cascadia Mono",
+    "Local font": "Local font",
+    "Surface": "Surface",
+    "Raised surface": "Raised surface",
+    "Border": "Border",
+    "Text": "Text",
+    "Muted text": "Muted text",
+    "Accent": "Accent",
+    "Accent hover": "Accent hover",
+    "Managed Temurin": "Managed Temurin",
+    "Verified Windows x64 JREs from Adoptium": "Verified Windows x64 JREs from Adoptium",
+    "Ready to add from the account switcher.": "Ready to add from the account switcher.",
+    "Database reset, forced metadata refresh, and instance repair are withheld until each action has preview and confirmation.": "Database reset, forced metadata refresh, and instance repair are withheld until each action has preview and confirmation.",
+    "Services contacted only when needed": "Services contacted only when needed",
+    "Mojang metadata and assets, Microsoft authentication when configured, Modrinth, CurseForge when configured, Ely.by when used, and the chosen managed Java source.": "Mojang metadata and assets, Microsoft authentication when configured, Modrinth, CurseForge when configured, Ely.by when used, and the chosen managed Java source.",
+    "Launcher version": "Launcher version",
+    "Development schema version 1.": "Development schema version 1.",
+    "Logging": "Logging",
+    "Daily log files with secret redaction boundaries.": "Daily log files with secret redaction boundaries.",
+    "Open on launch": "Open on launch",
+    "Switch to the instance console as soon as Minecraft starts.": "Switch to the instance console as soon as Minecraft starts.",
+    "Show timestamps": "Show timestamps",
+    "Display the recorded time before each console line.": "Display the recorded time before each console line.",
+    "Wrap long lines": "Wrap long lines",
+    "Keep long log lines inside the console width.": "Keep long log lines inside the console width.",
+    "Follow output": "Follow output",
+    "Scroll to new lines while the console is open.": "Scroll to new lines while the console is open.",
+    "Line history": "Line history",
+    "Maximum number of recent lines kept in the interface.": "Maximum number of recent lines kept in the interface.",
+    "Warnings": "Warnings",
+    "Debug": "Debug",
+    "Timestamps": "Timestamps",
+    "Console settings saved": "Console settings saved",
+    "Show or hide sidebar pages": "Show or hide sidebar pages",
+    "Navigation visibility": "Navigation visibility",
+    "Main navigation": "Main navigation",
+    "Account switcher": "Account switcher",
+    "Choose an identity": "Choose an identity",
+    "No account": "No account",
+    "No account selected": "No account selected",
+    "Account could not be added": "Account could not be added",
+    "Account was not selected": "Account was not selected",
+    "Account removed": "Account removed",
+    "The account was removed from this launcher.": "The account was removed from this launcher.",
+    "was removed from this launcher.": "was removed from this launcher.",
+    "Account was not removed": "Account was not removed",
+    "Account order was not saved": "Account order was not saved",
+    "Move account up": "Move account up",
+    "Move account down": "Move account down",
+    "Remove account": "Remove account",
+    "Offline account added": "Offline account added",
+    "Microsoft account added": "Microsoft account added",
+    "Ely.by account added": "Ely.by account added",
+    "Microsoft sign-in failed": "Microsoft sign-in failed",
+    "Ely.by sign-in failed": "Ely.by sign-in failed",
+    "Ely.by sign-in is not active in this build.": "Ely.by sign-in is not active in this build.",
+    "Two-factor code required": "Two-factor code required",
+    "Enter the current Ely.by TOTP code and submit again.": "Enter the current Ely.by TOTP code and submit again.",
+    "Sign in with the system browser": "Sign in with the system browser",
+    "Continue in your browser": "Continue in your browser",
+    "Microsoft authentication is not configured for this build.": "Microsoft authentication is not configured for this build.",
+    "Minecraft profile verified. Refresh tokens are protected with Windows DPAPI.": "Minecraft profile verified. Refresh tokens are protected with Windows DPAPI.",
+    "Open folder": "Open folder",
+    "Folder imported": "Folder imported",
+    "Folder could not be imported": "Folder could not be imported",
+    "Folder selection is available in the desktop application.": "Folder selection is available in the desktop application.",
+    "Archive could not be imported": "Archive could not be imported",
+    "Archive selection is available in the desktop application.": "Archive selection is available in the desktop application.",
+    "Files could not be indexed": "Files could not be indexed",
+    "Mod indexing is not active yet": "Mod indexing is not active yet",
+    "No matching instances": "No matching instances",
+    "No modded instances": "No modded instances",
+    "Change the search text to see the rest of your library.": "Change the search text to see the rest of your library.",
+    "Create your first Minecraft instance or import an existing one.": "Create your first Minecraft instance or import an existing one.",
+    "Drop or create an instance in this group.": "Drop or create an instance in this group.",
+    "Group created": "Group created",
+    "Group was not created": "Group was not created",
+    "Group view was not saved": "Group view was not saved",
+    "Create group": "Create group",
+    "Instance created": "Instance created",
+    "Instance was not created": "Instance was not created",
+    "Instance imported": "Instance imported",
+    "Instance deleted": "Instance deleted",
+    "Instance was not deleted": "Instance was not deleted",
+    "Instance created, but installation failed": "Instance created, but installation failed",
+    "Installation complete": "Installation complete",
+    "Installation failed": "Installation failed",
+    "Install required": "Install required",
+    "Metadata, checksums, libraries, assets, natives, and loader files were revalidated.": "Metadata, checksums, libraries, assets, natives, and loader files were revalidated.",
+    "The initial source was copied and a hash snapshot was recorded.": "The initial source was copied and a hash snapshot was recorded.",
+    "Sync complete": "Sync complete",
+    "Sync failed": "Sync failed",
+    "Operation failed": "Operation failed",
+    "Bedrock is available only on Windows": "Bedrock is available only on Windows",
+    "Sync mapping created": "Sync mapping created",
+    "Sync mapping was not created": "Sync mapping was not created",
+    "Sync mapping was not removed": "Sync mapping was not removed",
+    "Sync mapping was not updated": "Sync mapping was not updated",
+    "Sync mappings could not be loaded": "Sync mappings could not be loaded",
+    "Enable the world-sync safety switch before creating this mapping.": "Enable the world-sync safety switch before creating this mapping.",
+    "World sync is locked": "World sync is locked",
+    "World mapping gate enabled": "World mapping gate enabled",
+    "World mapping gate disabled": "World mapping gate disabled",
+    "World synchronization can overwrite saves. SLH will back up every replaced file. Continue?": "World synchronization can overwrite saves. SLH will back up every replaced file. Continue?",
+    "Create a Fabric, Forge, NeoForge, or Quilt instance after its loader adapter becomes available.": "Create a Fabric, Forge, NeoForge, or Quilt instance after its loader adapter becomes available.",
+    "Latest release": "Latest release",
+    "Compatible release": "Compatible release",
+    "Unmodified Minecraft from official metadata": "Unmodified Minecraft from official metadata",
+    "Established loader with a broad mod catalog": "Established loader with a broad mod catalog",
+    "Modern continuation for Forge-style modding": "Modern continuation for Forge-style modding",
+    "Lightweight loader for modern modding": "Lightweight loader for modern modding",
+    "Community-driven Fabric-compatible loader": "Community-driven Fabric-compatible loader",
+    "Essential hooks and interoperability utilities for mods using Fabric.": "Essential hooks and interoperability utilities for mods using Fabric.",
+    "A modern rendering engine for Minecraft that improves frame rates and reduces micro-stutter.": "A modern rendering engine for Minecraft that improves frame rates and reduces micro-stutter.",
+    "A performance-focused modpack with familiar quality-of-life features and broad compatibility.": "A performance-focused modpack with familiar quality-of-life features and broad compatibility.",
+    "A refined resource pack that keeps the familiar Minecraft art direction.": "A refined resource pack that keeps the familiar Minecraft art direction.",
+    "A downloadable Minecraft world distributed as a verified CurseForge archive.": "A downloadable Minecraft world distributed as a verified CurseForge archive.",
+    "A configurable shader pack focused on quality, performance, and broad hardware support.": "A configurable shader pack focused on quality, performance, and broad hardware support.",
+    "Dark launcher palettes with reusable built-in and custom presets.": "Dark launcher palettes with reusable built-in and custom presets.",
+    "Applying a preset saves it immediately.": "Applying a preset saves it immediately.",
+    "Remove a custom preset before saving another one.": "Remove a custom preset before saving another one.",
+    "Appearance preset saved": "Appearance preset saved",
+    "Appearance preset removed": "Appearance preset removed",
+    "Preset limit reached": "Preset limit reached",
+    "Interface font": "Interface font",
+    "Interface font saved": "Interface font saved",
+    "Local interface font imported": "Local interface font imported",
+    "Font was not imported": "Font was not imported",
+    "Font files": "Font files",
+    "Delete and keep backup": "Delete and keep backup",
+    "Delete permanently": "Delete permanently",
+    "Keep a recoverable backup": "Keep a recoverable backup",
+    "Recommended. The full instance is moved into launcher backups.": "Recommended. The full instance is moved into launcher backups.",
+    "This removes the instance immediately and cannot be undone.": "This removes the instance immediately and cannot be undone.",
+    "A recoverable backup was kept under data/backups/deleted-instances.": "A recoverable backup was kept under data/backups/deleted-instances.",
+    "The instance and its game files were permanently removed.": "The instance and its game files were permanently removed.",
+    "Repair complete": "Repair complete",
+    "Repair failed": "Repair failed",
+    "Minecraft could not start": "Minecraft could not start",
+    "Minecraft started": "Minecraft started",
+    "Minecraft exited unexpectedly": "Minecraft exited unexpectedly",
+    "Launch failed": "Launch failed",
+    "Java detection failed": "Java detection failed",
+    "Console could not be loaded": "Console could not be loaded",
+    "Diagnostics could not be loaded": "Diagnostics could not be loaded",
+    "Server list could not be read": "Server list could not be read",
+    "Server added": "Server added",
+    "Server was not added": "Server was not added",
+    "Server was not removed": "Server was not removed",
+    "Add to servers.dat": "Add to servers.dat",
+    "Textures": "Textures",
+    "Modified time unavailable": "Modified time unavailable",
+    "Instance indexing is not active yet": "Instance indexing is not active yet",
+    "SLH leaves existing files untouched until this view has a safe reader, preview, and confirmed write path.": "SLH leaves existing files untouched until this view has a safe reader, preview, and confirmed write path.",
+    "Dismiss notification": "Dismiss notification",
+    "Close dialog": "Close dialog",
+    "Desktop action": "Desktop action",
+    "The safe default keeps a recoverable copy.": "The safe default keeps a recoverable copy.",
+    "This action requires the SLH desktop backend. Browser mode is a visual preview only.": "This action requires the SLH desktop backend. Browser mode is a visual preview only.",
+    "Browser preview": "Browser preview",
+    "Action failed": "Action failed",
+    "Add and continue": "Add and continue",
+    "Appearance": "Appearance",
+    "Content": "Content",
+    "Content installation failed": "Content installation failed",
+    "Content provider": "Content provider",
+    "Console copied": "Console copied",
+    "Console could not be copied": "Console could not be copied",
+    "Console setting was not saved": "Console setting was not saved",
+    "CurseForge connected": "CurseForge connected",
+    "CurseForge disconnected": "CurseForge disconnected",
+    "CurseForge key was not removed": "CurseForge key was not removed",
+    "CurseForge key was not saved": "CurseForge key was not saved",
+    "Delete": "Delete",
+    "Destination instances": "Destination instances",
+    "Diagnostic output": "Diagnostic output",
+    "Discover": "Discover",
+    "Example error message": "Example error message",
+    "Example warning message": "Example warning message",
+    "Export failed": "Export failed",
+    "Fetching version manifest": "Fetching version manifest",
+    "Filters": "Filters",
+    "Folder:": "Folder:",
+    "Game": "Game",
+    "General": "General",
+    "Home": "Home",
+    "Info": "Info",
+    "Installation in progress": "Installation in progress",
+    "Instance exported": "Instance exported",
+    "Instance updated": "Instance updated",
+    "Instance was not updated": "Instance was not updated",
+    "It is now available in the instance wizard.": "It is now available in the instance wizard.",
+    "Library": "Library",
+    "Local files from this instance. Symlinks are ignored.": "Local files from this instance. Symlinks are ignored.",
+    "Maximize": "Maximize",
+    "Memory saved": "Memory saved",
+    "Memory values are invalid": "Memory values are invalid",
+    "Memory was not saved": "Memory was not saved",
+    "Minecraft client is starting": "Minecraft client is starting",
+    "Minecraft instance": "Minecraft instance",
+    "Minimize": "Minimize",
+    "Minimum memory must be at least 256 MB and cannot exceed maximum memory.": "Minimum memory must be at least 256 MB and cannot exceed maximum memory.",
+    "Mod configs": "Mod configs",
+    "modpack": "modpack",
+    "mod": "mod",
+    "resourcepack": "resource pack",
+    "shader": "shader",
+    "world": "world",
+    "Allow invalid usernames": "Allow invalid usernames",
+    "Any nickname is accepted locally. Online-mode servers may reject this identity.": "Any nickname is accepted locally. Online-mode servers may reject this identity.",
+    "3 to 16 letters, numbers, or underscores. Online-mode servers will reject this identity.": "3 to 16 letters, numbers, or underscores. Online-mode servers will reject this identity.",
+    "Navigation was not saved": "Navigation was not saved",
+    "New group name": "New group name",
+    "No instances exist yet. Use the recommended all-instances scope to prepare shared content now.": "No instances exist yet. Use the recommended all-instances scope to prepare shared content now.",
+    "Only a DPAPI-encrypted access token was saved; the password was discarded.": "Only a DPAPI-encrypted access token was saved; the password was discarded.",
+    "Pack": "Pack",
+    "SLH is downloading verified Minecraft files.": "SLH is downloading verified Minecraft files.",
+    "SLH is waiting for the Microsoft redirect on a temporary localhost port.": "SLH is waiting for the Microsoft redirect on a temporary localhost port.",
+    "SLH relay configured; the first request verifies availability.": "SLH relay configured; the first request verifies availability.",
+    "Search Minecraft versions": "Search Minecraft versions",
+    "Search already matches names, versions, and loaders. Advanced filters are being added.": "Search already matches names, versions, and loaders. Advanced filters are being added.",
+    "Server": "Server",
+    "Settings were not saved": "Settings were not saved",
+    "Shared folder could not be opened": "Shared folder could not be opened",
+    "Smile LauncHer": "Smile LauncHer",
+    "The approved key was verified and encrypted for this Windows profile.": "The approved key was verified and encrypted for this Windows profile.",
+    "The local encrypted key file was removed.": "The local encrypted key file was removed.",
+    "The new identity is now active.": "The new identity is now active.",
+    "Tools": "Tools",
+    "Wait for the current content installation to finish before starting another one.": "Wait for the current content installation to finish before starting another one.",
+    "Windows did not grant clipboard access.": "Windows did not grant clipboard access.",
+    "World": "World",
+    "Never played": "Never played",
+    "Played": "Played",
+    "Played recently": "Played recently",
+    "Importing": "Importing",
+    "created": "created",
+    "installing": "installing",
+    "installed": "installed",
+    "running": "running",
+    "ready": "ready",
+    "error": "error",
+    "Art": "Art",
+    "Block": "Block",
+    "Star": "Star",
+    "Sword": "Sword",
+    "Tree": "Tree",
+    "Version": "Version",
+    "maximum": "maximum",
+    "Keyboard interface scaling": "Keyboard interface scaling",
+    "Use Ctrl + and Ctrl - to change the interface scale by 5%.": "Use Ctrl + and Ctrl - to change the interface scale by 5%.",
+    "No telemetry client exists in SLH.": "No telemetry client exists in SLH.",
+    "Crash data remains in local logs unless you copy it yourself.": "Crash data remains in local logs unless you copy it yourself.",
+    "Ely.by sign-in may request 2FA. The verified authentication agent is downloaded automatically on first launch.": "Ely.by sign-in may request 2FA. The verified authentication agent is downloaded automatically on first launch.",
+    "servers.dat was updated atomically. Existing data was backed up.": "servers.dat was updated atomically. Existing data was backed up.",
+    "Content for": "Content for", "Only content compatible with": "Only content compatible with", "is shown.": "is shown.",
+    "Content provider": "Content provider", "Back to files": "Back to files", "Filters": "Filters",
+    "Minecraft version": "Minecraft version", "All versions": "All versions", "All loaders": "All loaders", "Sort by": "Sort by",
+    "Relevance": "Relevance", "Most downloaded": "Most downloaded", "Most followed": "Most followed", "Recently updated": "Recently updated", "Newest": "Newest",
+    "Mods require Fabric, Forge, NeoForge, or Quilt. Change this instance loader in Settings first.": "Mods require Fabric, Forge, NeoForge, or Quilt. Change this instance loader in Settings first.",
+    "Find compatible content": "Find compatible content", "Local files from this instance. Symlinks are ignored.": "Local files from this instance. Symlinks are ignored.",
+    "item": "item", "items": "items", "Indexing files": "Indexing files", "No compatible content found": "No compatible content found",
+    "Install content matched to this instance or place files in its folder.": "Install content matched to this instance or place files in its folder.",
+    "Snapshots": "Snapshots",
+    "Already installed in this instance": "Already installed in this instance",
+    "Download mods": "Download mods",
+    "Download resource packs": "Download resource packs",
+    "Download shaders": "Download shaders",
+    "Download worlds": "Download worlds",
+    "Update": "Update",
+    "Update installed content": "Update installed content",
+    "Choose the provider used to check tracked content for compatible updates.": "Choose the provider used to check tracked content for compatible updates.",
+    "tracked item": "tracked item",
+    "tracked items": "tracked items",
+    "Only content installed through SLH or recorded by an imported manifest is updated. Manually added files remain untouched.": "Only content installed through SLH or recorded by an imported manifest is updated. Manually added files remain untouched.",
+    "Indexing installed content": "Indexing installed content",
+    "Updating": "Updating",
+    "Update all": "Update all",
+    "Some updates failed": "Some updates failed",
+    "Content update complete": "Content update complete",
+    "files updated": "files updated",
+    "failed": "failed",
+    "already current": "already current",
+    "Unchanged": "Unchanged",
+    "Select": "Select",
+    "Select for batch installation": "Select for batch installation",
+    "Clear selection": "Clear selection",
+    "Install selected": "Install selected",
+    "Installing selected content": "Installing selected content",
+    "content items selected": "content items selected",
+    "Some installs failed": "Some installs failed",
+    "projects could not be installed": "projects could not be installed",
+    "Content installed": "Content installed",
+    "files installed": "files installed",
+    "Update this content": "Update this content",
+    "Update every compatible file with a known source in this folder.": "Update every compatible file with a known source in this folder.",
+    "files without a known source": "files without a known source",
+    "files in this folder": "files in this folder",
+    "All tracked content is updated in one run. Files without a known source are left intact so SLH never replaces a manually added mod with the wrong project.": "All tracked content is updated in one run. Files without a known source are left intact so SLH never replaces a manually added mod with the wrong project."
+    ,"Checking": "Checking"
+    ,"Installed": "Installed"
+    ,"Could not check": "Could not check"
+    ,"Minecraft version and loader": "Minecraft version and loader"
+    ,"Change the Minecraft version or loader used by this instance. A change requires reinstallation.": "Change the Minecraft version or loader used by this instance. A change requires reinstallation."
+    ,"Save version and loader": "Save version and loader"
+    ,"Version and loader saved": "Version and loader saved"
+    ,"Install the instance again to apply the new Minecraft version and loader.": "Install the instance again to apply the new Minecraft version and loader."
+    ,"The version and loader were updated.": "The version and loader were updated."
+    ,"Review compatible updates before changing files in this instance.": "Review compatible updates before changing files in this instance."
+    ,"Verified content updates": "Verified content updates"
+    ,"Only files matched to their exact project are replaced. Unknown files remain untouched.": "Only files matched to their exact project are replaced. Unknown files remain untouched."
+    ,"updates available": "updates available"
+    ,"already up to date": "already up to date"
+    ,"Everything is up to date": "Everything is up to date"
+    ,"Some files could not be checked.": "Some files could not be checked."
+    ,"No compatible updates were found.": "No compatible updates were found."
+    ,"Export instance": "Export instance"
+    ,"Choose an archive format and the files to include.": "Choose an archive format and the files to include."
+    ,"Export format": "Export format"
+    ,"ZIP archive": "ZIP archive"
+    ,"CurseForge ZIP": "CurseForge ZIP"
+    ,"Modrinth mrpack": "Modrinth mrpack"
+    ,"A regular archive with the selected game files.": "A regular archive with the selected game files."
+    ,"A CurseForge manifest with selected files in overrides.": "A CurseForge manifest with selected files in overrides."
+    ,"A Modrinth index with selected files in overrides.": "A Modrinth index with selected files in overrides."
+    ,"Files and folders": "Files and folders"
+    ,"Logs, crash reports, and account data are always excluded.": "Logs, crash reports, and account data are always excluded."
+    ,"Clear selection": "Clear selection"
+    ,"Select all": "Select all"
+    ,"file": "file"
+    ,"files": "files"
+    ,"selected": "selected"
+    ,"Instance exported": "Instance exported"
+    ,"Export failed": "Export failed"
+    ,"Choose a Minecraft version": "Choose a Minecraft version"
+    ,"Choose a modpack version": "Choose a modpack version"
+    ,"New version": "New version"
+    ,"Compatible update available": "Compatible update available"
+    ,"Account appearance": "Account appearance"
+    ,"Manage skin and cape": "Manage skin and cape"
+    ,"Manage the skin and cape used by this account.": "Manage the skin and cape used by this account."
+    ,"Loading appearance": "Loading appearance"
+    ,"Appearance could not be loaded": "Appearance could not be loaded"
+    ,"Try again": "Try again"
+    ,"Current account appearance": "Current account appearance"
+    ,"Manage on Ely.by": "Manage on Ely.by"
+    ,"Change cape": "Change cape"
+    ,"Saved skins": "Saved skins"
+    ,"Saved skin": "Saved skin"
+    ,"Choose an existing skin or add a PNG file.": "Choose an existing skin or add a PNG file."
+    ,"Add a skin": "Add a skin"
+    ,"Skin model": "Skin model"
+    ,"Classic": "Classic"
+    ,"Slim": "Slim"
+    ,"Skin and cape controls are unavailable for offline accounts.": "Skin and cape controls are unavailable for offline accounts."
+    ,"This provider is read-only in third-party launchers.": "This provider is read-only in third-party launchers."
+    ,"Capes": "Capes"
+    ,"Select a cape already owned by this account.": "Select a cape already owned by this account."
+    ,"No cape": "No cape"
+    ,"Skin settings": "Skin settings"
+    ,"Skin selection": "Skin selection"
+    ,"Change texture, arm type, and cape.": "Change texture, arm type, and cape."
+    ,"Choose a saved or default Minecraft skin.": "Choose a saved or default Minecraft skin."
+    ,"Skin could not be downloaded": "Skin could not be downloaded"
+    ,"Drag to rotate": "Drag to rotate"
+    ,"Edit": "Edit"
+    ,"Drop or choose a PNG file": "Drop or choose a PNG file"
+    ,"Default skins": "Default skins"
+    ,"Official classic Minecraft characters.": "Official classic Minecraft characters."
+    ,"Texture": "Texture"
+    ,"Replace texture": "Replace texture"
+    ,"Arms": "Arms"
+    ,"Wide": "Wide"
+    ,"Cape": "Cape"
+    ,"None": "None"
+    ,"Save skin": "Save skin"
+    ,"Current skin": "Current skin"
+    ,"Current cape": "Current cape"
+    ,"Ely.by does not document a third-party API for changing skins or capes. Manage appearance on the Ely.by website.": "Ely.by does not document a third-party API for changing skins or capes. Manage appearance on the Ely.by website."
+    ,"Offline accounts do not have a remote skin profile.": "Offline accounts do not have a remote skin profile."
+    ,"Minecraft, on your terms.": "Minecraft, on your terms."
+    ,"No telemetry, no ads, no cloud account requirement.": "No telemetry, no ads, no cloud account requirement."
+    ,"Build isolated Minecraft instances and keep every launcher-owned file in one place.": "Build isolated Minecraft instances and keep every launcher-owned file in one place."
+    ,"Continue with Microsoft": "Continue with Microsoft"
+    ,"Recommended for Minecraft: Java Edition": "Recommended for Minecraft: Java Edition"
+    ,"Add Ely.by account": "Add Ely.by account"
+    ,"Create Offline account": "Create Offline account"
+    ,"Microsoft account recommended": "Microsoft account recommended"
+    ,"Please sign in to Microsoft before adding an Offline or Ely.by account.": "Please sign in to Microsoft before adding an Offline or Ely.by account."
+    ,"I commit to sign in to a Microsoft account later.": "I commit to sign in to a Microsoft account later."
+    ,"Continue": "Continue"
+    ,"Language could not be changed": "Language could not be changed"
+    ,"Offline fallback for online accounts": "Offline fallback for online accounts"
+    ,"When there is no internet connection, launch Microsoft or Ely.by with a temporary offline identity using the same nickname. Turn this off to choose a nickname for each offline launch.": "When there is no internet connection, launch Microsoft or Ely.by with a temporary offline identity using the same nickname. Turn this off to choose a nickname for each offline launch."
+    ,"Offline launch": "Offline launch"
+    ,"No internet connection is available. The selected online account will remain selected; this launch uses a temporary offline identity only.": "No internet connection is available. The selected online account will remain selected; this launch uses a temporary offline identity only."
+    ,"Minecraft nickname": "Minecraft nickname"
+    ,"Use 3–16 Latin letters, numbers, or underscores.": "Use 3–16 Latin letters, numbers, or underscores."
+    ,"Launch offline": "Launch offline"
+    ,"No internet connection": "No internet connection"
+    ,"Minecraft was launched with a temporary offline identity.": "Minecraft was launched with a temporary offline identity."
+    ,"is ready to play.": "is ready to play."
+    ,"is running.": "is running."
+    ,"Rename group": "Rename group"
+    ,"Delete group": "Delete group"
+    ,"Instance panel": "Instance panel"
+    ,"Apply to every instance": "Apply to every instance"
+    ,"Icon / artwork": "Icon / artwork"
+    ,"Instances stay in the same group.": "Instances stay in the same group."
+    ,"Desktop shortcut": "Desktop shortcut"
+    ,"Launching": "Launching"
+    ,"Disable": "Disable"
+    ,"Enable": "Enable"
+    ,"item selected": "item selected"
+    ,"items selected": "items selected"
+    ,"Content enabled": "Content enabled"
+    ,"Content disabled": "Content disabled"
+    ,"items updated": "items updated"
+    ,"items removed": "items removed"
+    ,"Some items could not be removed": "Some items could not be removed"
+    ,"Some items could not be updated": "Some items could not be updated"
+    ,"Content could not be updated": "Content could not be updated"
+    ,"Show ungrouped instances": "Show ungrouped instances"
+    ,"Keep the Ungrouped section visible in the library. You can also change this from its context menu.": "Keep the Ungrouped section visible in the library. You can also change this from its context menu."
+    ,"Check for launcher updates automatically": "Check for launcher updates automatically"
+    ,"Check GitHub for a newer SLH release once when the launcher starts.": "Check GitHub for a newer SLH release once when the launcher starts."
+    ,"Launcher updates": "Launcher updates"
+    ,"Check the official GitHub releases page for a newer launcher build.": "Check the official GitHub releases page for a newer launcher build."
+    ,"Check for updates": "Check for updates"
+    ,"Open release": "Open release"
+    ,"Launcher update available": "Launcher update available"
+    ,"New version available": "New version available"
+    ,"Open the release page to download it.": "Open the release page to download it."
+    ,"Launcher is up to date": "Launcher is up to date"
+    ,"Current version": "Current version"
+    ,"Update check failed": "Update check failed"
+    ,"Hide ungrouped": "Hide ungrouped"
+    ,"Instances without a group": "Instances without a group"
+    ,"Collapse group": "Collapse group"
+    ,"Expand group": "Expand group"
+    ,"Deselect": "Deselect"
+    ,"Assign group": "Assign group"
+    ,"Choose a Minecraft version to continue": "Choose a Minecraft version to continue"
+    ,"Choose a version": "Choose a version"
+    ,"Content removed": "Content removed"
+    ,"Content was not removed": "Content was not removed"
+    ,"Description": "Description"
+    ,"Gallery": "Gallery"
+    ,"Group was not updated": "Group was not updated"
+    ,"Image preview": "Image preview"
+    ,"Instance tabs position was not saved": "Instance tabs position was not saved"
+    ,"Instance tabs were not saved": "Instance tabs were not saved"
+    ,"Loading versions": "Loading versions"
+    ,"Modpack version": "Modpack version"
+    ,"Previous image": "Previous image"
+    ,"Save": "Save"
+    ,"Update failed": "Update failed"
+    ,"Username": "Username"
+    ,"Versions": "Versions"
+    ,"is ready on GitHub.": "is ready on GitHub."
+    ,"Apply": "Apply"
+    ,"sec.": "sec."
+    ,"deleted": "deleted"
+    ,"Choose where this instance appears in the library.": "Choose where this instance appears in the library."
+    ,"Navigation position was not saved": "Navigation position was not saved"
+    ,"Select a Minecraft and modpack version before downloading this modpack.": "Select a Minecraft and modpack version before downloading this modpack."
+    ,"downloads": "downloads"
+    ,"Build files": "Build files"
+    ,"Check files to copy. Expand folders to choose individual files. Updates are optional.": "Check files to copy. Expand folders to choose individual files. Updates are optional."
+    ,"root items selected": "root items selected"
+    ,"Collapse": "Collapse"
+    ,"Expand": "Expand"
+    ,"Copy": "Copy"
+    ,"Copy as-is": "Copy as-is"
+    ,"Update": "Update"
+    ,"Update compatible": "Update compatible"
+    ,"Reading files": "Reading files"
+    ,"Mod": "Mod"
+    ,"Resource pack": "Resource pack"
+    ,"Shader pack": "Shader pack"
+    ,"No version for selected Minecraft release": "No version for selected Minecraft release"
+    ,"Source unknown; compatibility not verified": "Source unknown; compatibility not verified"
+    ,"Compatibility check failed": "Compatibility check failed"
+    ,"No build files found": "No build files found"
+    ,"Copy as-is is the default. Choose Update only for compatible files. Unknown sources remain in the warning list.": "Copy as-is is the default. Choose Update only for compatible files. Unknown sources remain in the warning list."
+    ,"files need attention": "files need attention"
+    ,"These files will be copied as-is. Review compatibility before launching the new build.": "These files will be copied as-is. Review compatibility before launching the new build."
+    ,"Source lookup failed for some files": "Source lookup failed for some files"
+    ,"Selected files were copied": "Selected files were copied"
+    ,"followers": "followers"
+    ,"Open image": "Open image"
+    ,"Next image": "Next image"
+    ,"Open": "Open"
+    ,"Delete without confirmation": "Delete without confirmation"
+    ,"SLH will not claim installed content before every JAR is inspected.": "SLH will not claim installed content before every JAR is inspected."
+    ,"from this instance? The current servers.dat will be backed up.": "from this instance? The current servers.dat will be backed up."
+    ,"Edit each instance&apos;s real `servers.dat`. Writes are NBT-safe, blocked while the game runs, and backed up before replacement.": "Edit each instance&apos;s real `servers.dat`. Writes are NBT-safe, blocked while the game runs, and backed up before replacement."
+    ,"Saving…": "Saving…"
+    ,"modded instance is ready for the filesystem indexer.": "modded instance is ready for the filesystem indexer."
+    ,"modded instances are ready for the filesystem indexer.": "modded instances are ready for the filesystem indexer."
+    ,"can now be launched.": "can now be launched."
+    ,"version": "version"
+    ,"recommended": "recommended"
+    ,"Adding": "Adding"
+    ,"Add group": "Add group"
+    ,"GB": "GB"
+    ,"Minimum": "Minimum"
+    ,"Creating": "Creating"
+    ,"Content could not be indexed": "Content could not be indexed"
+    ,"and its local files were removed.": "and its local files were removed."
+    ,"The library entry and folder now use": "The library entry and folder now use"
+    ,"will be used on the next launch.": "will be used on the next launch."
+    ,"Loader was not saved": "Loader was not saved"
+    ,"visible lines were copied.": "visible lines were copied."
+    ,"Loader type": "Loader type"
+    ,"Select a compatible version": "Select a compatible version"
+    ,"Save memory": "Save memory"
+    ,"indexing is not active yet": "indexing is not active yet"
+    ,"Settings navigation position was not saved": "Settings navigation position was not saved"
+    ,"is available in the managed Java directory.": "is available in the managed Java directory."
+    ,"installation failed": "installation failed"
+    ,"copied": "copied"
+    ,"archive inspected": "archive inspected"
+    ,"was imported. Run Install to verify and restore Minecraft runtime files.": "was imported. Run Install to verify and restore Minecraft runtime files."
+    ,"is ready for runtime installation and verification.": "is ready for runtime installation and verification."
+    ,"ready in a new instance.": "ready in a new instance."
+    ,"Minecraft pack": "Minecraft pack"
+    ,"Unknown": "Unknown"
+    ,"is ready for your instances.": "is ready for your instances."
+    ,"Group was not renamed": "Group was not renamed"
+    ,"Group deleted": "Group deleted"
+    ,"instances moved to Ungrouped.": "instances moved to Ungrouped."
+    ,"Group was not deleted": "Group was not deleted"
+    ,"Panel preferences were not saved": "Panel preferences were not saved"
+    ,"Library view was not saved": "Library view was not saved"
+    ,"Ungrouped view was not saved": "Ungrouped view was not saved"
+    ,"Library sections were not reordered": "Library sections were not reordered"
+    ,"Groups were not reordered": "Groups were not reordered"
+    ,"SLH relay configured; the first request verifies availability.": "SLH relay configured; the first request verifies availability."
+    ,"is unavailable": "is unavailable"
+    ,"Choose managed Java folder": "Choose managed Java folder"
+    ,"Managed Java download location": "Managed Java download location"
+    ,"Choose where SLH stores downloaded Temurin runtimes. Existing managed Java installations remain detectable.": "Choose where SLH stores downloaded Temurin runtimes. Existing managed Java installations remain detectable."
+    ,"Searches managed Java, JAVA_HOME, PATH and all local fixed disks without modifying system settings.": "Searches managed Java, JAVA_HOME, PATH and all local fixed disks without modifying system settings."
+    ,"Cancel scan": "Cancel scan"
+    ,"Verified JREs from Adoptium for this Windows architecture": "Verified JREs from Adoptium for this Windows architecture"
+    ,"Applied to library, asset, loader, and modpack batches.": "Applied to library, asset, loader, and modpack batches."
+    ,"Download": "Download"
+    ,"pending": "pending"
+    ,"Restore default colors": "Restore default colors"
+    ,"Click the version to view this build's local date and time.": "Click the version to view this build's local date and time."
+    ,"Show build time": "Show build time"
+    ,"Java download location saved": "Java download location saved"
+    ,"Java download location reset": "Java download location reset"
+    ,"Launcher scale saved": "Launcher scale saved"
+    ,"Remove the locally encrypted CurseForge API key from this launcher?": "Remove the locally encrypted CurseForge API key from this launcher?"
+    ,"World synchronization can overwrite saves. SLH will back up every replaced file. Continue?": "World synchronization can overwrite saves. SLH will back up every replaced file. Continue?"
+    ,"Remove the": "Remove the"
+    ,"mapping? Shared files and backups will be kept.": "mapping? Shared files and backups will be kept."
+    ,"Minecraft client is starting": "Minecraft client is starting"
+    ,"Example warning message": "Example warning message"
+    ,"Example error message": "Example error message"
+    ,"Diagnostic output": "Diagnostic output"
+    ,"World downloads are provided by CurseForge": "World downloads are provided by CurseForge"
+    ,"key required": "key required"
+    ,"by": "by"
+    ,"Multiple versions": "Multiple versions"
+    ,"Project": "Project"
+    ,"Player": "Player"
+    ,"Skin texture is invalid": "Skin texture is invalid"
+    ,"Try again. If it continues, check the app log.": "Try again. If it continues, check the app log."
+    ,"Java download started": "Java download started"
+    ,"Java runtime ready": "Java runtime ready"
+    ,"Minecraft crashed": "Minecraft crashed"
+    ,"Java {version} installed": "Java {version} installed"
+    ,"Java {version} installation failed": "Java {version} installation failed"
+    ,"{name} installed": "Installed: {name}"
+    ,"Instance {name} imported": "Instance \"{name}\" imported"
+    ,"Folder {name} imported": "Folder \"{name}\" imported"
+    ,"Starting the installed Bedrock version.": "Starting the installed Bedrock version."
+    ,"Checking the Bedrock license.": "Checking the Bedrock license."
+    ,"Downloading Minecraft files.": "Downloading Minecraft files."
+    ,"Install Minecraft from Microsoft Store.": "Install Minecraft from Microsoft Store."
+    ,"Enter the current code, then try again.": "Enter the current code, then try again."
+    ,"Finish signing in in your browser.": "Finish signing in in your browser."
+    ,"View setting was not saved": "View setting was not saved"
+    ,"Unsupported archive": "Unsupported archive"
+    ,"Archive cannot be imported": "Archive cannot be imported"
+    ,"Wait for the current installation to finish.": "Wait for the current installation to finish."
+    ,"How to fix": "How to fix"
+    ,"Microsoft Store license is required": "Microsoft Store license is required"
+    ,"The Xbox account does not match": "The Xbox account does not match"
+    ,"Windows gaming components are missing": "Windows gaming components are missing"
+    ,"The Bedrock package is damaged": "The Bedrock package is damaged"
+    ,"Bedrock requires Windows x64": "Bedrock requires Windows x64"
+    ,"Bedrock installation was canceled": "Bedrock installation was canceled"
+    ,"Sign in to Store and Xbox with the Minecraft owner account, then bind it here.": "Sign in to Store and Xbox with the Minecraft owner account, then bind it here."
+    ,"Bedrock uses the Microsoft/Xbox account that owns Minecraft for Windows.": "Bedrock uses the Microsoft/Xbox account that owns Minecraft for Windows."
+    ,"Use the same Microsoft/Xbox account that installed this version.": "Use the same Microsoft/Xbox account that installed this version."
+    ,"Install or repair Gaming Services and GameInput, then retry.": "Install or repair Gaming Services and GameInput, then retry."
+    ,"The downloaded package is damaged. Delete it and retry.": "The downloaded package is damaged. Delete it and retry."
+    ,"This installer requires 64-bit Windows.": "This installer requires 64-bit Windows."
+    ,"Installation was canceled. Retry when Store and Xbox are ready.": "Installation was canceled. Retry when Store and Xbox are ready."
+    ,"Developer Mode allows installation of older Bedrock packages; it does not bypass licensing.": "Developer Mode allows installation of older Bedrock packages; it does not bypass licensing."
+    ,"This package needs SLH's native installer. Update SLH and retry.": "This package needs SLH's native installer. Update SLH and retry."
+    ,"Notification location": "Notification location"
+    ,"Choose between launcher pop-ups and standard Windows notifications.": "Choose between launcher pop-ups and standard Windows notifications."
+    ,"In the launcher": "In the launcher"
+    ,"Windows notifications were not enabled": "Windows notifications were not enabled"
+    ,"Allow notifications for SLH in Windows settings, then choose Windows again.": "Allow notifications for SLH in Windows settings, then choose Windows again."
+    ,"Windows notifications could not be enabled": "Windows notifications could not be enabled"
+    ,"Add-ons": "Add-ons"
+    ,"Bedrock version": "Bedrock version"
+    ,"Profile": "Profile"
+    ,"Worlds, add-ons, and resource packs are managed in Minecraft's Bedrock data folders.": "Worlds, add-ons, and resource packs are managed in Minecraft's Bedrock data folders."
+    ,"Game data": "Game data"
+    ,"Free add-ons catalog": "Free add-ons catalog"
+    ,"Resource pack catalog": "Resource pack catalog"
+    ,"Worlds catalog": "Worlds catalog"
+    ,"Marketplace": "Marketplace"
+    ,"Import pack": "Import pack"
+    ,"Import world": "Import world"
+    ,"Refresh": "Refresh"
+    ,"Bedrock logs": "Bedrock logs"
+    ,"Bedrock add-ons and resource packs": "Bedrock add-ons and resource packs"
+    ,"Bedrock worlds": "Bedrock worlds"
+    ,"Bedrock content could not be imported": "Bedrock content could not be imported"
+    ,"Minecraft opened the selected content": "Minecraft opened the selected content"
+    ,"Confirm the import in Minecraft, then refresh this list.": "Confirm the import in Minecraft, then refresh this list."
+    ,"Catalog could not be opened": "Catalog could not be opened"
+    ,"Marketplace could not be opened": "Marketplace could not be opened"
+    ,"No Bedrock logs found": "No Bedrock logs found"
+    ,"Import a Bedrock pack or open the free add-ons catalog to get started.": "Import a Bedrock pack or open the free add-ons catalog to get started."
+    ,"Import a Bedrock resource pack or browse the catalog. Bedrock uses resource packs for visual changes.": "Import a Bedrock resource pack or browse the catalog. Bedrock uses resource packs for visual changes."
+    ,"Import a .mcworld file or choose a world in Minecraft.": "Import a .mcworld file or choose a world in Minecraft."
+    ,"Windows captures are shown here when they are saved in the standard Captures or Screenshots folder.": "Windows captures are shown here when they are saved in the standard Captures or Screenshots folder."
+    ,"Bedrock log files appear here when Minecraft creates them.": "Bedrock log files appear here when Minecraft creates them."
+    ,"Log could not be opened": "Log could not be opened"
+    ,"Resource pack": "Resource pack"
+    ,"Choose the Bedrock release used by this launcher profile.": "Choose the Bedrock release used by this launcher profile."
+    ,"Save Bedrock version": "Save Bedrock version"
+    ,"Deleting this instance also removes its isolated Bedrock worlds and packs.": "Deleting this instance also removes its isolated Bedrock worlds and packs."
+    ,"Shared Minecraft worlds and packs stay on this PC when deleting the launcher profile.": "Shared Minecraft worlds and packs stay on this PC when deleting the launcher profile."
+    ,"Export selected Bedrock worlds and packs as a ZIP archive.": "Export selected Bedrock worlds and packs as a ZIP archive."
+    ,"Bedrock ZIP export": "Bedrock ZIP export"
+    ,"Only the selected Bedrock worlds, add-ons, and resource packs are included.": "Only the selected Bedrock worlds, add-ons, and resource packs are included."
+    ,"Bedrock screenshots, logs, and account data are excluded.": "Bedrock screenshots, logs, and account data are excluded."
+    ,"Bedrock visuals use resource packs and Vibrant Visuals; Java shader packs are not compatible.": "Bedrock visuals use resource packs and Vibrant Visuals; Java shader packs are not compatible."
+    ,"File imports open Minecraft's shared app profile. Switch to Shared Store data before importing to this instance.": "File imports open Minecraft's shared app profile. Switch to Shared Store data before importing to this instance."
+    ,"Change version": "Change version"
+    ,"Create a new copy of this build. The original and its worlds stay unchanged.": "Create a new copy of this build. The original and its worlds stay unchanged."
+    ,"Folders to copy": "Folders to copy"
+    ,"Select what to bring into the new build. Content updates are optional for each supported file.": "Select what to bring into the new build. Content updates are optional for each supported file."
+    ,"folders selected": "folders selected"
+    ,"Reading build folders": "Reading build folders"
+    ,"Compatible update": "Compatible update"
+    ,"Already compatible": "Already compatible"
+    ,"No compatible version; copied as-is": "No compatible version; copied as-is"
+    ,"Could not check; copied as-is": "Could not check; copied as-is"
+    ,"Only files with a known Modrinth or CurseForge source can be checked. Other files copy as-is; saves are never sent through the mod updater.": "Only files with a known Modrinth or CurseForge source can be checked. Other files copy as-is; saves are never sent through the mod updater."
+    ,"Current build": "Current build"
+    ,"New Minecraft version": "New Minecraft version"
+    ,"Latest release": "Latest release"
+    ,"Select a release": "Select a release"
+    ,"Loading Minecraft releases": "Loading Minecraft releases"
+    ,"Checking compatible content": "Checking compatible content"
+    ,"Compatible loader selected": "Compatible loader selected"
+    ,"Copy created with warnings": "Copy created with warnings"
+    ,"Version copy created": "Version copy created"
+    ,"content files updated": "content files updated"
+    ,"Selected folders were copied without content updates.": "Selected folders were copied without content updates."
+    ,"compatible updates selected": "compatible updates selected"
+    ,"Choose a release to check installed content.": "Choose a release to check installed content."
+    ,"Create version copy": "Create version copy"
+    ,"Creating copy": "Creating copy"
+    ,"No user folders were found in this build.": "No user folders were found in this build."
+    ,"Compatible": "Compatible"
+    ,"No update": "No update"
+    ,"Unchecked": "Unchecked"
+    ,"Current": "Current"
+    ,"Adapt build": "Adapt build"
+    ,"Updating": "Updating"
+    ,"Some files": "Some files"
+    ,"Transfer as-is": "Transfer as-is"
+    ,"Transfer disabled (.off)": "Transfer disabled (.off)"
+    ,"Do not transfer": "Do not transfer"
+    ,"files could not be updated": "files could not be updated"
+    ,"Files without a compatible update": "Files without a compatible update"
+    ,"Choose how to transfer files without a compatible update. You can override the choice for each file.": "Choose how to transfer files without a compatible update. You can override the choice for each file."
+    ,"Use general choice": "Use general choice"
+    ,"Action for": "Action for"
+    ,"The checkbox selects what to transfer. The Updating switch controls version changes. When it is off, files are copied as-is and update warnings are hidden.": "The checkbox selects what to transfer. The Updating switch controls version changes. When it is off, files are copied as-is and update warnings are hidden."
+    ,"Beautiful Home Menu": "Beautiful Home Menu"
+    ,"Show an interactive character and quick launch on the home page.": "Show an interactive character and quick launch on the home page."
+  ,"Drag to rotate. Ctrl + wheel to zoom.": "Drag to rotate. Ctrl + wheel to zoom."
+  ,"Player FPS": "Player FPS"
+  ,"Unlimited": "Unlimited"
+  ,"Set 30 FPS": "Set 30 FPS"
+  ,"1–60 FPS or unlimited. The slider snaps to 30 FPS. Rendering pauses when the window is minimized.": "1–60 FPS or unlimited. The slider snaps to 30 FPS. Rendering pauses when the window is minimized."
+    ,"Player character": "Player character"
+    ,"Customize skin": "Customize skin"
+    ,"Offline skin": "Offline skin"
+    ,"The standard skin is selected by the offline account UUID.": "The standard skin is selected by the offline account UUID."
+    ,"Switch account": "Switch account"
+    ,"Create your own Minecraft build": "Create your own Minecraft build"
+    ,"Find and install ready-made builds": "Find and install ready-made builds"
+    ,"Manage your builds": "Manage your builds"
+    ,"Add or switch an account": "Add or switch an account"
+    ,"Last launched build": "Last launched build"
+    ,"Selected build": "Selected build"
+    ,"Choose another": "Choose another"
+    ,"Choose a build for your first launch.": "Choose a build for your first launch."
+    ,"Choose a build": "Choose a build"
+    ,"Build actions": "Build actions"
+    ,"Open build": "Open build"
+    ,"Prepare Bedrock": "Prepare Bedrock"
+    ,"Bedrock is not ready": "Bedrock is not ready"
+    ,"Offline username": "Offline username"
+    ,"No account": "No account"
+    ,"Authentication required": "Authentication required"
+    ,"Ready": "Ready"
+    ,"Launcher": "Launcher"
+    ,"active": "active"
+    ,"mods": "mods"
+    ,"Discover": "Discover"
+    ,"Library": "Library"
+    ,"Accounts": "Accounts"
+    ,"Offline": "Offline"
+    ,"Play": "Play"
+    ,"Running": "Running"
+    ,"Install": "Install"
+    ,"Open logs when launching from Home": "Open logs when launching from Home"
+    ,"Switch to logs after launching the last build from the beautiful Home screen.": "Switch to logs after launching the last build from the beautiful Home screen."
+    ,"Stop": "Stop"
+    ,"System load": "System load"
+    ,"Whole computer": "Whole computer"
+    ,"RAM": "RAM"
+    ,"Network": "Network"
+    ,"free": "free"
+    ,"GPU counters are unavailable or still warming up.": "GPU counters are unavailable or still warming up."
+    ,"Launcher status layout was not saved": "Launcher status layout was not saved"
+    ,"Launcher usage": "Launcher usage"
+    ,"Show whole computer usage": "Show whole computer usage"
+    ,"Input/output": "Input/output"
+    ,"Size of the launcher folder, including builds, resources and backups.": "Size of the launcher folder, including builds, resources and backups."
+    ,"Launcher file, network and device I/O, including WebView2. This is not a separate network counter.": "Launcher file, network and device I/O, including WebView2. This is not a separate network counter."
+  }
+}

@@ -1,0 +1,142 @@
+.scrim {
+  position: fixed;
+  inset: var(--titlebar-height) 0 var(--activitybar-height) 0;
+  z-index: 50;
+  background: color-mix(in srgb, var(--color-shadow) 20%, transparent);
+}
+
+.popover {
+  position: absolute;
+  width: 350px;
+  overflow: auto;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-dialog);
+  animation: pop-in 150ms ease both;
+  transform-origin: top right;
+}
+
+.heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 16px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.heading strong,
+.heading span {
+  display: block;
+}
+
+.heading span {
+  margin-top: 3px;
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.heading > svg {
+  color: var(--color-accent-hover);
+}
+
+.accountList {
+  max-height: 240px;
+  padding: 8px;
+  overflow: auto;
+}
+
+.accountRow {
+  display: grid;
+  width: 100%;
+  min-height: 54px;
+  grid-template-columns: 36px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 9px;
+  border-radius: var(--radius-sm);
+  text-align: left;
+  background: transparent;
+  cursor: pointer;
+}
+
+.accountRow:hover {
+  background: var(--color-surface-2);
+}
+
+.accountRow > svg {
+  color: var(--color-accent);
+}
+
+.avatar {
+  width: 36px;
+  height: 36px;
+}
+
+.accountText strong,
+.accountText small {
+  display: block;
+}
+
+.accountText small {
+  margin-top: 2px;
+  color: var(--color-text-muted);
+  font-size: 11px;
+}
+
+.empty {
+  margin: 12px;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.offlineForm {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border-top: 1px solid var(--color-border);
+}
+
+.formActions,
+.addActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+.addActions {
+  padding: 10px 12px;
+  border-top: 1px solid var(--color-border);
+}
+
+.addActions button {
+  flex: 1;
+  padding-inline: 8px;
+  font-size: 11px;
+}
+
+.manage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 100%;
+  padding: 11px;
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  background: var(--color-surface-2);
+  cursor: pointer;
+}
+
+.manage:hover {
+  color: var(--color-text);
+  background: var(--color-surface-3);
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+}
+

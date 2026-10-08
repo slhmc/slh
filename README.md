@@ -108,7 +108,16 @@ SLH умеет подбирать и скачивать подходящую Jav
 
 SLH разрабатывается на **Tauri 2, React, TypeScript, Rust и SQLite**. Лицензия проекта — [GPL-3.0-only](LICENSE).
 
-**Публикация исходников подготавливается.** Сейчас в этом репозитории находятся документация, изображения и релизы. Полный комплект исходников для самостоятельной сборки будет опубликован отдельным обновлением.
+Исходники опубликованы под GPL-3.0-only. Репозиторий содержит интерфейс, Rust-ядро, ресурсы, скрипты сборки и закреплённый подмодуль Bedrock. Для своей сборки можно переопределить публичный Microsoft client ID через `SLH_MICROSOFT_CLIENT_ID`.
+
+```sh
+git clone --recurse-submodules https://github.com/slhmc/slh.git
+cd slh
+npm ci
+npm run tauri:dev
+```
+
+Для Windows-сборки с Bedrock дополнительно нужен Go; подробности в [инструкции сборки](BUILDING.md).
 
 [Архитектура](ARCHITECTURE.md) · [Разработка](DEVELOPMENT.md) · [Аккаунты](AUTH.md) · [Языки](LANGUAGES.md) · [Portable](PORTABLE.md)
 

@@ -1,0 +1,99 @@
+name: SLH desktop
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches: [main, master]
+permissions:
+  contents: read
+concurrency:
+  group: slh-desktop-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  desktop:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: windows-2022
+            target: x86_64-pc-windows-msvc
+          - runner: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+          - runner: macos-15-intel
+            target: x86_64-apple-darwin
+          - runner: macos-15
+            target: aarch64-apple-darwin
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: '1.97.1'
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            src-tauri
+            crates/slh-core
+      - if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf libdbus-1-dev libssl-dev pkg-config libxdo-dev
+      - run: npm ci
+      - if: runner.os == 'Windows'
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: vendor/LeviLauncher/go.mod
+          cache-dependency-path: vendor/LeviLauncher/go.sum
+      - if: runner.os == 'Windows'
+        shell: pwsh
+        run: npm run build:bedrock-native
+      - run: npm test
+      - run: cargo test --manifest-path crates/slh-core/Cargo.toml --locked --lib
+      - run: cargo test --manifest-path src-tauri/Cargo.toml --locked --lib
+      - run: npx tauri build --target ${{ matrix.target }} -- --locked
+        env:
+          APPLE_SIGNING_IDENTITY: '-'
+      - run: node scripts/package-release.mjs ${{ matrix.target }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SLH-${{ matrix.target }}
+          path: artifacts/packages/*
+          if-no-files-found: error
+          retention-days: 30
+  release:
+    needs: desktop
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: SLH-*
+          path: packages
+          merge-multiple: true
+      - name: Prepare checksums and release notes
+        shell: bash
+        run: |
+          cd packages
+          sha256sum * > SHA256SUMS.txt
+          cd ..
+          printf 'SLH %s\n\nWindows 10/11 x64: EXE, MSI and portable ZIP.\nmacOS: Intel and Apple Silicon DMG and app ZIP.\nLinux x64: AppImage, DEB and RPM.\n\nIncludes installer data-path, Bedrock helper discovery and SemVer update fixes.\n\nThese packages are unsigned; macOS packages are ad-hoc signed and are not notarized.\n\nSource commit: %s\n' "$(node -p 'require("./package.json").version')" "$GITHUB_SHA" > release-notes.txt
+      - name: Save draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          version="$(node -p 'require("./package.json").version')"
+          if ! gh release view "v$version" >/dev/null 2>&1; then
+            gh release create "v$version" --target "$GITHUB_SHA" --draft --prerelease --title "SLH v$version" --notes-file release-notes.txt
+          fi
+          test "$(gh release view "v$version" --json isDraft --jq .isDraft)" = true || { echo 'Refusing to replace a published release.'; exit 1; }
+          gh release edit "v$version" --notes-file release-notes.txt
+          gh release upload "v$version" packages/* --clobber

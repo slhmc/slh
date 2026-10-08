@@ -1,0 +1,215 @@
+.button,
+.secondaryButton,
+.ghostButton,
+.dangerButton,
+.iconButton {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 140ms ease, background 140ms ease, border-color 140ms ease, box-shadow 140ms ease, transform 100ms ease;
+}
+
+.button:active,
+.secondaryButton:active,
+.ghostButton:active,
+.dangerButton:active,
+.iconButton:active {
+  transform: translateY(1px);
+}
+
+.button:disabled,
+.secondaryButton:disabled,
+.ghostButton:disabled,
+.dangerButton:disabled,
+.iconButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+  transform: none;
+}
+
+.button {
+  min-height: 38px;
+  padding: 0 16px;
+  border-color: color-mix(in srgb, var(--color-accent) 78%, var(--color-text));
+  color: var(--color-accent-contrast);
+  background: var(--color-accent);
+  box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--color-shadow) 48%, transparent), 0 4px 12px color-mix(in srgb, var(--color-shadow) 38%, transparent);
+  font-weight: 700;
+}
+
+.button:hover:not(:disabled) {
+  background: var(--color-accent-hover);
+  box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--color-shadow) 42%, transparent), 0 6px 16px color-mix(in srgb, var(--color-shadow) 50%, transparent);
+}
+
+.secondaryButton {
+  min-height: 38px;
+  padding: 0 13px;
+  border-color: var(--color-border-strong);
+  background: var(--color-surface-3);
+  box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--color-shadow) 55%, transparent);
+  font-weight: 700;
+}
+
+.secondaryButton:hover:not(:disabled) {
+  border-color: var(--color-border-strong);
+  background: var(--color-surface-3);
+}
+
+.ghostButton,
+.iconButton {
+  background: transparent;
+}
+
+.ghostButton {
+  padding: 0 11px;
+  color: var(--color-text-muted);
+}
+
+.ghostButton:hover:not(:disabled),
+.iconButton:hover:not(:disabled) {
+  color: var(--color-text);
+  background: var(--color-surface-2);
+}
+
+.dangerButton {
+  min-height: 38px;
+  padding: 0 13px;
+  border-color: color-mix(in srgb, var(--color-error) 58%, var(--color-border));
+  color: color-mix(in srgb, var(--color-error) 22%, var(--color-text));
+  background: color-mix(in srgb, var(--color-error) 62%, var(--color-surface));
+  box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--color-shadow) 52%, transparent);
+  font-weight: 700;
+}
+
+.dangerButton:hover:not(:disabled) {
+  border-color: var(--color-error);
+  background: color-mix(in srgb, var(--color-error) 74%, var(--color-surface));
+  box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--color-shadow) 42%, transparent), 0 5px 14px color-mix(in srgb, var(--color-error) 28%, transparent);
+}
+
+.iconButton {
+  width: 34px;
+  min-width: 34px;
+  padding: 0;
+  color: var(--color-text-muted);
+}
+
+.input,
+.select,
+.textarea {
+  width: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  background: var(--color-bg);
+  transition: border-color 150ms ease, background 150ms ease;
+}
+
+.input,
+.select {
+  min-height: 38px;
+  padding: 0 11px;
+}
+
+.textarea {
+  min-height: 92px;
+  padding: 10px 11px;
+  resize: vertical;
+}
+
+.input::placeholder,
+.textarea::placeholder {
+  color: var(--color-text-subtle);
+}
+
+.input:hover,
+.select:hover,
+.textarea:hover {
+  border-color: var(--color-border-strong);
+}
+
+.field {
+  display: grid;
+  gap: 7px;
+}
+
+.label {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.hint {
+  margin: 0;
+  color: var(--color-text-subtle);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.checkLabel {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  line-height: 1.35;
+  cursor: pointer;
+}
+
+.checkLabel input {
+  flex: 0 0 auto;
+  accent-color: var(--color-accent);
+}
+
+.badge,
+.successBadge,
+.warningBadge,
+.errorBadge {
+  display: inline-flex;
+  min-height: 22px;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 7px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xs);
+  color: var(--color-text-muted);
+  background: color-mix(in srgb, var(--color-surface-2) 65%, transparent);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.successBadge {
+  border-color: color-mix(in srgb, var(--color-success) 34%, var(--color-border));
+  color: var(--color-success);
+  background: var(--color-success-soft);
+}
+
+.warningBadge {
+  border-color: color-mix(in srgb, var(--color-warning) 35%, var(--color-border));
+  color: var(--color-warning);
+  background: var(--color-warning-soft);
+}
+
+.errorBadge {
+  border-color: color-mix(in srgb, var(--color-error) 35%, var(--color-border));
+  color: var(--color-error);
+  background: var(--color-error-soft);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}

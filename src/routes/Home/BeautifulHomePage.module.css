@@ -1,0 +1,68 @@
+.home { display: grid; grid-template-columns: minmax(230px, .85fr) minmax(280px, 1.35fr) minmax(280px, 1fr); gap: 22px; height: 100%; min-height: 0; overflow: auto; grid-template-rows: minmax(620px, 1fr); padding: 24px; position: relative; isolation: isolate; }
+.home::before { content: ""; position: absolute; inset: 0; z-index: -1; background: radial-gradient(ellipse at 49% 55%, color-mix(in srgb, var(--color-text-muted) 22%, transparent), transparent 60%); pointer-events: none; }
+.left, .right { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.accountCard, .statusCard, .lastBuild { padding: 16px; border: 1px solid var(--color-border); background: color-mix(in srgb, var(--color-surface) 65%, transparent); border-radius: var(--radius-lg); }
+.accountCard { position: relative; display: flex; align-items: flex-start; gap: 13px; }
+.avatar { width: 58px !important; height: 58px !important; flex: 0 0 58px; border-radius: var(--radius-md); }
+.accountCard > div { min-width: 0; flex: 1; display: grid; gap: 9px; }
+.accountCard strong { overflow: hidden; text-overflow: ellipsis; font-size: 18px; }
+.accountCard span { color: var(--color-text-muted); font-size: 11px; }
+.accountCard button { padding: 7px 9px; font-size: 11px; }
+.ready, .neutral { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; background: var(--color-success); }
+.neutral { background: var(--color-text-muted); }
+.statusCard h2, .lastBuild h2 { margin: 0; font-size: 14px; }
+.statusCard h2 { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.statusCard > button { display: flex; width: 100%; gap: 10px; align-items: center; padding: 13px 0; background: none; color: var(--color-text); border: 0; border-top: 1px solid var(--color-border); cursor: pointer; font: inherit; font-size: 11px; text-align: left; }
+.statusCard > button svg { color: var(--color-accent); flex-shrink: 0; }
+.statusCard > button small { margin-left: auto; color: var(--color-text-muted); font-size: 10px; max-width: 50%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.character { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.character header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.character header > div { display: grid; gap: 6px; min-width: 0; }
+.character header strong { display: flex; align-items: center; gap: 9px; font-size: 20px; }
+.character header strong svg { color: var(--color-accent); }
+.character header small { color: var(--color-text-muted); font-size: 11px; }
+.character header button { padding: 9px; font-size: 11px; flex-shrink: 0; }
+.stage { flex: 1; min-height: 390px; position: relative; }
+.loading { display: grid; height: 100%; place-items: center; color: var(--color-text-muted); }
+.lastBuild { margin-top: auto; }
+.lastBuild > header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 14px; }
+.lastBuild > header button { display: flex; align-items: center; gap: 6px; border: 0; background: none; color: var(--color-accent); font: inherit; font-size: 10px; cursor: pointer; padding: 0; }
+.buildInfo { display: flex; align-items: center; gap: 12px; min-width: 0; margin-bottom: 14px; }
+.buildInfo > div:nth-child(2) { display: grid; gap: 5px; min-width: 0; flex: 1; }
+.buildInfo strong { font-size: 19px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.buildInfo small { font-size: 11px; color: var(--color-text-muted); }
+.buildInfo span { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; color: var(--color-text-muted); font-size: 10px; }
+.buildMenu { position: relative; }
+.buildMenu summary { list-style: none; cursor: pointer; display: grid; place-items: center; }
+.buildMenu summary::-webkit-details-marker { display: none; }
+.buildMenu summary { padding: 6px; background: var(--color-surface-2); border-radius: var(--radius-xs); }
+.buildMenu > div { position: absolute; z-index: 5; min-width: 170px; right: 0; padding: 6px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); box-shadow: 0 12px 30px #0005; }
+.buildMenu > div { top: calc(100% + 4px); }
+.buildMenu button { display: flex; gap: 10px; justify-content: space-between; padding: 10px; width: 100%; border: 0; color: var(--color-text); background: none; text-align: left; cursor: pointer; font: inherit; font-size: 12px; }
+.buildMenu button:hover { background: var(--color-surface-2); }
+.launchRow { display: flex; background: linear-gradient(110deg, var(--color-accent-hover), var(--color-accent)); border: 1px solid var(--color-accent); border-radius: var(--radius-md); color: var(--color-accent-contrast); }
+.launchRow > button, .stopRow > button { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 13px; font: inherit; font-size: 24px; font-weight: 700; line-height: 1.2; cursor: pointer; }
+.launchRow > button { flex: 1; color: inherit; background: none; border: 0; }
+.launchRow > button > svg, .stopRow > button > svg { width: 23px; height: 23px; flex-shrink: 0; }
+.launchRow > button:disabled { opacity: .55; cursor: default; }
+.empty { display: grid; gap: 10px; color: var(--color-text-muted); font-size: 12px; }
+.empty p { margin: 0; }
+@media (max-width: 1150px) { .home { gap: 14px; padding: 18px; grid-template-columns: minmax(205px,.85fr) minmax(230px,1.15fr) minmax(250px,1fr); } .character header { flex-wrap: wrap; } .accountCard { flex-wrap: wrap; } .accountCard > div { min-width: 120px; } }
+@media (max-width: 900px) { .home { grid-template-columns: minmax(0,1fr) minmax(0,1fr); grid-template-rows: auto minmax(460px, 1fr); } .left { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; } .character { min-height: 460px; } .stage { min-height: 350px; } .right { gap: 14px; } }
+@media (max-width: 580px) { .home { display: flex; flex-direction: column; } .left { display: flex; } .character { min-height: 420px; } }
+
+.buildInfo > div:first-child { width: 76px; height: 76px; flex: 0 0 76px; }
+
+.accountActions { display: flex; align-items: stretch; gap: 8px; min-width: 0; }
+.accountActions > button:first-child { flex: 1; }
+.accountActions > button:last-child { flex-shrink: 0; }
+.buildMenu button { justify-content: flex-start; align-items: center; }
+.buildMenu button svg { flex-shrink: 0; }
+
+.accountCard > .accountTools { flex: 0 0 auto; display: grid; gap: 10px; align-content: start; }
+.stopRow > button { width: 100%; min-height: 0; letter-spacing: normal; text-transform: none; }
+
+.accountMenu { position: absolute; top: 16px; right: 16px; }
+.accountDetails > strong, .accountDetails > span { padding-right: 40px; }
+.accountCard .accountMenu, .accountActions > button:last-child { padding: 0; }
+.accountActions > button:first-child { min-width: 0; white-space: normal; }

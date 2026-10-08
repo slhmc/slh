@@ -1,0 +1,84 @@
+.dialog { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(410px, 1fr); grid-template-rows: minmax(0, 1fr) auto; gap: 16px 20px; min-width: 0; height: min(660px, calc(100vh - 230px)); font-family: var(--font-ui); }
+.filesColumn { display: flex; flex-direction: column; min-width: 0; min-height: 0; gap: 12px; }
+.detailsColumn { display: flex; flex-direction: column; min-width: 0; min-height: 0; gap: 10px; padding-left: 20px; border-left: 1px solid var(--color-border); overflow: auto; }
+.filesColumn .loading { flex: 1; }
+.listHeader { display: flex; align-items: flex-start; flex-direction: column; gap: 5px; }
+.listHeader h2, .listHeader p { margin: 0; }
+.listHeader h2 { font-size: 17px; }
+.listHeader p { margin-top: 4px; color: var(--color-text-muted); font-size: 12px; line-height: 1.45; }
+.listHeader > span { flex: 0 0 auto; color: var(--color-text-muted); font-size: 11px; }
+.folderList { min-height: 110px; flex: 1; overflow: auto; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: color-mix(in srgb, var(--color-bg) 58%, var(--color-surface)); scrollbar-color: var(--color-border-strong) transparent; }
+.treeGroup { min-width: 0; }
+.treeGroup + .treeGroup, .treeChildren > .treeGroup { border-top: 1px solid color-mix(in srgb, var(--color-border) 68%, transparent); }
+.treeRow { display: flex; min-height: 45px; align-items: center; gap: 8px; padding: 4px 10px 4px 10px; border-left: 3px solid transparent; }
+.treeSelected { border-left-color: var(--color-accent); background: color-mix(in srgb, var(--color-accent) 5%, transparent); }
+.treeRow > input { width: 17px; height: 17px; flex: 0 0 auto; margin: 0; accent-color: var(--color-accent); }
+.expand { display: grid; width: 20px; height: 24px; flex: 0 0 auto; place-items: center; padding: 0; border: 0; color: var(--color-text-muted); background: none; cursor: pointer; font: inherit; font-size: 19px; }
+.expand:disabled { cursor: default; }
+.treeIcon, .fileIcon { flex: 0 0 auto; color: var(--color-accent); }
+.fileIcon { width: 18px; text-align: center; font-size: 18px; }
+.treeDetails { display: grid; min-width: 0; flex: 1 1 auto; gap: 2px; }
+.treeDetails strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 650; }
+.treeDetails small { overflow: hidden; color: var(--color-text-muted); text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
+.treeSize { flex: 0 0 auto; color: var(--color-text-subtle); font-size: 11px; }
+.updateSwitch { display: flex; flex: 0 0 auto; align-items: center; gap: 8px; padding: 5px 0 5px 7px; border: 0; color: var(--color-text-muted); background: none; cursor: pointer; font: inherit; font-size: 11px; }
+.updateSwitch > span:first-child { display: grid; gap: 2px; text-align: right; }
+.updateSwitch small { color: var(--color-text-subtle); font-size: 9px; }
+.updateSwitch:disabled { cursor: default; opacity: .4; }
+.updateSwitch:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 4px; border-radius: var(--radius-xs); }
+.switchTrack { display: flex; align-items: center; width: 34px; height: 19px; padding: 3px; border: 1px solid var(--color-border-strong); border-radius: 99px; background: var(--color-bg); }
+.switchTrack > span { width: 11px; height: 11px; border-radius: 50%; background: var(--color-text-muted); transition: transform .15s, background .15s; }
+.updateSwitchOn { color: var(--color-text); }
+.updateSwitchOn .switchTrack { border-color: var(--color-accent); background: var(--color-accent); }
+.updateSwitchOn .switchTrack > span { transform: translateX(15px); background: var(--color-accent-contrast); }
+.childLoading { display: flex; align-items: center; gap: 7px; min-height: 42px; padding-left: 52px; color: var(--color-text-muted); font-size: 11px; }
+.note { display: flex; align-items: flex-start; gap: 8px; padding: 9px 11px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); color: var(--color-text-muted); background: color-mix(in srgb, var(--color-surface-2) 40%, transparent); font-size: 11px; line-height: 1.45; }
+.note > svg { flex: 0 0 auto; margin-top: 1px; }
+.versionDock { display: grid; flex: 0 0 auto; grid-template-columns: minmax(80px, .6fr) 24px minmax(0, 1.4fr); align-items: center; gap: 10px; padding: 12px; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: color-mix(in srgb, var(--color-bg) 65%, var(--color-surface)); }
+.versionSide { display: grid; min-width: 0; gap: 7px; }
+.versionSide > span { color: var(--color-text-muted); font-size: 10px; letter-spacing: .03em; text-transform: uppercase; }
+.versionSide > strong { font-size: 23px; line-height: 1.1; }
+.versionSide select { min-height: 43px; font-family: var(--font-ui); font-size: 16px; }
+.versionPlaceholder { color: color-mix(in srgb, var(--color-text-muted) 75%, transparent); }
+.versionArrow { display: grid; place-items: center; color: var(--color-text-muted); }
+.inlineState, .loading { display: flex; align-items: center; gap: 8px; color: var(--color-text-muted); font-size: 12px; }
+.loading { min-height: 130px; justify-content: center; }
+.loaderInfo { color: var(--color-text-muted); font-size: 11px; }
+.warningPanel { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 200px; gap: 7px; padding: 10px; border: 1px solid var(--color-warning); border-radius: var(--radius-sm); background: color-mix(in srgb, var(--color-warning) 9%, var(--color-surface)); }
+.warningPanel > strong { display: flex; align-items: center; gap: 7px; color: var(--color-warning); font-size: 13px; }
+.warningPanel > p { margin: 0; color: var(--color-text-muted); font-size: 11px; line-height: 1.4; }
+.fallbackChoices { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 5px 0; font-size: 11px; }
+.fallbackChoices label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+.fallbackChoices input { width: 15px; height: 15px; margin: 0; accent-color: var(--color-accent); }
+.warningList { display: flex; flex-direction: column; flex: 1; min-height: 70px; overflow: auto; scrollbar-color: var(--color-border-strong) transparent; }
+.warningItem { display: grid; grid-template-columns: minmax(0, 1fr) 145px; flex: 0 0 auto; align-items: center; gap: 8px; padding: 7px 0; border-top: 1px solid var(--color-border); font-size: 11px; }
+.warningDetails { display: grid; gap: 3px; min-width: 0; }
+.warningDetails b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.warningDetails small { color: var(--color-text-muted); font-size: 10px; line-height: 1.4; }
+.warningItem select { width: 100%; min-width: 0; min-height: 31px; padding: 4px 6px; border: 1px solid var(--color-border-strong); border-radius: var(--radius-xs); color: var(--color-text); background: var(--color-bg); font: inherit; font-size: 10px; }
+.error { display: flex; align-items: flex-start; gap: 7px; overflow-wrap: anywhere; color: var(--color-error); font-size: 11px; line-height: 1.45; }
+.error svg { flex: 0 0 auto; }
+.empty { padding: 28px 14px; color: var(--color-text-muted); text-align: center; font-size: 12px; }
+.footer { display: flex; grid-column: 1 / -1; align-items: center; justify-content: space-between; gap: 16px; padding-top: 12px; border-top: 1px solid var(--color-border); }
+.footer > span { color: var(--color-text-muted); font-size: 11px; }
+.footer > div { display: flex; align-items: center; gap: 8px; }
+.spin { animation: versionSpin 1s linear infinite; }
+@keyframes versionSpin { to { transform: rotate(360deg); } }
+@media (max-width: 960px) {
+  .dialog { grid-template-columns: minmax(0, 1fr); height: auto; }
+  .detailsColumn { padding-left: 0; border-left: 0; overflow: visible; }
+  .folderList { flex: none; height: 280px; }
+  .warningPanel { min-height: 0; flex: none; }
+  .warningList { flex: none; max-height: 260px; }
+}
+@media (max-width: 700px) {
+  .listHeader { align-items: flex-start; flex-direction: column; gap: 6px; }
+  .versionDock { grid-template-columns: minmax(80px, .7fr) 25px minmax(140px, 1.3fr); padding: 9px; }
+  .versionSide > strong { font-size: 19px; }
+  .versionSide select { font-size: 13px; }
+  .treeSize { display: none; }
+  .updateSwitch { gap: 5px; font-size: 10px; }
+  .warningItem { grid-template-columns: minmax(0, 1fr); gap: 5px; }
+  .footer { align-items: stretch; flex-direction: column; }
+  .footer > div { justify-content: flex-end; }
+}

@@ -1,0 +1,43 @@
+.artwork {
+  position: relative;
+  display: grid;
+  overflow: hidden;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--color-text) 12%, transparent);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  background: var(--color-surface-2);
+}
+
+.artwork::after {
+  position: absolute;
+  inset: auto 0 0;
+  height: 3px;
+  background: var(--loader-accent, var(--color-accent));
+  content: "";
+}
+
+.small {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-sm);
+}
+
+.card {
+  width: 100%;
+  height: 132px;
+}
+
+.large {
+  width: 100%;
+  height: 178px;
+}
+
+.vanilla,
+.fabric,
+.forge,
+.neoforge,
+.quilt,
+.bedrock {
+  --loader-accent: var(--color-accent);
+}

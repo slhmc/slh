@@ -1,0 +1,140 @@
+import { Slider, ScrollView, ListView, LineEdit } from "std-widgets.slint";
+import "../../../src/assets/fonts/PixeloidSans.ttf";
+import "../../../src/assets/fonts/PixeloidSans-Bold.ttf";
+export struct InstanceRow { id: string, name: string, detail: string }
+component Action inherits Rectangle {
+    in property <string> label;
+    in property <bool> accent: false;
+    callback activated;
+    border-radius: 10px; border-width: 1px; border-color: #3b4248;
+    background: accent ? #cf4817 : (touch.has-hover ? #363b40 : #282d32);
+    min-height: 48px;
+    Text { text: root.label; color: #f4f5f6; font-size: 17px; font-weight: 700; vertical-alignment: center; horizontal-alignment: center; }
+    touch := TouchArea { clicked => { root.activated(); } }
+}
+component Panel inherits Rectangle {
+    border-radius: 15px; border-width: 1px; border-color: #3b4248; background: #25292e;
+}
+export component Launcher inherits Window {
+    title: "Smile Launcher — Native"; preferred-width: 1480px; preferred-height: 920px;
+    min-width: 900px; min-height: 560px; background: #1f2327;
+    default-font-family: "Pixeloid Sans";
+    in-out property <int> page: 0;
+    in-out property <bool> economy: false;
+    in-out property <int> fps: 30;
+    in-out property <string> account-id;
+    in-out property <string> username: "Игрок";
+    in-out property <string> status: "Загрузка данных…";
+    in-out property <[InstanceRow]> instances;
+    in-out property <int> selected: 0;
+    in-out property <image> character;
+    in-out property <string> running-instance;
+    out property <length> scene-width: max(1px, root.width - min(350px, root.width * 0.26) * 2 - 96px);
+    out property <length> scene-height: max(1px, root.height - 212px);
+    callback navigate(int);
+    callback settings-changed(bool, int);
+    callback rotate(float, float);
+    callback zoom(float);
+    callback launch(string);
+    callback stop(string);
+    callback account-next;
+    callback minimize;
+    callback quit;
+    callback resize-scene;
+    callback drag-start;
+    callback window-active(bool);
+    callback fps-text(string);
+    callback skin-loaded(string, bool, string);
+    VerticalLayout {
+        spacing: 0px;
+        Rectangle { height: 48px; background: #202529;
+            HorizontalLayout { padding-left: 20px; padding-right: 12px; spacing: 12px;
+                Text { text: "Smile Launcher · Native"; color: #abb9c5; vertical-alignment: center; }
+                Rectangle { horizontal-stretch: 1; background: transparent; }
+                Action { width: 46px; label: "−"; activated => { root.minimize(); } }
+                Action { width: 46px; label: "×"; activated => { root.quit(); } }
+            }
+        }
+        Rectangle { height: 80px; background: #202529; border-width: 1px; border-color: #343b41;
+            HorizontalLayout { padding: 15px; spacing: 15px;
+                Image { source: @image-url("../../../src/assets/brand/SLH.png"); width: 130px; image-fit: contain; }
+                Action { label: "⌂ Главная"; accent: root.page == 0; activated => { root.page = 0; root.navigate(0); } }
+                Action { label: "Библиотека"; accent: root.page == 1; activated => { root.page = 1; root.navigate(1); } }
+                Rectangle { horizontal-stretch: 1; background: transparent; }
+                Text { text: root.username; color: #f5f5f5; vertical-alignment: center; }
+                Action { label: "Настройки"; width: 180px; accent: root.page == 2; activated => { root.page = 2; root.navigate(2); } }
+            }
+        }
+        if root.page == 0: HorizontalLayout { padding: 24px; spacing: 24px;
+            VerticalLayout { width: min(350px, root.width * 0.26); spacing: 18px;
+                Panel { height: 140px;
+                    VerticalLayout { padding: 18px;
+                        Text { text: root.username; color: #fff; font-size: 22px; font-weight: 700; }
+                        Text { text: "Аккаунт Minecraft"; color: #a8bac8; }
+                        Action { label: "Сменить аккаунт"; activated => { root.account-next(); } }
+                    }
+                }
+                Panel { height: 250px;
+                    VerticalLayout { padding: 20px; spacing: 16px;
+                        Text { text: "Состояние лаунчера"; color: #fff; font-size: 19px; font-weight: 700; }
+                        Text { text: "Лаунчер · v0.2.0"; color: #a8bac8; }
+                        Text { text: root.economy ? "3D: экономный режим" : "3D: красивый режим"; color: #a8bac8; }
+                        Text { text: root.fps == 0 ? "FPS: Безлимит" : "FPS: " + root.fps; color: #a8bac8; }
+                        Text { text: "Вращение: перетаскивание\nМасштаб: колесо мыши"; color: #a8bac8; wrap: word-wrap; }
+                    }
+                }
+                Rectangle { vertical-stretch: 1; background: transparent; }
+            }
+            portrait := Rectangle { horizontal-stretch: 1; min-width: 1px; min-height: 1px; clip: true; background: transparent;
+                Image { width: parent.width; height: parent.height; source: root.character; image-fit: contain; }
+                touch := TouchArea {
+                    pointer-event(event) => { if event.kind == PointerEventKind.down { root.drag-start(); } }
+                    moved => { if self.pressed { root.rotate((self.mouse-x - self.pressed-x)/1px, (self.mouse-y - self.pressed-y)/1px); } }
+                    scroll-event(event) => { root.zoom(event.delta-y/1px); return accept; }
+                }
+            }
+            VerticalLayout { width: min(350px, root.width * 0.26); spacing: 15px;
+                Action { label: "Библиотека сборок →"; activated => { root.page = 1; root.navigate(1); } }
+                Action { label: "Режим отображения →"; activated => { root.page = 2; root.navigate(2); } }
+                Rectangle { vertical-stretch: 1; background: transparent; }
+                Panel { height: 190px;
+                    VerticalLayout { padding: 18px; spacing: 15px;
+                        Text { text: "Последняя сборка"; color: #fff; font-size: 19px; font-weight: 700; }
+                        Text { text: root.instances.length > 0 ? root.instances[root.selected].name : "Нет сборок"; color: #b7c6d2; }
+                        Action { label: root.instances.length > 0 && root.running-instance == root.instances[root.selected].id ? "Остановить" : "Играть"; accent: true; activated => { if root.instances.length > 0 { if root.running-instance == root.instances[root.selected].id { root.stop(root.running-instance); } else { root.launch(root.instances[root.selected].id); } } } }
+                    }
+                }
+            }
+        }
+        if root.page == 1: VerticalLayout { padding: 24px; spacing: 18px;
+            Text { text: "Библиотека"; color: #fff; font-size: 26px; font-weight: 700; }
+            ListView { for item[index] in root.instances: Panel { height: 100px;
+                HorizontalLayout { padding: 15px; spacing: 15px;
+                    VerticalLayout {
+                        Text { text: item.name; color: #fff; font-size: 20px; }
+                        Text { text: item.detail; color: #a8bac8; }
+                    }
+                    Action { width: 150px; label: root.running-instance == item.id ? "Остановить" : "Играть"; accent: true; activated => { root.selected = index; if root.running-instance == item.id { root.stop(item.id); } else { root.launch(item.id); } } }
+                }
+            } }
+        }
+        if root.page == 2: VerticalLayout { padding: 32px; spacing: 24px;
+            Text { text: "Красивое Главное Меню"; color: #fff; font-size: 26px; font-weight: 700; }
+            HorizontalLayout { spacing: 18px;
+                Action { label: "Красивый · Idle"; accent: !root.economy; activated => { root.economy = false; root.settings-changed(false, root.fps); } }
+                Action { label: "Экономный · Статичный 3D"; accent: root.economy; activated => { root.economy = true; root.settings-changed(true, root.fps); } }
+            }
+            Text { text: root.fps == 0 ? "FPS персонажа: Безлимит" : "FPS персонажа: " + root.fps; color: #c8d4dc; font-size: 18px; }
+            Slider { minimum: 1; maximum: 61; value: root.fps == 0 ? 61 : root.fps;
+                changed(value) => { root.fps = value >= 60.5 ? 0 : round(value); if root.fps >= 28 && root.fps <= 32 { root.fps = 30; } root.settings-changed(root.economy, root.fps); }
+            }
+            LineEdit { text: root.fps == 0 ? "0" : "" + root.fps; accepted => { root.fps-text(self.text); } }
+            Action { label: "30 FPS"; width: 180px; activated => { root.fps = 30; root.settings-changed(root.economy, 30); } }
+            Text { text: "При сворачивании отрисовка останавливается.\nЧерез 30 секунд ресурсы персонажа освобождаются."; color: #9eb2c2; wrap: word-wrap; }
+            Rectangle { vertical-stretch: 1; background: transparent; }
+        }
+        Rectangle { height: 36px; background: #202529;
+            Text { x: 20px; text: root.status; color: #a8bac8; vertical-alignment: center; font-size: 12px; overflow: elide; }
+        }
+    }
+}

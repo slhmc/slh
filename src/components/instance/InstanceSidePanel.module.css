@@ -1,0 +1,194 @@
+.panel {
+  min-width: 0;
+  min-height: 0;
+  border-left: 1px solid var(--color-border);
+  background: var(--color-surface);
+  animation: panel-in 170ms ease both;
+}
+
+.scroll {
+  display: grid;
+  height: 100%;
+  align-content: start;
+  gap: 15px;
+  padding: 18px;
+  overflow: auto;
+}
+
+.identity h2 {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: 20px;
+  letter-spacing: -0.025em;
+}
+
+.identity p {
+  margin: 6px 0 0;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  text-transform: capitalize;
+}
+
+.playButton {
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border-radius: var(--radius-md);
+  color: var(--color-accent-contrast);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 72%, var(--color-text));
+  background: var(--color-accent);
+  box-shadow: inset 0 -3px 0 color-mix(in srgb, var(--color-shadow) 48%, transparent), 0 8px 22px color-mix(in srgb, var(--color-accent) 25%, transparent);
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.playButton:hover:not(:disabled) {
+  background: var(--color-accent-hover);
+}
+
+.killButton {
+  border-color: color-mix(in srgb, var(--color-error) 70%, var(--color-border));
+  color: var(--color-text);
+  background: color-mix(in srgb, var(--color-error) 62%, var(--color-surface));
+  box-shadow: inset 0 -3px 0 color-mix(in srgb, var(--color-shadow) 48%, transparent), 0 8px 22px color-mix(in srgb, var(--color-error) 25%, transparent);
+}
+
+.killButton:hover:not(:disabled) {
+  border-color: var(--color-error);
+  background: color-mix(in srgb, var(--color-error) 72%, var(--color-surface));
+}
+
+.playButton:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.playButton:disabled {
+  cursor: not-allowed;
+  filter: saturate(0.45);
+  opacity: 0.65;
+}
+
+.quickGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 7px;
+}
+.quickGrid > span { display: contents; }
+
+.quickGrid button {
+  display: grid;
+  min-height: 66px;
+  place-items: center;
+  gap: 5px;
+  padding: 8px 4px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  background: var(--color-surface-2);
+  cursor: pointer;
+}
+
+.quickGrid button:hover {
+  border-color: var(--color-border-strong);
+  color: var(--color-text);
+  background: var(--color-surface-3);
+}
+
+.quickGrid .deleteAction {
+  border-color: color-mix(in srgb, var(--color-error) 48%, var(--color-border));
+  color: var(--color-error);
+}
+
+.quickGrid .deleteAction:hover:not(:disabled) {
+  border-color: var(--color-error);
+  color: var(--color-error);
+  background: color-mix(in srgb, var(--color-error) 13%, var(--color-surface-2));
+}
+
+.quickGrid .deleteAction:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.quickGrid span {
+  font-size: 10px;
+}
+
+.metadata {
+  display: grid;
+  gap: 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.metadata > div {
+  display: flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  font-size: 11px;
+}
+
+.metadata > div:first-child {
+  justify-content: flex-start;
+}
+
+.metadata strong {
+  overflow: hidden;
+  color: var(--color-text);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+.groupDialog {
+  display: grid;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.groupDialog button {
+  justify-content: flex-start;
+}
+
+.offlineLaunchForm {
+  display: grid;
+  gap: 14px;
+  padding: 18px 20px 20px;
+}
+
+.offlineLaunchForm label {
+  display: grid;
+  gap: 7px;
+  color: var(--color-text);
+  font-size: 11px;
+}
+
+.offlineLaunchForm small {
+  color: var(--color-text-muted);
+  font-size: 10px;
+}
+
+.offlineLaunchForm > div {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@keyframes panel-in {
+  from { opacity: 0; transform: translateX(12px); }
+}

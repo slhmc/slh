@@ -1,0 +1,3 @@
+[submodule "vendor/LeviLauncher"]
+	path = vendor/LeviLauncher
+	url = https://github.com/LiteLDev/LeviLauncher.git

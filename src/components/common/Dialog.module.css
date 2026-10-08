@@ -1,0 +1,80 @@
+.dialog {
+  max-width: calc(100vw - 48px);
+  max-height: calc(100vh - 64px);
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  outline: none;
+  color: var(--color-text);
+  background: var(--color-surface);
+  box-shadow: 0 24px 72px color-mix(in srgb, var(--color-shadow) 72%, transparent);
+}
+
+.dialog:focus { outline: none; }
+
+.dialog::backdrop {
+  background: var(--color-overlay);
+  backdrop-filter: blur(3px);
+}
+
+.small {
+  width: min(440px, calc(100vw - 48px));
+}
+
+.medium {
+  width: min(680px, calc(100vw - 48px));
+}
+
+.large {
+  width: min(980px, calc(100vw - 48px));
+}
+
+.xlarge {
+  width: min(1320px, calc(100vw - 40px));
+}
+
+.header {
+  display: flex;
+  min-height: 74px;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 18px 20px 15px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.title {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.header p {
+  margin: 5px 0 0;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.body {
+  max-height: calc(100vh - 140px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  /* Every dialog content gets a real inner gutter. Forms and buttons must
+     never touch the modal border, even when their own component has no
+     wrapper padding. */
+  padding: 18px 20px 20px;
+}
+
+/* The version picker is an in-app menu. Unlike a native select it always
+   opens downward, so the compact install dialog must not clip it. */
+.dialog:has([data-install-dialog]) {
+  overflow: visible;
+}
+
+.dialog:has([data-install-dialog]) > div:last-child {
+  max-height: none;
+  overflow: visible;
+}

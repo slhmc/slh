@@ -1,0 +1,90 @@
+.page {
+  height: 100%;
+  padding: 27px 30px 36px;
+  overflow: auto;
+}
+
+.header {
+  display: flex;
+  min-height: 78px;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 22px;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: clamp(24px, 2vw, 31px);
+  letter-spacing: -0.04em;
+}
+
+.header p {
+  max-width: 640px;
+  margin: 7px 0 0;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+.headerActions {
+  display: flex;
+  gap: 8px;
+}
+
+.section {
+  margin-top: 26px;
+}
+
+.sectionHeader {
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sectionHeader h2 {
+  margin: 0;
+  font-size: 15px;
+  letter-spacing: -0.015em;
+}
+
+.muted {
+  color: var(--color-text-muted);
+}
+
+.emptyState {
+  display: grid;
+  min-height: 280px;
+  place-items: center;
+  padding: 30px;
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  color: var(--color-text-muted);
+  text-align: center;
+  background: color-mix(in srgb, var(--color-surface) 42%, transparent);
+}
+
+.emptyState > div {
+  max-width: 420px;
+}
+
+.emptyState svg {
+  color: var(--color-accent-hover);
+}
+
+.emptyState h2 {
+  margin: 14px 0 7px;
+  color: var(--color-text);
+  font-size: 19px;
+}
+
+.emptyState p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+@media (max-width: 1240px) {
+  .page {
+    padding-inline: 22px;
+  }
+}

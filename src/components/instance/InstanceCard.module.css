@@ -1,0 +1,208 @@
+.card {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  gap: 11px;
+  padding: 9px;
+  overflow: visible;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  text-align: left;
+  background: var(--color-surface);
+  cursor: pointer;
+  transition: border-color 150ms ease, background 150ms ease, transform 120ms ease;
+}
+
+.card:hover {
+  border-color: var(--color-border-strong);
+  background: var(--color-surface-3);
+  transform: translateY(-1px);
+}
+
+.card:active {
+  transform: translateY(0);
+}
+
+.card:focus-visible,
+.listRow:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.card.selected,
+.listRow.selected {
+  border-color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 16%, var(--color-surface));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-accent) 15%, transparent);
+}
+
+.cardBody {
+  display: block;
+  min-width: 0;
+  padding: 0 2px 3px;
+}
+
+.cardBody strong,
+.cardBody small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cardBody strong {
+  font-size: 13px;
+}
+
+.cardBody small {
+  margin-top: 5px;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  text-transform: capitalize;
+}
+
+.selection {
+  position: absolute;
+  top: 15px;
+  left: 15px;
+  display: grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--color-accent-contrast);
+  background: var(--color-accent);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--color-shadow) 72%, transparent);
+}
+
+.progress {
+  display: grid;
+  overflow: hidden;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  min-height: 21px;
+  border: 1px solid color-mix(in srgb, var(--color-accent) 42%, var(--color-border));
+  border-radius: 5px;
+  color: var(--color-accent-contrast);
+  background: var(--color-surface-deep);
+}
+
+.progress > span {
+  grid-row: 1;
+  grid-column: 1 / -1;
+  height: 100%;
+  min-width: 8%;
+  background: color-mix(in srgb, var(--color-accent) 48%, transparent);
+  transition: width 180ms linear;
+}
+
+.progress strong {
+  z-index: 1;
+  grid-row: 1;
+  grid-column: 1 / -1;
+  justify-self: center;
+  padding: 0 6px;
+  font-size: 10px;
+  line-height: 1;
+}
+
+.listRow {
+  position: relative;
+  display: grid;
+  width: 100%;
+  min-height: 54px;
+  grid-template-columns: 38px minmax(160px, 1.5fr) minmax(80px, 0.65fr) minmax(80px, 0.6fr) minmax(90px, 0.7fr) minmax(110px, 0.8fr);
+  align-items: center;
+  gap: 12px;
+  padding: 7px 42px 7px 8px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  text-align: left;
+  background: transparent;
+  cursor: pointer;
+}
+
+.listRow:hover {
+  background: var(--color-surface-hover);
+}
+
+.listRow .name {
+  overflow: hidden;
+  color: var(--color-text);
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.loader {
+  text-transform: capitalize;
+}
+
+.lastPlayed {
+  color: var(--color-text-subtle);
+}
+
+.check {
+  position: absolute;
+  right: 38px;
+  color: var(--color-accent);
+}
+
+.actionMenu {
+  position: absolute;
+  z-index: 6;
+  top: 9px;
+  right: 9px;
+}
+
+.actionMenu summary {
+  display: grid;
+  width: 27px;
+  height: 27px;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius-xs);
+  color: var(--color-text-muted);
+  background: color-mix(in srgb, var(--color-surface-deeper) 84%, transparent);
+  list-style: none;
+  cursor: pointer;
+}
+
+.actionMenu summary::-webkit-details-marker { display: none; }
+.actionMenu summary:hover,
+.actionMenu summary:focus-visible,
+.actionMenu[open] summary { border-color: var(--color-border-strong); color: var(--color-text); background: var(--color-surface-2); }
+
+.actionMenu > div {
+  position: absolute;
+  top: calc(100% + 5px);
+  right: 0;
+  display: grid;
+  width: 150px;
+  padding: 4px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-deeper);
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--color-shadow) 84%, transparent);
+}
+
+.actionMenu button {
+  display: flex;
+  min-height: 32px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 9px;
+  border-radius: var(--radius-xs);
+  color: var(--color-text);
+  text-align: left;
+  background: transparent;
+  cursor: pointer;
+}
+
+.actionMenu button:hover,
+.actionMenu button:focus-visible { background: var(--color-surface-2); }
+.actionMenu button:disabled { opacity: 0.45; cursor: not-allowed; }
+.actionMenu .deleteAction { color: var(--color-error); }
+
+.listRow .actionMenu { top: 12px; right: 7px; }

@@ -1,0 +1,187 @@
+.titlebar {
+  position: relative;
+  z-index: 40;
+  display: grid;
+  height: var(--titlebar-height);
+  grid-template-columns: minmax(190px, 1fr) minmax(260px, 420px) auto auto;
+  align-items: center;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-sidebar);
+  user-select: none;
+}
+
+.title {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  padding-left: 14px;
+  color: var(--color-text-muted);
+}
+
+.appLogo {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  object-fit: contain;
+}
+
+.appName {
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.preview {
+  padding-left: 8px;
+  border-left: 1px solid var(--color-border);
+  color: var(--color-warning);
+  font-size: 11px;
+}
+
+.searchWrap {
+  display: grid;
+  height: 30px;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px 0 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+}
+
+.searchWrap:focus-within {
+  border-color: var(--color-focus);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-focus) 20%, transparent);
+}
+
+.searchWrap input {
+  min-width: 0;
+  border: 0;
+  color: var(--color-text);
+  background: transparent;
+  font-size: 12px;
+}
+
+.searchWrap input::placeholder {
+  color: var(--color-text-subtle);
+}
+
+.searchWrap kbd {
+  padding: 2px 5px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  color: var(--color-text-muted);
+  background: var(--color-surface-2);
+  font-family: var(--font-ui);
+  font-size: 9px;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding-left: 12px;
+}
+
+.actions button {
+  min-height: 30px;
+  font-size: 12px;
+}
+
+.importMenu {
+  position: relative;
+}
+
+.importMenu summary {
+  display: flex;
+  min-height: 30px;
+  align-items: center;
+  gap: 7px;
+  padding: 0 10px;
+  font-size: 12px;
+  list-style: none;
+  cursor: pointer;
+}
+
+.importMenu summary::-webkit-details-marker {
+  display: none;
+}
+
+.importOptions {
+  position: absolute;
+  z-index: 80;
+  top: calc(100% + 8px);
+  right: 0;
+  display: grid;
+  width: 260px;
+  padding: 5px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  box-shadow: 0 14px 32px color-mix(in srgb, var(--color-shadow) 82%, transparent);
+}
+
+.importOptions button {
+  display: grid;
+  justify-items: start;
+  gap: 3px;
+  padding: 9px 10px;
+  border-radius: 6px;
+  color: var(--color-text);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.importOptions button:hover,
+.importOptions button:focus-visible {
+  background: var(--color-surface-2);
+}
+
+.importOptions strong {
+  font-size: 12px;
+}
+
+.importOptions span {
+  color: var(--color-text-muted);
+  font-size: 10px;
+}
+
+.windowControls {
+  display: flex;
+  height: 100%;
+  padding-left: 4px;
+}
+
+.windowControls button {
+  width: 44px;
+  height: 100%;
+  color: var(--color-text-muted);
+  background: transparent;
+  cursor: pointer;
+}
+
+.windowControls button:hover {
+  color: var(--color-text);
+  background: var(--color-surface-2);
+}
+
+.windowControls .close:hover {
+  background: var(--color-error);
+}
+
+@media (max-width: 1240px) {
+  .appName,
+  .preview,
+  .actions .ghostButton {
+    display: none;
+  }
+
+  .titlebar {
+    grid-template-columns: 100px minmax(220px, 1fr) auto auto;
+  }
+}

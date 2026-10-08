@@ -108,7 +108,16 @@ Visit [Discord](https://discord.gg/yhTvuB6U8n) or [open an issue](https://github
 
 SLH uses **Tauri 2, React, TypeScript, Rust and SQLite**, under [GPL-3.0-only](LICENSE).
 
-**Source publication is in preparation.** This repository currently contains documentation, images and releases. The complete source needed to build SLH will be published in a separate update.
+The source is published under GPL-3.0-only, including the frontend, Rust core, resources, build scripts and pinned Bedrock submodule. Forks can override the public Microsoft client ID with `SLH_MICROSOFT_CLIENT_ID`.
+
+```sh
+git clone --recurse-submodules https://github.com/slhmc/slh.git
+cd slh
+npm ci
+npm run tauri:dev
+```
+
+Windows builds with Bedrock also require Go. See [BUILDING.md](BUILDING.md).
 
 [Architecture](ARCHITECTURE.md) · [Development](DEVELOPMENT.md) · [Accounts](AUTH.md) · [Languages](LANGUAGES.md) · [Portable storage](PORTABLE.md)
 

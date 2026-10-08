@@ -1,0 +1,36 @@
+.themeRoot { width: 100%; height: 100%; color: var(--color-text); background: var(--color-bg); font-family: var(--font-ui); }
+.loading, .error { display: grid; width: 100%; height: 100dvh; place-items: center; align-content: center; background: var(--color-bg); }
+.loading img { width: 88px; height: 88px; margin-bottom: 20px; animation: breathe 1.8s ease-in-out infinite; }
+.loading p { margin: 11px 0 0; color: var(--color-text-muted); font-size: 11px; }
+.loadingBar { width: 170px; height: 3px; overflow: hidden; border-radius: 3px; background: var(--color-surface-2); }
+.loadingBar span { display: block; width: 45%; height: 100%; background: var(--color-accent); animation: load 1.1s ease-in-out infinite alternate; }
+.error { padding: 30px; color: var(--color-text-muted); text-align: center; }
+.error svg { color: var(--color-error); }
+.error h1 { margin: 14px 0 8px; color: var(--color-text); font-size: 23px; }
+.error p { max-width: 520px; margin: 0 0 20px; line-height: 1.5; }
+
+/* Appearance > Minimalism keeps the important title/value text while making
+   secondary descriptions and labels optional at the component boundary. */
+.themeRoot[data-minimalism="true"] :global([data-minimal-text]) {
+  display: none !important;
+}
+
+.themeRoot[data-minimalism="true"] :global([data-minimal-compact]) {
+  min-width: 38px;
+  justify-content: center;
+  gap: 0;
+  padding-inline: 9px;
+}
+
+.themeRoot[data-minimalism="true"] :global([data-minimal-compact] > svg) {
+  flex: 0 0 auto;
+}
+
+.themeRoot[data-minimalism="true"] :global([data-minimal-navigation]) {
+  justify-content: center;
+  gap: 0;
+  padding-inline: 9px;
+}
+
+@keyframes load { to { transform: translateX(125%); } }
+@keyframes breathe { 50% { transform: scale(1.035); opacity: 0.86; } }

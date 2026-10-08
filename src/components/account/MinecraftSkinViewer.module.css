@@ -1,0 +1,4 @@
+.viewer { position: relative; width: 100%; height: 100%; min-height: 0; overflow: hidden; border: 1px solid color-mix(in srgb, var(--color-text) 6%, transparent); border-radius: 11px; background: radial-gradient(circle at 50% 26%, var(--color-surface-hover) 0, var(--color-surface-deep) 48%, var(--color-surface-deeper) 100%); box-shadow: inset 0 1px 0 color-mix(in srgb, var(--color-highlight) 32%, transparent); }
+.viewer canvas { display: block; width: 100%; height: 100%; cursor: ew-resize; outline: none; border-radius: inherit; background: transparent; image-rendering: pixelated; }
+.compact canvas { cursor: default; }
+.empty { width: 64px; height: 128px; opacity: .28; background: var(--color-text-muted); clip-path: polygon(28% 0,72% 0,72% 25%,84% 25%,84% 63%,70% 63%,70% 100%,52% 100%,52% 63%,48% 63%,48% 100%,30% 100%,30% 63%,16% 63%,16% 25%,28% 25%); }
