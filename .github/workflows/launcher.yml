@@ -11,7 +11,7 @@ permissions:
   contents: read
 concurrency:
   group: slh-desktop-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 jobs:
   desktop:
     strategy:
@@ -99,5 +99,5 @@ jobs:
             gh release create "v$version" --target "$GITHUB_SHA" --draft --prerelease --title "SLH v$version" --notes-file release-notes.txt
           fi
           test "$(gh release view "v$version" --json isDraft --jq .isDraft)" = true || { echo 'Refusing to replace a published release.'; exit 1; }
-          gh release edit "v$version" --notes-file release-notes.txt
+          gh release edit "v$version" --target "$GITHUB_SHA" --notes-file release-notes.txt
           gh release upload "v$version" packages/* --clobber
