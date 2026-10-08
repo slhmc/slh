@@ -7,7 +7,7 @@
 <p align="center">Minecraft Java Edition · Отдельные сборки · Моды и модпаки · Настраиваемый интерфейс</p>
 
 <p align="center">
-  <a href="https://github.com/slhmc/slh/releases"><img src="assets/readme/buttons/download-ru.png" width="420" alt="Скачать SLH"></a>
+  <a href="https://github.com/slhmc/slh/releases/tag/v0.2.0"><img src="assets/readme/buttons/download-ru.png" width="420" alt="Скачать SLH"></a>
 </p>
 <p align="center">
   <a href="https://slhmc.github.io/"><img src="assets/readme/buttons/website-ru.png" width="200" alt="Сайт SLH"></a>
@@ -32,6 +32,10 @@ SLH объединяет игру, контент и настройки в од�
 | | Возможности |
 | :--- | :--- |
 | **Сборки** | Отдельные игровые папки, группы, сетка и список. Миры, скриншоты и логи рядом с игрой. |
+| **Адаптация сборки** | Копия сборки для другой версии Minecraft. Выбор папок и файлов для переноса, отдельные переключатели обновлений модов, ресурспаков и шейдеров. Исходная сборка сохраняется |
+| **Главное меню** | Персонаж по центру, скин, анимации и вращение. Аккаунт, состояние лаунчера и запуск последней сборки |
+| **Оптимизация** | Меньше фоновой работы при сворачивании, освобождение 3D-сцен и кеширование скинов и каталога |
+| **Bedrock · W.I.P.** | Экспериментальная поддержка в разработке. Нативный помощник включён в пакеты Windows |
 | **Загрузчики** | Vanilla, Fabric, Forge, NeoForge и Quilt. |
 | **Контент** | Каталог Modrinth, моды и модпаки. CurseForge — при настроенном доступе. |
 | **Аккаунты** | Microsoft, Ely.by и офлайн-профили. Переключение аккаунтов и просмотр скинов. |
@@ -59,22 +63,22 @@ SLH объединяет игру, контент и настройки в од�
 
 ## Скачать и начать играть
 
-Готовые файлы находятся в [GitHub Releases](https://github.com/slhmc/slh/releases). Сейчас опубликована тестовая версия [v0.1.2](https://github.com/slhmc/slh/releases/tag/v0.1.2).
+Доступна предварительная версия [v0.2.0](https://github.com/slhmc/slh/releases/tag/v0.2.0). Выбери пакет для своей системы
 
-**v0.2.0 собрана для всех четырёх целей и прошла модульные тесты.** [Тестовые пакеты доступны в Actions](https://github.com/slhmc/slh/actions/runs/37814762708); релиз v0.2.0 пока сохранён черновиком. Для скачивания артефактов Actions нужен вход в GitHub.
+> ⚠️ **Linux и macOS не проверены вручную.** Сборки для всех четырёх целей прошли сборку и модульные тесты, но запуск лаунчера и Minecraft на Linux и macOS ещё не проверялся
 
-| Платформа | Установщик | Portable |
+| Платформа | Установщик или пакет | Portable или архив приложения |
 | :--- | :--- | :--- |
-| **Windows 10 x64** | [Скачать .exe](https://github.com/slhmc/slh/releases/download/v0.1.2/SLH_0.1.2_win10x64-setup.exe) | [Скачать .zip](https://github.com/slhmc/slh/releases/download/v0.1.2/portable-SLH_0.1.2_win10x64.zip) |
-| **Windows 11 x64** | [Скачать .exe](https://github.com/slhmc/slh/releases/download/v0.1.2/SLH_0.1.2_11winx64-setup.exe) | [Скачать .zip](https://github.com/slhmc/slh/releases/download/v0.1.2/portable-SLH_0.1.2_win11x64.zip) |
-| **macOS · Intel / Apple Silicon** | [DMG · тестовые сборки](https://github.com/slhmc/slh/actions/runs/37814762708) | [ZIP приложения · тестовые сборки](https://github.com/slhmc/slh/actions/runs/37814762708) |
-| **Linux x64** | [DEB / RPM · тестовые сборки](https://github.com/slhmc/slh/actions/runs/37814762708) | [AppImage · тестовая сборка](https://github.com/slhmc/slh/actions/runs/37814762708) |
+| **🪟 Windows 10 / 11 · x64** | [EXE](https://github.com/slhmc/slh/releases/download/v0.2.0/SLH-0.2.0-x86_64-pc-windows-msvc-setup.exe) · [MSI](https://github.com/slhmc/slh/releases/download/v0.2.0/SLH-0.2.0-x86_64-pc-windows-msvc.msi) | [ZIP](https://github.com/slhmc/slh/releases/download/v0.2.0/SLH-0.2.0-x86_64-pc-windows-msvc-portable.zip) |
+| **🍎 macOS · Intel · не проверено вручную** | [DMG](https://github.com/slhmc/slh/releases/download/v0.2.0/SLH-0.2.0-x86_64-apple-darwin.dmg) | [App ZIP](https://github.com/slhmc/slh/releases/download/v0.2.0/SLH-0.2.0-x86_64-apple-darwin-app.zip) |
+| **🍎 macOS · Apple Silicon · не проверено вручную** | [DMG](https://github.com/slhmc/slh/releases/download/v0.2.0/SLH-0.2.0-aarch64-apple-darwin.dmg) | [App ZIP](https://github.com/slhmc/slh/releases/download/v0.2.0/SLH-0.2.0-aarch64-apple-darwin-app.zip) |
+| **🐧 Linux · x64 · не проверено вручную** | [DEB](https://github.com/slhmc/slh/releases/download/v0.2.0/SLH-0.2.0-x86_64-unknown-linux-gnu.deb) · [RPM](https://github.com/slhmc/slh/releases/download/v0.2.0/SLH-0.2.0-x86_64-unknown-linux-gnu.rpm) | [AppImage](https://github.com/slhmc/slh/releases/download/v0.2.0/SLH-0.2.0-x86_64-unknown-linux-gnu.AppImage) |
 
-**Установщик:** скачай файл для своей системы, запусти его и следуй шагам мастера.
+**Windows portable:** распакуй весь ZIP в доступную для записи папку и запусти `SLH.exe`. Сохраняй папку целиком при переносе
 
-**Portable:** распакуй весь архив в доступную для записи папку и запусти `SLH.exe`. Сохраняй папку целиком при переносе.
+Linux-пакеты собраны на Ubuntu 22.04. Работа на каждом дистрибутиве не гарантируется. Пакеты Windows и Linux не подписаны; macOS использует ad-hoc подпись без notarization
 
-Лаунчер находится в разработке. Перед тестированием новой версии сохрани резервную копию важных миров.
+Перед тестированием и адаптацией сборки сохрани резервную копию важных миров. [Контрольные суммы SHA-256](https://github.com/slhmc/slh/releases/download/v0.2.0/SHA256SUMS.txt)
 
 ## Частые вопросы
 

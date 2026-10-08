@@ -7,7 +7,7 @@
 <p align="center">Minecraft Java Edition · Separate instances · Mods and modpacks · A customizable interface</p>
 
 <p align="center">
-  <a href="https://github.com/slhmc/slh/releases"><img src="assets/readme/buttons/download-en.png" width="420" alt="Download SLH"></a>
+  <a href="https://github.com/slhmc/slh/releases/tag/v0.2.0"><img src="assets/readme/buttons/download-en.png" width="420" alt="Download SLH"></a>
 </p>
 <p align="center">
   <a href="https://slhmc.github.io/"><img src="assets/readme/buttons/website-en.png" width="200" alt="SLH website"></a>
@@ -32,6 +32,10 @@ SLH brings your game, content and settings into one launcher. Create separate in
 | | Features |
 | :--- | :--- |
 | **Instances** | Separate game folders, groups, grid and list views. Worlds, screenshots and logs alongside your game. |
+| **Instance adaptation** | Create a copy for another Minecraft version. Choose folders and files to transfer, with separate update switches for mods, resource packs and shaders. Keep the original instance. |
+| **Home screen** | A centered player character, skins, animations and rotation. Account controls, launcher status and the last played instance. |
+| **Optimizations** | Less background work when minimized, 3D scene cleanup and cached skins and catalog results. |
+| **Bedrock · W.I.P.** | Experimental support under development. Windows packages include the native helper. |
 | **Loaders** | Vanilla, Fabric, Forge, NeoForge and Quilt. |
 | **Content** | Modrinth browsing, mods and modpacks. CurseForge when access is configured. |
 | **Accounts** | Microsoft, Ely.by and offline profiles. Account switching and skin previews. |
@@ -59,22 +63,22 @@ Explore the [interactive preview on the SLH website](https://slhmc.github.io/#pr
 
 ## Download and play
 
-Get official packages from [GitHub Releases](https://github.com/slhmc/slh/releases). The currently published test release is [v0.1.2](https://github.com/slhmc/slh/releases/tag/v0.1.2).
+Try the [v0.2.0 pre-release](https://github.com/slhmc/slh/releases/tag/v0.2.0). Choose a package for your operating system.
 
-**v0.2.0 has been built and unit-tested for all four targets.** [Test packages are available in Actions](https://github.com/slhmc/slh/actions/runs/37814762708); the v0.2.0 release is currently a draft. Sign in to GitHub to download Actions artifacts.
+> ⚠️ **Linux and macOS builds have not been manually tested.** All four desktop targets were built and passed unit tests, but launching SLH and Minecraft on Linux and macOS has not been verified.
 
-| Platform | Installer | Portable |
+| Platform | Installer / package | Portable / app archive |
 | :--- | :--- | :--- |
-| **Windows 10 x64** | [Download .exe](https://github.com/slhmc/slh/releases/download/v0.1.2/SLH_0.1.2_win10x64-setup.exe) | [Download .zip](https://github.com/slhmc/slh/releases/download/v0.1.2/portable-SLH_0.1.2_win10x64.zip) |
-| **Windows 11 x64** | [Download .exe](https://github.com/slhmc/slh/releases/download/v0.1.2/SLH_0.1.2_11winx64-setup.exe) | [Download .zip](https://github.com/slhmc/slh/releases/download/v0.1.2/portable-SLH_0.1.2_win11x64.zip) |
-| **macOS · Intel / Apple Silicon** | [DMG · test builds](https://github.com/slhmc/slh/actions/runs/37814762708) | [App ZIP · test builds](https://github.com/slhmc/slh/actions/runs/37814762708) |
-| **Linux x64** | [DEB / RPM · test builds](https://github.com/slhmc/slh/actions/runs/37814762708) | [AppImage · test build](https://github.com/slhmc/slh/actions/runs/37814762708) |
+| **🪟 Windows 10 / 11 · x64** | [EXE](https://github.com/slhmc/slh/releases/download/v0.2.0/SLH-0.2.0-x86_64-pc-windows-msvc-setup.exe) · [MSI](https://github.com/slhmc/slh/releases/download/v0.2.0/SLH-0.2.0-x86_64-pc-windows-msvc.msi) | [ZIP](https://github.com/slhmc/slh/releases/download/v0.2.0/SLH-0.2.0-x86_64-pc-windows-msvc-portable.zip) |
+| **🍎 macOS · Intel · manually untested** | [DMG](https://github.com/slhmc/slh/releases/download/v0.2.0/SLH-0.2.0-x86_64-apple-darwin.dmg) | [App ZIP](https://github.com/slhmc/slh/releases/download/v0.2.0/SLH-0.2.0-x86_64-apple-darwin-app.zip) |
+| **🍎 macOS · Apple Silicon · manually untested** | [DMG](https://github.com/slhmc/slh/releases/download/v0.2.0/SLH-0.2.0-aarch64-apple-darwin.dmg) | [App ZIP](https://github.com/slhmc/slh/releases/download/v0.2.0/SLH-0.2.0-aarch64-apple-darwin-app.zip) |
+| **🐧 Linux · x64 · manually untested** | [DEB](https://github.com/slhmc/slh/releases/download/v0.2.0/SLH-0.2.0-x86_64-unknown-linux-gnu.deb) · [RPM](https://github.com/slhmc/slh/releases/download/v0.2.0/SLH-0.2.0-x86_64-unknown-linux-gnu.rpm) | [AppImage](https://github.com/slhmc/slh/releases/download/v0.2.0/SLH-0.2.0-x86_64-unknown-linux-gnu.AppImage) |
 
-**Installer:** download the package for your system, run it and follow the setup steps.
+**Windows portable:** extract the entire ZIP into a writable folder and run `SLH.exe`. Keep the folder together when moving it.
 
-**Portable:** extract the entire archive into a writable folder and run `SLH.exe`. Keep the folder together when moving it.
+Linux packages were built on Ubuntu 22.04; compatibility with every distribution is not guaranteed. Windows and Linux packages are unsigned; macOS packages are ad-hoc signed and not notarized.
 
-SLH is in development. Back up important worlds before testing a new version.
+Back up important worlds before testing or adapting an instance. [SHA-256 checksums](https://github.com/slhmc/slh/releases/download/v0.2.0/SHA256SUMS.txt).
 
 ## Frequently asked questions
 
