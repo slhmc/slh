@@ -1,0 +1,43 @@
+name: Publish SLH v0.2.0 pre-release
+on:
+  push:
+    branches: [release/publish-v0.2.0]
+permissions:
+  contents: write
+concurrency:
+  group: publish-slh-v0.2.0
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Publish verified existing packages
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: slhmc/slh
+        run: |
+          python3 - <<'PY'
+          import json, subprocess
+          from pathlib import Path
+          endpoint = 'repos/slhmc/slh/releases/407101268'
+          def fetch():
+              return json.loads(subprocess.check_output(['gh', 'api', endpoint]))
+          before = fetch()
+          assert before['tag_name'] == 'v0.2.0'
+          assert before['target_commitish'] == '8c7805309c9ab9dc1d86a1c741dbf6b4f078bdcd'
+          assert before['prerelease'] is True
+          assert len(before['assets']) == 11
+          identity = lambda r: sorted((a['id'], a['name'], a['size'], a['digest']) for a in r['assets'])
+          payload = {'name': 'SLH v0.2.0 — Instance adaptation & a new home screen',
+                     'body': Path('.github/release-notes/v0.2.0.md').read_text(),
+                     'draft': False, 'prerelease': True, 'make_latest': 'false'}
+          subprocess.run(['gh', 'api', '--method', 'PATCH', endpoint, '--input', '-'],
+                         input=json.dumps(payload), text=True, check=True, stdout=subprocess.DEVNULL)
+          after = fetch()
+          assert after['draft'] is False and after['prerelease'] is True
+          assert identity(after) == identity(before), 'Release assets changed'
+          assert after['target_commitish'] == before['target_commitish']
+          print('Published:', after['html_url'])
+          print('All 11 existing assets preserved.')
+          PY
