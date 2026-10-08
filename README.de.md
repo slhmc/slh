@@ -61,12 +61,14 @@ SLH verbindet Spiel, Inhalte und Einstellungen in einem Launcher. Erstelle getre
 
 Offizielle Pakete findest du in [GitHub Releases](https://github.com/slhmc/slh/releases). Aktuell ist die Testversion [v0.1.2](https://github.com/slhmc/slh/releases/tag/v0.1.2) veröffentlicht.
 
+**v0.2.0 wurde für alle vier Ziele gebaut und mit Unit-Tests geprüft.** [Testpakete sind in Actions verfügbar](https://github.com/slhmc/slh/actions/runs/37814762708); der Release v0.2.0 ist derzeit ein Entwurf. Zum Herunterladen der Actions-Artefakte musst du bei GitHub angemeldet sein.
+
 | Plattform | Installer | Portable |
 | :--- | :--- | :--- |
 | **Windows 10 x64** | [.exe herunterladen](https://github.com/slhmc/slh/releases/download/v0.1.2/SLH_0.1.2_win10x64-setup.exe) | [.zip herunterladen](https://github.com/slhmc/slh/releases/download/v0.1.2/portable-SLH_0.1.2_win10x64.zip) |
 | **Windows 11 x64** | [.exe herunterladen](https://github.com/slhmc/slh/releases/download/v0.1.2/SLH_0.1.2_11winx64-setup.exe) | [.zip herunterladen](https://github.com/slhmc/slh/releases/download/v0.1.2/portable-SLH_0.1.2_win11x64.zip) |
-| **macOS · Intel / Apple Silicon** | In Vorbereitung | In Vorbereitung |
-| **Linux** | In Vorbereitung | In Vorbereitung |
+| **macOS · Intel / Apple Silicon** | [DMG · Testversionen](https://github.com/slhmc/slh/actions/runs/37814762708) | [App-ZIP · Testversionen](https://github.com/slhmc/slh/actions/runs/37814762708) |
+| **Linux x64** | [DEB / RPM · Testversionen](https://github.com/slhmc/slh/actions/runs/37814762708) | [AppImage · Testversion](https://github.com/slhmc/slh/actions/runs/37814762708) |
 
 **Installer:** Passendes Paket herunterladen, starten und dem Installationsassistenten folgen.
 

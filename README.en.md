@@ -61,12 +61,14 @@ Explore the [interactive preview on the SLH website](https://slhmc.github.io/#pr
 
 Get official packages from [GitHub Releases](https://github.com/slhmc/slh/releases). The currently published test release is [v0.1.2](https://github.com/slhmc/slh/releases/tag/v0.1.2).
 
+**v0.2.0 has been built and unit-tested for all four targets.** [Test packages are available in Actions](https://github.com/slhmc/slh/actions/runs/37814762708); the v0.2.0 release is currently a draft. Sign in to GitHub to download Actions artifacts.
+
 | Platform | Installer | Portable |
 | :--- | :--- | :--- |
 | **Windows 10 x64** | [Download .exe](https://github.com/slhmc/slh/releases/download/v0.1.2/SLH_0.1.2_win10x64-setup.exe) | [Download .zip](https://github.com/slhmc/slh/releases/download/v0.1.2/portable-SLH_0.1.2_win10x64.zip) |
 | **Windows 11 x64** | [Download .exe](https://github.com/slhmc/slh/releases/download/v0.1.2/SLH_0.1.2_11winx64-setup.exe) | [Download .zip](https://github.com/slhmc/slh/releases/download/v0.1.2/portable-SLH_0.1.2_win11x64.zip) |
-| **macOS · Intel / Apple Silicon** | In preparation | In preparation |
-| **Linux** | In preparation | In preparation |
+| **macOS · Intel / Apple Silicon** | [DMG · test builds](https://github.com/slhmc/slh/actions/runs/37814762708) | [App ZIP · test builds](https://github.com/slhmc/slh/actions/runs/37814762708) |
+| **Linux x64** | [DEB / RPM · test builds](https://github.com/slhmc/slh/actions/runs/37814762708) | [AppImage · test build](https://github.com/slhmc/slh/actions/runs/37814762708) |
 
 **Installer:** download the package for your system, run it and follow the setup steps.
 

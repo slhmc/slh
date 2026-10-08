@@ -61,12 +61,14 @@ SLH объединяет игру, контент и настройки в од�
 
 Готовые файлы находятся в [GitHub Releases](https://github.com/slhmc/slh/releases). Сейчас опубликована тестовая версия [v0.1.2](https://github.com/slhmc/slh/releases/tag/v0.1.2).
 
+**v0.2.0 собрана для всех четырёх целей и прошла модульные тесты.** [Тестовые пакеты доступны в Actions](https://github.com/slhmc/slh/actions/runs/37814762708); релиз v0.2.0 пока сохранён черновиком. Для скачивания артефактов Actions нужен вход в GitHub.
+
 | Платформа | Установщик | Portable |
 | :--- | :--- | :--- |
 | **Windows 10 x64** | [Скачать .exe](https://github.com/slhmc/slh/releases/download/v0.1.2/SLH_0.1.2_win10x64-setup.exe) | [Скачать .zip](https://github.com/slhmc/slh/releases/download/v0.1.2/portable-SLH_0.1.2_win10x64.zip) |
 | **Windows 11 x64** | [Скачать .exe](https://github.com/slhmc/slh/releases/download/v0.1.2/SLH_0.1.2_11winx64-setup.exe) | [Скачать .zip](https://github.com/slhmc/slh/releases/download/v0.1.2/portable-SLH_0.1.2_win11x64.zip) |
-| **macOS · Intel / Apple Silicon** | Подготавливается | Подготавливается |
-| **Linux** | Подготавливается | Подготавливается |
+| **macOS · Intel / Apple Silicon** | [DMG · тестовые сборки](https://github.com/slhmc/slh/actions/runs/37814762708) | [ZIP приложения · тестовые сборки](https://github.com/slhmc/slh/actions/runs/37814762708) |
+| **Linux x64** | [DEB / RPM · тестовые сборки](https://github.com/slhmc/slh/actions/runs/37814762708) | [AppImage · тестовая сборка](https://github.com/slhmc/slh/actions/runs/37814762708) |
 
 **Установщик:** скачай файл для своей системы, запусти его и следуй шагам мастера.
 
