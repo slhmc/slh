@@ -5,10 +5,18 @@ use regex::Regex;
 use crate::error::{AppError, AppResult};
 
 pub fn validate_relative_path(path: &Path) -> AppResult<()> {
-    if path.as_os_str().is_empty() || path.is_absolute() {
+    // Imported archives and sync manifests can come from another OS. Recognize
+    // Windows roots and separators even when the host's Path parser is Unix.
+    let text = path.to_string_lossy();
+    let bytes = text.as_bytes();
+    let drive_prefix = bytes.len() >= 2 && bytes[0].is_ascii_alphabetic() && bytes[1] == b':';
+    if path.as_os_str().is_empty() || path.is_absolute() || text.starts_with('\\') || drive_prefix {
         return Err(AppError::Security(
             "Path must be a non-empty relative path".into(),
         ));
+    }
+    if text.split(['/', '\\']).any(|part| matches!(part, "." | "..")) {
+        return Err(AppError::Security(format!("Unsafe path component in {}", path.display())));
     }
     for component in path.components() {
         if !matches!(component, Component::Normal(_)) {
@@ -197,6 +205,10 @@ mod tests {
         assert!(validate_relative_path(Path::new("mods/config.json")).is_ok());
         assert!(validate_relative_path(Path::new("../secret.txt")).is_err());
         assert!(validate_relative_path(Path::new(r"C:\Windows\System32")).is_err());
+        assert!(validate_relative_path(Path::new(r"C:relative.txt")).is_err());
+        assert!(validate_relative_path(Path::new(r"\\server\share\file")).is_err());
+        assert!(validate_relative_path(Path::new(r"mods\..\secret.txt")).is_err());
+        assert!(validate_relative_path(Path::new("/etc/passwd")).is_err());
     }
 
     #[test]

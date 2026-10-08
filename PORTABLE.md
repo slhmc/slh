@@ -1,6 +1,6 @@
 # Portable storage
 
-Release builds resolve the portable root from the directory containing `SLH.exe`. They never derive persistent paths from the current working directory.
+Windows portable packages include `portable.flag` and resolve the data root from the directory containing `SLH.exe`. They never derive persistent paths from the current working directory. Fresh Windows installer packages use per-user application data; an existing legacy `data/` folder beside the executable remains supported. Linux and macOS use platform user-data directories by default. See [BUILDING.md](BUILDING.md) for package details.
 
 ```text
 SLH-Portable/

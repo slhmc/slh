@@ -4,11 +4,14 @@ on:
   pull_request:
   push:
     branches: [main, master]
+    paths-ignore:
+      - '**.md'
+      - 'assets/readme/**'
 permissions:
   contents: read
 concurrency:
   group: slh-desktop-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 jobs:
   desktop:
     strategy:

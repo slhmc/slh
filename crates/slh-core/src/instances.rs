@@ -747,9 +747,11 @@ mod tests {
 
     #[test]
     fn deletion_target_cannot_escape_the_portable_instance_root() {
+        let directory = tempfile::tempdir().unwrap();
+        let root = directory.path().join("Игры SLH");
         let paths = PortablePaths::from_executable(
-            Path::new(r"C:\SLH Portable\SLH.exe"),
-            Some(r"D:\Игры\SLH".into()),
+            &root.join("SLH.exe"),
+            Some(root.clone()),
         )
         .unwrap();
         let id = "62dcc977-d80f-46ba-831b-5aee58d29801";
@@ -757,11 +759,11 @@ mod tests {
             validated_instance_root(
                 &paths,
                 id,
-                r"D:\Игры\SLH\data\instances\62dcc977-d80f-46ba-831b-5aee58d29801\game"
+                &paths.instances.join(id).join("game").to_string_lossy()
             )
             .is_ok()
         );
-        assert!(validated_instance_root(&paths, id, r"D:\Игры\other\game").is_err());
+        assert!(validated_instance_root(&paths, id, &directory.path().join("other/game").to_string_lossy()).is_err());
     }
 
     #[tokio::test]
