@@ -37,3 +37,14 @@ test('Update prompt offers installation inside the launcher at narrow size', asy
   await expect(dialog.getByText('Your instances, accounts, settings and custom languages will be kept.')).toBeVisible();
   await dialog.getByRole('button', { name: 'Later', exact: true }).click(); await expect(dialog).not.toBeVisible();
 });
+
+test("missing instance navigation keeps the existing Windows hook-order fix", async ({ page }) => {
+  const errors: string[] = []; page.on("pageerror", error => errors.push(error.message));
+  await page.goto("/#/instance/preview-2?tab=settings");
+  await expect(page.getByRole("heading", { name: "Name and artwork" })).toBeVisible();
+  await page.evaluate(() => { window.location.hash = "/instance/missing-instance"; });
+  await expect(page.getByRole("heading", { name: "Instance not found" })).toBeVisible();
+  await page.getByRole("button", { name: "Back to Library" }).click();
+  await expect(page.getByRole("heading", { name: "Your Minecraft worlds, separated and ready" })).toBeVisible();
+  expect(errors).toEqual([]);
+});

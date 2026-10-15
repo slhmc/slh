@@ -597,6 +597,33 @@ export function InstancePage() {
       window.removeEventListener("blur", end);
     };
   }, []);
+  const openExportDialog = async () => {
+    if (!instance) return;
+    if (isBedrock) setExportFormat("zip");
+    setExportDialogOpen(true);
+    setExportLoading(true);
+    try {
+      const entries = await command<ExportEntry[]>("list_instance_export_entries", { instanceId: instance.id });
+      setExportEntries(entries);
+      setExportSelected(entries.map((entry) => entry.relativePath));
+    } catch (error) {
+      setExportDialogOpen(false);
+      pushToast({ tone: "error", title: tr("Export failed"), message: String((error as { message?: string }).message ?? error) });
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const requested = new URLSearchParams(location.search).get("export") === "1";
+    if (!requested || !instance || exportShortcutHandled.current) return;
+    exportShortcutHandled.current = true;
+    void openExportDialog();
+    const params = new URLSearchParams(location.search);
+    params.delete("export");
+    navigate({ search: params.toString() ? `?${params.toString()}` : "" }, { replace: true });
+  }, [instance, location.search]);
+
   if (!bootstrap) return null;
   if (!instance) return <div className={styles.notFound}><WarningCircle size={36} /><h1>{tr("Instance not found")}</h1><button className={common.secondaryButton} type="button" onClick={() => navigate("/library")}>{tr("Back to Library")}</button></div>;
   const displayedFiles = tab === "screenshots"
@@ -720,21 +747,6 @@ export function InstancePage() {
     }
   };
 
-  const openExportDialog = async () => {
-    if (isBedrock) setExportFormat("zip");
-    setExportDialogOpen(true);
-    setExportLoading(true);
-    try {
-      const entries = await command<ExportEntry[]>("list_instance_export_entries", { instanceId: instance.id });
-      setExportEntries(entries);
-      setExportSelected(entries.map((entry) => entry.relativePath));
-    } catch (error) {
-      setExportDialogOpen(false);
-      pushToast({ tone: "error", title: tr("Export failed"), message: String((error as { message?: string }).message ?? error) });
-    } finally {
-      setExportLoading(false);
-    }
-  };
 
   const importBedrockFiles = async (extensions: string[], label: string) => {
     const selection = await openDialog({
@@ -780,15 +792,6 @@ export function InstancePage() {
     }
   };
 
-  useEffect(() => {
-    const requested = new URLSearchParams(location.search).get("export") === "1";
-    if (!requested || !instance || exportShortcutHandled.current) return;
-    exportShortcutHandled.current = true;
-    void openExportDialog();
-    const params = new URLSearchParams(location.search);
-    params.delete("export");
-    navigate({ search: params.toString() ? `?${params.toString()}` : "" }, { replace: true });
-  }, [instance, location.search]);
 
   const saveIdentity = async () => {
     const name = instanceName.trim();

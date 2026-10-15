@@ -34,6 +34,7 @@ This pre-release fixes catalog loading and Java installation on Intel Macs, adds
 - Exclude third-party vendor code from GitHub language statistics.
 - Preserve settings from local builds and support their existing semantic-color migration.
 - Keep custom language files intact and supply missing new strings in memory.
+- Preserve the existing local fix for navigation to a deleted instance.
 
 ## 🚧 Bedrock Edition — W.I.P.
 
