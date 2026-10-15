@@ -108,7 +108,28 @@ pub fn load_locale(paths: &PortablePaths, code: &str) -> AppResult<serde_json::V
         .ok_or_else(|| crate::error::AppError::NotFound(format!("Locale {code}")))?;
     let content = std::fs::read_to_string(descriptor.path)?;
     let content = content.strip_prefix('\u{feff}').unwrap_or(&content);
-    Ok(serde_json::from_str(content)?)
+    // New launcher strings must work with preserved/custom locale files.
+    // Overlay user values in memory; never rewrite their translation files.
+    let mut messages = serde_json::from_str(include_str!("../../../resources/languages/en-US.json"))?;
+    let selected = match code {
+        "ru-RU" => include_str!("../../../resources/languages/ru-RU.json"),
+        "de-DE" => include_str!("../../../resources/languages/de-DE.json"),
+        _ => include_str!("../../../resources/languages/en-US.json"),
+    };
+    merge_locale(&mut messages, serde_json::from_str(selected)?);
+    merge_locale(&mut messages, serde_json::from_str(content)?);
+    Ok(messages)
+}
+
+fn merge_locale(base: &mut serde_json::Value, overlay: serde_json::Value) {
+    match (base, overlay) {
+        (serde_json::Value::Object(base), serde_json::Value::Object(overlay)) => {
+            for (key, value) in overlay {
+                merge_locale(base.entry(key).or_insert(serde_json::Value::Null), value);
+            }
+        }
+        (base, overlay) => *base = overlay,
+    }
 }
 
 fn read_locale(path: &Path) -> AppResult<LocaleFile> {
@@ -129,6 +150,20 @@ fn read_locale(path: &Path) -> AppResult<LocaleFile> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn old_custom_languages_keep_their_values_and_gain_new_keys_in_memory() {
+        let root = tempfile::tempdir().unwrap();
+        let paths = PortablePaths::from_executable(&root.path().join("SLH.exe"), Some(root.path().join("portable"))).unwrap();
+        std::fs::create_dir_all(&paths.languages).unwrap();
+        let path = paths.languages.join("ru-RU.json");
+        let original = r#"{"meta":{"code":"ru-RU","name":"Custom Russian","schemaVersion":1},"common":{"close":"My close label"}}"#;
+        std::fs::write(&path, original).unwrap();
+        let loaded = load_locale(&paths, "ru-RU").unwrap();
+        assert_eq!(loaded["common"]["close"], "My close label");
+        assert_eq!(loaded["updater"]["install"], "Обновить сейчас");
+        assert_eq!(std::fs::read_to_string(path).unwrap(), original);
+    }
 
     #[test]
     fn discovers_user_languages_and_case_insensitive_json_extensions() {

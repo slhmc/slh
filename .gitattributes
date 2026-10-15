@@ -3,3 +3,7 @@ patches/*.patch -whitespace
 crates/slh-core/migrations/*.sql text eol=lf
 
 /vendor/** linguist-vendored
+
+# This shipped development migration retains its exact CRLF checksum.
+/crates/slh-core/migrations/0019_semantic_colors.sql -text
+/src-tauri/migrations/0019_semantic_colors.sql -text

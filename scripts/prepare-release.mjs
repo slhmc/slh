@@ -32,6 +32,8 @@ This pre-release fixes catalog loading and Java installation on Intel Macs, adds
 - Restore all settings sections when the 0.2.0 migration left only Bedrock visible. Preserve other customized section lists.
 - Remove the unused Slint prototype from the release source tree; it remains available in Git history.
 - Exclude third-party vendor code from GitHub language statistics.
+- Preserve settings from local builds and support their existing semantic-color migration.
+- Keep custom language files intact and supply missing new strings in memory.
 
 ## 🚧 Bedrock Edition — W.I.P.
 

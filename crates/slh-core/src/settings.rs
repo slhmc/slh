@@ -56,8 +56,26 @@ pub async fn update(pool: &SqlitePool, key: &str, value: Value) -> AppResult<Val
     if key == "bedrock" {
         validate_bedrock(&value)?;
     }
-    database::set_setting(pool, key, &value).await?;
-    Ok(value)
+    // Retain fields written by a newer/local build when an older UI saves a
+    // category. Arrays and explicit nulls still replace the previous value.
+    let stored: Option<String> = sqlx::query_scalar("SELECT value_json FROM settings WHERE key = ?")
+        .bind(key).fetch_optional(pool).await?;
+    let mut merged = stored.as_deref().map(serde_json::from_str).transpose()?
+        .unwrap_or_else(|| serde_json::json!({}));
+    merge_values(&mut merged, value);
+    database::set_setting(pool, key, &merged).await?;
+    Ok(merged)
+}
+
+fn merge_values(base: &mut Value, overlay: Value) {
+    match (base, overlay) {
+        (Value::Object(base), Value::Object(overlay)) => {
+            for (key, value) in overlay {
+                merge_values(base.entry(key).or_insert(Value::Null), value);
+            }
+        }
+        (base, overlay) => *base = overlay,
+    }
 }
 
 pub async fn ensure_bedrock_enabled(pool: &SqlitePool) -> AppResult<()> {
@@ -316,6 +334,22 @@ fn validate_console(value: &Value) -> AppResult<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn category_saves_preserve_unknown_nested_preferences() {
+        let root = tempfile::tempdir().unwrap();
+        let paths = crate::portable::PortablePaths::from_executable(&root.path().join("slh"), Some(root.path().to_path_buf())).unwrap();
+        paths.initialize().unwrap();
+        let pool = crate::database::connect(&paths).await.unwrap();
+        database::set_setting(&pool, "general", &serde_json::json!({"rememberSection":true,"future":{"enabled":true,"path":"custom"},"list":[1,2]})).await.unwrap();
+        let updated = update(&pool, "general", serde_json::json!({"rememberSection":false,"future":{"new":1},"list":[],"optional":null})).await.unwrap();
+        assert_eq!(updated["future"]["enabled"], true);
+        assert_eq!(updated["future"]["path"], "custom");
+        assert_eq!(updated["future"]["new"], 1);
+        assert_eq!(updated["rememberSection"], false);
+        assert_eq!(updated["list"], serde_json::json!([]));
+        assert!(updated["optional"].is_null());
+    }
 
     #[test]
     fn appearance_presets_are_bounded_and_hex_only() {
