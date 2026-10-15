@@ -431,12 +431,25 @@ pub async fn install_managed(
     state: &AppState,
     major_version: u32,
 ) -> AppResult<JavaInstallation> {
+    let operation_id = Uuid::new_v4().to_string();
+    let result = install_managed_inner(app, state, major_version, &operation_id).await;
+    if let Err(error) = &result {
+        emit_java_progress(app, &operation_id, "failed", error.to_string(), 0, None);
+    }
+    result
+}
+
+async fn install_managed_inner(
+    app: &Host,
+    state: &AppState,
+    major_version: u32,
+    operation_id: &str,
+) -> AppResult<JavaInstallation> {
     if ![8, 17, 21, 25].contains(&major_version) {
         return Err(AppError::InvalidInput(
             "Managed Java supports the Minecraft runtime lines 8, 17, 21, and 25".into(),
         ));
     }
-    let operation_id = Uuid::new_v4().to_string();
     let managed_root = managed_root(state).await?;
     emit_java_progress(
         app,
@@ -726,6 +739,20 @@ fn parse_major(version: &str) -> AppResult<u32> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn failed_java_installation_ends_its_progress_operation() {
+        let directory = tempfile::tempdir().unwrap();
+        let paths = crate::portable::PortablePaths::from_executable(&directory.path().join("slh"), Some(directory.path().to_path_buf())).unwrap();
+        let state = crate::state::AppState::initialize_isolated_at(paths).await.unwrap();
+        let events = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+        let captured = events.clone();
+        let host = Host::new(move |event| { captured.lock().unwrap().push(event); Ok(()) });
+        assert!(install_managed(&host, &state, 99).await.is_err());
+        let events = events.lock().unwrap();
+        assert!(events.iter().any(|event| matches!(event,
+            crate::host::CoreEvent::Progress(progress) if progress.operation == "java" && progress.stage == "failed" && !progress.operation_id.is_empty())));
+    }
 
     #[test]
     fn discovers_deep_macos_runtime_layout() {
