@@ -433,10 +433,15 @@ pub async fn install_managed(
 ) -> AppResult<JavaInstallation> {
     let operation_id = Uuid::new_v4().to_string();
     let result = install_managed_inner(app, state, major_version, &operation_id).await;
-    if let Err(error) = &result {
-        emit_java_progress(app, &operation_id, "failed", error.to_string(), 0, None);
-    }
+    finish_java_install(app, &operation_id, &result);
     result
+}
+
+fn finish_java_install(app: &Host, operation_id: &str, result: &AppResult<JavaInstallation>) {
+    match result {
+        Ok(java) => emit_java_progress(app, operation_id, "complete", format!("Temurin Java {} is ready", java.version), 1, Some(1)),
+        Err(error) => emit_java_progress(app, operation_id, "failed", error.to_string(), 0, None),
+    }
 }
 
 async fn install_managed_inner(
@@ -582,14 +587,6 @@ async fn install_managed_inner(
     .await?;
     installed.source = "managed".into();
     remember_detected_path(state, &installed).await?;
-    emit_java_progress(
-        app,
-        &operation_id,
-        "complete",
-        format!("Temurin Java {} is ready", installed.version),
-        1,
-        Some(1),
-    );
     Ok(installed)
 }
 
@@ -739,6 +736,18 @@ fn parse_major(version: &str) -> AppResult<u32> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn an_existing_runtime_also_completes_the_java_progress_operation() {
+        let events = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+        let captured = events.clone();
+        let host = Host::new(move |event| { captured.lock().unwrap().push(event); Ok(()) });
+        let runtime = JavaInstallation { path: "cached-runtime".into(), version: "21.0.8".into(), major_version: 21, architecture: "amd64".into(), source: "managed".into(), compatible: true };
+        finish_java_install(&host, "existing-runtime-install", &Ok(runtime));
+        let events = events.lock().unwrap();
+        assert!(events.iter().any(|event| matches!(event,
+            crate::host::CoreEvent::Progress(progress) if progress.operation_id == "existing-runtime-install" && progress.stage == "complete" && progress.completed == 1 && progress.total == Some(1))));
+    }
 
     #[tokio::test]
     async fn failed_java_installation_ends_its_progress_operation() {
