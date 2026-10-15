@@ -645,7 +645,7 @@ export function LibraryPage() {
             ) : null}
             {orderedSections.map((section) => section.kind === "group" ? (
               <section className={`${styles.group} ${dropGroupId === section.group.id ? styles.dropTarget : ""}`} key={section.group.id} data-slh-group-drop={section.group.id} {...dropHandlers(section.group.id)}>
-                <div className={`${styles.groupHeader} ${groupReorderTarget?.id === section.group.id ? (groupReorderTarget.after ? styles.groupInsertAfter : styles.groupInsertBefore) : ""}`} data-slh-group-drop={section.group.id} data-slh-group-order={section.group.id} {...dropHandlers(section.group.id)} onPointerDown={(event) => { if (event.button !== 0 || (event.target as HTMLElement).closest("button, input")) return; event.preventDefault(); groupPointerDragRef.current = { groupId: section.group.id, label: section.group.name, startX: event.clientX, startY: event.clientY, dragging: false }; }} onContextMenu={(event) => openContextMenu(event, { kind: "group", group: section.group })}>
+                <div className={`${styles.groupHeader} ${groupReorderTarget?.id === section.group.id ? (groupReorderTarget.after ? styles.groupInsertAfter : styles.groupInsertBefore) : ""}`} data-slh-group-drop={section.group.id} data-slh-group-order={section.group.id} {...dropHandlers(section.group.id)} onPointerDown={(event) => { if (event.button !== 0 || (event.target as HTMLElement).closest("button, input")) return; event.preventDefault(); groupPointerDragRef.current = { groupId: section.group.id, label: section.group.name, startX: event.clientX, startY: event.clientY, dragging: false }; }} data-slh-context-menu="true" onContextMenu={(event) => openContextMenu(event, { kind: "group", group: section.group })}>
                   <button type="button" onClick={() => void toggleGroup(section.group.id, !section.group.collapsed)} aria-expanded={!section.group.collapsed} aria-label={`${section.group.collapsed ? "Expand" : "Collapse"} ${section.group.name}`}>
                     <ArrowRight className={section.group.collapsed ? styles.collapsedArrow : styles.expandedArrow} size={15} weight="bold" />
                   </button>
@@ -658,7 +658,7 @@ export function LibraryPage() {
               </section>
             ) : (
               <section className={`${styles.group} ${dropGroupId === null ? styles.dropTarget : ""}`} key="ungrouped" data-slh-group-drop="ungrouped" {...dropHandlers(null)}>
-                <div className={`${styles.groupHeader} ${groupReorderTarget?.id === "ungrouped" ? (groupReorderTarget.after ? styles.groupInsertAfter : styles.groupInsertBefore) : ""}`} data-slh-group-drop="ungrouped" data-slh-group-order="ungrouped" {...dropHandlers(null)} onPointerDown={(event) => { if (event.button !== 0 || (event.target as HTMLElement).closest("button, input")) return; event.preventDefault(); groupPointerDragRef.current = { groupId: "ungrouped", label: t("library.ungrouped", "Ungrouped"), startX: event.clientX, startY: event.clientY, dragging: false }; }} onContextMenu={(event) => openContextMenu(event, { kind: "ungrouped" })}>
+                <div className={`${styles.groupHeader} ${groupReorderTarget?.id === "ungrouped" ? (groupReorderTarget.after ? styles.groupInsertAfter : styles.groupInsertBefore) : ""}`} data-slh-group-drop="ungrouped" data-slh-group-order="ungrouped" {...dropHandlers(null)} onPointerDown={(event) => { if (event.button !== 0 || (event.target as HTMLElement).closest("button, input")) return; event.preventDefault(); groupPointerDragRef.current = { groupId: "ungrouped", label: t("library.ungrouped", "Ungrouped"), startX: event.clientX, startY: event.clientY, dragging: false }; }} data-slh-context-menu="true" onContextMenu={(event) => openContextMenu(event, { kind: "ungrouped" })}>
                   <button type="button" onClick={() => void setUngroupedCollapsedState(!ungroupedCollapsed)} aria-expanded={!ungroupedCollapsed} aria-label={`${ungroupedCollapsed ? "Expand" : "Collapse"} ${t("library.ungrouped", "Ungrouped")}`}>
                     <ArrowRight className={ungroupedCollapsed ? styles.collapsedArrow : styles.expandedArrow} size={15} weight="bold" />
                   </button>
@@ -674,7 +674,7 @@ export function LibraryPage() {
           </div>
         )}
       </section>
-      {selected ? <div className={styles.panelSlot}><InstanceSidePanel instance={selected} onDelete={() => void deleteInstance(selected)} onContextMenu={(event) => openContextMenu(event, { kind: "instance" })} /></div> : null}
+      {selected ? <div className={styles.panelSlot}><InstanceSidePanel instance={selected} onDelete={() => void deleteInstance(selected)} data-slh-context-menu="true" onContextMenu={(event) => openContextMenu(event, { kind: "instance" })} /></div> : null}
       {dragPreview ? (
         <div className={styles.dragPreview} style={{ left: dragPreview.x, top: dragPreview.y }} aria-hidden="true">
           <span>{dragPreview.instance.name}</span>
@@ -684,7 +684,7 @@ export function LibraryPage() {
       {groupDragPreview ? <div className={styles.groupDragPreview} style={{ left: groupDragPreview.x, top: groupDragPreview.y }} aria-hidden="true">{groupDragPreview.label}</div> : null}
       {panelActionDragPreview ? <div className={styles.groupDragPreview} style={{ left: panelActionDragPreview.x, top: panelActionDragPreview.y }} aria-hidden="true">{panelActionDragPreview.label}</div> : null}
       {contextMenu ? (
-        <div ref={contextMenuRef} className={`${styles.contextMenu} slh-context-menu`} style={{ left: contextMenu.x, top: contextMenu.y }} onPointerDown={(event) => { event.stopPropagation(); if (event.button === 2) beginContextMenuMove(event); }} onMouseDown={(event) => { if (event.button === 2) beginContextMenuMove(event); }} onContextMenu={(event) => { event.preventDefault(); event.stopPropagation(); }}>
+        <div ref={contextMenuRef} className={`${styles.contextMenu} slh-context-menu`} style={{ left: contextMenu.x, top: contextMenu.y }} onPointerDown={(event) => { event.stopPropagation(); if (event.button === 2) beginContextMenuMove(event); }} onMouseDown={(event) => { if (event.button === 2) beginContextMenuMove(event); }} data-slh-context-menu="true" onContextMenu={(event) => { event.preventDefault(); event.stopPropagation(); }}>
           {contextMenu.kind === "ungrouped" ? <>
             <header className={styles.contextTitle} onPointerDown={beginContextMenuMove} onMouseDown={(event) => { if (event.button === 2) beginContextMenuMove(event); }}><FolderOpen size={17} /><strong>{tr("Ungrouped")}</strong></header>
             <div>

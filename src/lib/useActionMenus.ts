@@ -1,8 +1,10 @@
+import { installMacContextMenus } from "./macContextMenu";
 import { useEffect } from "react";
 
 /** One coordinator for action menus, including native details and context menus. */
 export function useActionMenus() {
   useEffect(() => {
+    const removeMacContextMenus = installMacContextMenus();
     const selector = "details[data-action-menu][open]";
     let announcing = false;
     const close = (except?: Element | null) => {
@@ -40,6 +42,7 @@ export function useActionMenus() {
     window.addEventListener("slh-context-menu-open", cancel);
     window.addEventListener("slh-ui-cancel", cancel);
     return () => {
+      removeMacContextMenus();
       document.removeEventListener("toggle", toggle, true);
       document.removeEventListener("pointerdown", pointer, true);
       document.removeEventListener("click", click, true);

@@ -116,7 +116,7 @@ export function AppSidebar({ onContextMenu }: AppSidebarProps) {
   const dockPositionClass = dockDrag ? styles[`dockDrop${dockDrag.position[0].toUpperCase()}${dockDrag.position.slice(1)}` as "dockDropLeft" | "dockDropRight" | "dockDropTop" | "dockDropBottom"] : "";
   return (
     <>
-    <aside className={`${styles.sidebar} ${positionClass}`} onPointerDown={beginDockDrag} onContextMenu={onContextMenu}>
+    <aside className={`${styles.sidebar} ${positionClass}`} onPointerDown={beginDockDrag} data-slh-context-menu="true" onContextMenu={onContextMenu}>
       <div className={styles.brand}>
         <BrandLogo variant="horizontal" />
         <BrandLogo variant="icon" />

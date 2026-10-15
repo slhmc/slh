@@ -1,3 +1,4 @@
+import { requestLauncherUpdate } from "../../components/common/LauncherUpdateDialog";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   ArrowRight,
@@ -342,7 +343,7 @@ export function SettingsPage() {
       const result = await command<LauncherUpdateInfo>("check_launcher_updates");
       setLauncherUpdate(result);
       if (result.updateAvailable) {
-        pushToast({ tone: "info", title: tr("Launcher update available"), message: `${result.latestVersion} — ${tr("Open the release page to download it.")}`, action: { label: tr("Open release"), url: result.releaseUrl } });
+        requestLauncherUpdate(result);
       } else {
         pushToast({ tone: "success", title: tr("Launcher is up to date"), message: `${tr("Current version")}: ${result.currentVersion}` });
       }
@@ -628,7 +629,7 @@ export function SettingsPage() {
 
   return (
     <div className={`${styles.layout} ${settingsNavigationPosition === "right" ? styles.navRight : ""}`}>
-      <aside ref={settingsNavRef} className={styles.nav} onPointerDown={beginSettingsDockDrag} onContextMenu={(event) => {
+      <aside ref={settingsNavRef} className={styles.nav} onPointerDown={beginSettingsDockDrag} data-slh-context-menu="true" onContextMenu={(event) => {
         event.preventDefault();
         window.dispatchEvent(new Event("slh-context-menu-open"));
         setSettingsNavigationMenuPosition({ x: event.clientX, y: event.clientY });
@@ -965,7 +966,7 @@ export function SettingsPage() {
             <SettingRow title={tr("Launcher updates")} description={tr("Check the official GitHub releases page for a newer launcher build.")}>
               <div className={styles.updateControl}>
                 <button className={common.secondaryButton} type="button" disabled={launcherUpdateBusy} onClick={() => void checkLauncherUpdates()}>{launcherUpdateBusy ? tr("Checking") : tr("Check for updates")}</button>
-                {launcherUpdate?.updateAvailable ? <button className={common.button} type="button" onClick={() => void openUrl(launcherUpdate.releaseUrl)}>{tr("Open release")}</button> : null}
+                {launcherUpdate?.updateAvailable ? <button className={common.button} type="button" onClick={() => requestLauncherUpdate(launcherUpdate)}>{t("updater.install")}</button> : null}
               </div>
             </SettingRow>
             <SettingRow title={tr("Check for launcher updates automatically")} description={tr("Check GitHub for a newer SLH release once when the launcher starts.")}>

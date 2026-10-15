@@ -360,7 +360,7 @@ fn managed_candidates(root: &Path) -> Vec<PathBuf> {
         return Vec::new();
     }
     walkdir::WalkDir::new(root)
-        .max_depth(4)
+        .max_depth(8)
         .follow_links(false)
         .into_iter()
         .filter_map(Result::ok)
@@ -378,9 +378,10 @@ pub async fn inspect(path: &Path) -> AppResult<JavaInstallation> {
     let mut command = Command::new(path);
     command.args(["-XshowSettings:properties", "-version"]);
     hide_console_window(&mut command);
-    let output = command
-        .output()
+    command.kill_on_drop(true);
+    let output = tokio::time::timeout(std::time::Duration::from_secs(15), command.output())
         .await
+        .map_err(|_| AppError::Process(format!("Java verification timed out: {}", path.display())))?
         .map_err(|error| AppError::Process(format!("Unable to run {}: {error}", path.display())))?;
     let text = format!(
         "{}\n{}",
@@ -465,7 +466,7 @@ pub async fn install_managed(
         .await?;
     let asset = assets.into_iter().next().ok_or_else(|| {
         AppError::Unavailable(format!(
-            "Adoptium did not return a Windows {} JRE for Java {major_version}",
+            "Adoptium did not return a compatible {} JRE for Java {major_version}",
             managed_architecture()
         ))
     })?;
@@ -516,11 +517,21 @@ pub async fn install_managed(
     let java_in_staging = managed_candidates(&staging)
         .into_iter()
         .next()
-        .ok_or_else(|| AppError::Security("Temurin archive contained no java.exe".into()))?;
-    let runtime_root = java_in_staging
-        .parent()
-        .and_then(Path::parent)
+        .ok_or_else(|| AppError::Security("Temurin archive contained no Java executable".into()))?;
+    // Keep the complete macOS bundle: Contents/Home can reference Contents/MacOS.
+    let relative_java = java_in_staging.strip_prefix(&staging)
+        .map_err(|_| AppError::Security("Java executable escaped staging".into()))?;
+    let bundle = relative_java.components().next()
         .ok_or_else(|| AppError::Security("Temurin runtime layout is invalid".into()))?;
+    let runtime_root = staging.join(bundle.as_os_str());
+    let executable_relative = java_in_staging.strip_prefix(&runtime_root)
+        .map_err(|_| AppError::Security("Temurin runtime layout is invalid".into()))?;
+    // Verify before committing the directory, so a failed install is retryable.
+    if let Err(error) = inspect(&java_in_staging).await {
+        let _ = tokio::fs::remove_dir_all(&staging).await;
+        let _ = tokio::fs::remove_file(&archive_path).await;
+        return Err(error);
+    }
     let safe_version = asset
         .version
         .semver
@@ -535,9 +546,7 @@ pub async fn install_managed(
         .collect::<String>();
     let destination = managed_root.join(format!("temurin-{major_version}-{safe_version}"));
     if destination.exists() {
-        let existing = destination
-            .join("bin")
-            .join(crate::platform::OperatingSystem::current().java_executable());
+        let existing = destination.join(executable_relative);
         if existing.is_file() {
             let _ = tokio::fs::remove_dir_all(&staging).await;
             let _ = tokio::fs::remove_file(&archive_path).await;
@@ -555,9 +564,7 @@ pub async fn install_managed(
     let _ = tokio::fs::remove_dir_all(&staging).await;
     let _ = tokio::fs::remove_file(&archive_path).await;
     let mut installed = inspect(
-        &destination
-            .join("bin")
-            .join(crate::platform::OperatingSystem::current().java_executable()),
+        &destination.join(executable_relative),
     )
     .await?;
     installed.source = "managed".into();
@@ -584,13 +591,18 @@ async fn download_sha256(
     destination: &Path,
     major_version: u32,
 ) -> AppResult<()> {
-    let response = state.http.get(url).send().await?.error_for_status()?;
+    // The shared metadata client has a 60-second deadline. Runtime archives
+    // need longer on older Macs and slow connections, while stalled chunks fail.
+    let response = state.http.get(url)
+        .timeout(std::time::Duration::from_secs(15 * 60))
+        .send().await?.error_for_status()?;
     let mut stream = response.bytes_stream();
     let temporary = destination.with_extension("zip.slh-part");
     let mut output = tokio::fs::File::create(&temporary).await?;
     let mut digest = Sha256::new();
     let mut written = 0_u64;
-    while let Some(chunk) = stream.next().await {
+    while let Some(chunk) = tokio::time::timeout(std::time::Duration::from_secs(45), stream.next())
+        .await.map_err(|_| AppError::Unavailable("Java download stalled; retry the installation".into()))? {
         let chunk = chunk?;
         written = written.saturating_add(chunk.len() as u64);
         if written > MAX_MANAGED_JAVA_ARCHIVE_BYTES {
@@ -714,6 +726,40 @@ fn parse_major(version: &str) -> AppResult<u32> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn discovers_deep_macos_runtime_layout() {
+        let directory = tempfile::tempdir().unwrap();
+        let java = directory.path().join("jdk-21.jre/Contents/Home/bin")
+            .join(crate::platform::OperatingSystem::current().java_executable());
+        std::fs::create_dir_all(java.parent().unwrap()).unwrap();
+        std::fs::write(&java, "fixture").unwrap();
+        assert_eq!(managed_candidates(directory.path()), vec![java]);
+    }
+
+    #[test]
+    fn extracts_macos_bundle_without_losing_executable_mode() {
+        let directory = tempfile::tempdir().unwrap();
+        let archive_path = directory.path().join("runtime.tar.gz");
+        let encoder = flate2::write::GzEncoder::new(File::create(&archive_path).unwrap(), flate2::Compression::default());
+        let mut archive = tar::Builder::new(encoder);
+        for name in ["jdk.jre/Contents/Home/bin/java", "jdk.jre/Contents/MacOS/libjli.dylib"] {
+            let mut header = tar::Header::new_gnu();
+            header.set_size(7); header.set_mode(0o755); header.set_cksum();
+            archive.append_data(&mut header, name, &b"fixture"[..]).unwrap();
+        }
+        archive.into_inner().unwrap().finish().unwrap();
+        let output = directory.path().join("extracted");
+        std::fs::create_dir_all(&output).unwrap();
+        extract_java_tar(&archive_path, &output).unwrap();
+        let java = output.join("jdk.jre/Contents/Home/bin/java");
+        assert!(java.is_file());
+        assert!(output.join("jdk.jre/Contents/MacOS/libjli.dylib").is_file());
+        #[cfg(unix)] {
+            use std::os::unix::fs::PermissionsExt;
+            assert_ne!(java.metadata().unwrap().permissions().mode() & 0o111, 0);
+        }
+    }
 
     #[test]
     fn parses_legacy_and_modern_java_versions() {

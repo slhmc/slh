@@ -78,3 +78,9 @@
   max-height: none;
   overflow: visible;
 }
+
+.footer { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; padding: 16px; border-top: 1px solid var(--color-border); }
+
+.withFooter[open] { display: flex; flex-direction: column; }
+.withFooter .header, .withFooter .footer { flex-shrink: 0; }
+.withFooter .body { flex: 1; min-height: 0; }

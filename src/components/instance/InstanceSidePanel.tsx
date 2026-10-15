@@ -198,7 +198,7 @@ export function InstanceSidePanel({ instance, onDelete, onContextMenu }: Instanc
   return (
     <aside
       className={styles.panel}
-      onContextMenu={(event) => { event.preventDefault(); onContextMenu?.(event); }}
+      data-slh-context-menu="true" onContextMenu={(event) => { event.preventDefault(); onContextMenu?.(event); }}
       onPointerDown={(event) => {
         if (event.button === 2) { event.preventDefault(); onContextMenu?.(event); }
       }}

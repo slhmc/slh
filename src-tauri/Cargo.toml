@@ -1,6 +1,6 @@
 [package]
 name = "slh"
-version = "0.2.0"
+version = "0.2.1"
 description = "SLH portable Minecraft launcher"
 authors = ["SLH"]
 edition = "2024"
@@ -57,3 +57,7 @@ windows = { version = "=0.62.2", features = ["Win32_Foundation", "Win32_Globaliz
 
 [dev-dependencies]
 httpmock = "=0.8.2"
+
+[target.'cfg(any(target_os = "macos", windows, target_os = "linux"))'.dependencies]
+tauri-plugin-updater = "=2.12.0"
+tauri-plugin-process = "=2.3.1"

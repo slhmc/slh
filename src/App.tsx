@@ -1,3 +1,4 @@
+import { LauncherUpdateDialog, requestLauncherUpdate } from "./components/common/LauncherUpdateDialog";
 import { lazy, Suspense, useEffect, useRef, useState, type CSSProperties } from "react";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -101,7 +102,7 @@ function AppContent() {
     void command<LauncherUpdateInfo>("check_launcher_updates")
       .then((result) => {
         if (result.updateAvailable) {
-          pushToast({ tone: "info", title: tr("Launcher update available"), message: `${result.latestVersion} ${tr("is ready on GitHub.")}`, action: { label: tr("Open release"), url: result.releaseUrl } });
+          requestLauncherUpdate(result);
         }
       })
       .catch(() => undefined);
@@ -285,6 +286,7 @@ function AppContent() {
             </Route>
           </Routes></Suspense>
           <FirstRun />
+          <LauncherUpdateDialog />
         </HashRouter>
     </div>
   );

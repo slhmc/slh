@@ -1346,5 +1346,19 @@
     ,"Input/output": "Input/output"
     ,"Size of the launcher folder, including builds, resources and backups.": "Size of the launcher folder, including builds, resources and backups."
     ,"Launcher file, network and device I/O, including WebView2. This is not a separate network counter.": "Launcher file, network and device I/O, including WebView2. This is not a separate network counter."
+  },
+  "updater": {
+    "title": "Launcher update",
+    "offer": "SLH {version} is available. Install the update now?",
+    "preserve": "Your instances, accounts, settings and custom languages will be kept.",
+    "active": "Stop Minecraft and wait for downloads to finish before updating.",
+    "install": "Update now",
+    "later": "Later",
+    "restart": "Restart launcher",
+    "downloading": "Downloading and verifying the update…",
+    "installed": "Update installed. Restart the launcher to finish.",
+    "failed": "The update could not be installed. Check your connection and try again.",
+    "details": "Technical details",
+    "unavailable": "No installable update is available for this platform."
   }
 }

@@ -1,0 +1,28 @@
+name: Publish signed update feed
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Published version tag
+        required: true
+permissions:
+  contents: write
+jobs:
+  feed:
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.event.release.tag_name, 'v')
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Copy the manifest from the published release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag || github.event.release.tag_name }}
+        run: |
+          test "$(gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft)" = false
+          gh release download "$RELEASE_TAG" --pattern latest.json
+          if ! gh release view launcher-updates >/dev/null 2>&1; then
+            gh release create launcher-updates --prerelease --title 'SLH update feed' --notes 'Signed update metadata for the in-app updater. Download launcher packages from versioned releases.'
+          fi
+          gh release upload launcher-updates latest.json --clobber

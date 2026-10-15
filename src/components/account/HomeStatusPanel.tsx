@@ -65,7 +65,7 @@ export function HomeStatusPanel() {
   const routes: Record<string, string> = { launcher: "/settings/advanced", java: "/settings/java", downloads: "/settings/downloads", storage: "/settings/storage" };
   const ids = homeStatusOrder(bootstrap.settings.appearance.homeStatusOrder).filter((id) => visible.has(id));
 
-  return <section className={styles.card} onContextMenu={(event) => {
+  return <section className={styles.card} data-slh-context-menu="true" onContextMenu={(event) => {
     event.preventDefault(); event.stopPropagation();
     window.dispatchEvent(new Event("slh-context-menu-open"));
     setPosition({ x: event.clientX, y: event.clientY });

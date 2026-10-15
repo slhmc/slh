@@ -86,6 +86,7 @@ pub fn run() {
                 let _ = window.set_focus();
             }
         }))
+        .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_opener::init())
@@ -114,6 +115,12 @@ pub fn run() {
             let avatar_state = state.clone();
             let monitor_state = state.clone();
             let monitor_app = app.handle().clone();
+            // Keep NSIS updates in the current directory, including portable
+            // installs. /D is last and does not touch adjacent user data.
+            let updater = tauri_plugin_updater::Builder::new();
+            #[cfg(windows)]
+            let updater = updater.installer_arg(format!("/D={}", state.paths.executable_dir.display()));
+            app.handle().plugin(updater.build())?;
             app.manage(state);
             tauri::async_runtime::spawn(async move {
                 let mut interval = tokio::time::interval(std::time::Duration::from_secs(10));

@@ -19,3 +19,7 @@ artifacts/
 visual-*.png
 
 crates/**/target/
+
+/crates/slh-native/
+/SLH2/
+/SLH-Opt/

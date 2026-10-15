@@ -56,14 +56,23 @@ jobs:
       - if: runner.os == 'Windows'
         shell: pwsh
         run: npm run build:bedrock-native
+      - run: npm run build
+      - run: npm run check:ui
       - run: npm test
       - run: cargo test --manifest-path crates/slh-core/Cargo.toml --locked --lib
       - run: cargo test --manifest-path src-tauri/Cargo.toml --locked --lib
-      - run: npx tauri build --target ${{ matrix.target }} -- --locked
+      - if: github.event_name != 'pull_request'
+        run: npx tauri build --target ${{ matrix.target }} -- --locked
         env:
           APPLE_SIGNING_IDENTITY: '-'
-      - run: node scripts/package-release.mjs ${{ matrix.target }}
-      - uses: actions/upload-artifact@v4
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+      - if: github.event_name == 'pull_request'
+        run: npx tauri build --target ${{ matrix.target }} --config '{"bundle":{"createUpdaterArtifacts":false}}' -- --locked
+      - if: github.event_name != 'pull_request'
+        run: node scripts/package-release.mjs ${{ matrix.target }}
+      - if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
         with:
           name: SLH-${{ matrix.target }}
           path: artifacts/packages/*
@@ -85,10 +94,9 @@ jobs:
       - name: Prepare checksums and release notes
         shell: bash
         run: |
+          node scripts/prepare-release.mjs packages
           cd packages
           sha256sum * > SHA256SUMS.txt
-          cd ..
-          printf 'SLH %s\n\nWindows 10/11 x64: EXE, MSI and portable ZIP.\nmacOS: Intel and Apple Silicon DMG and app ZIP.\nLinux x64: AppImage, DEB and RPM.\n\nIncludes installer data-path, Bedrock helper discovery and SemVer update fixes.\n\nThese packages are unsigned; macOS packages are ad-hoc signed and are not notarized.\n\nSource commit: %s\n' "$(node -p 'require("./package.json").version')" "$GITHUB_SHA" > release-notes.txt
       - name: Save draft release
         env:
           GH_TOKEN: ${{ github.token }}

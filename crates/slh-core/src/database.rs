@@ -248,6 +248,21 @@ pub async fn instance(pool: &SqlitePool, id: &str) -> AppResult<Instance> {
 #[cfg(test)]
 mod tests {
     #[tokio::test]
+    async fn repairs_only_the_bedrock_only_navigation_list() {
+        let pool = sqlx::sqlite::SqlitePoolOptions::new().max_connections(1)
+            .connect("sqlite::memory:").await.unwrap();
+        super::MIGRATOR.run(&pool).await.unwrap();
+        for (list, expected) in [("[\"bedrock\"]", 13), ("[\"java\",\"bedrock\"]", 2)] {
+            sqlx::query("INSERT OR REPLACE INTO settings(key,value_json) VALUES('general', json_object('settingsNavigationVisible',json(?)))")
+                .bind(list).execute(&pool).await.unwrap();
+            sqlx::raw_sql(include_str!("../migrations/0019_repair_settings_navigation.sql"))
+                .execute(&pool).await.unwrap();
+            let value = super::setting(&pool, "general").await.unwrap();
+            assert_eq!(value["settingsNavigationVisible"].as_array().unwrap().len(), expected);
+        }
+    }
+
+    #[tokio::test]
     async fn beautiful_home_migrates_legacy_history_without_changing_existing_preferences() {
         let pool = sqlx::sqlite::SqlitePoolOptions::new()
             .max_connections(1)

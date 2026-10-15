@@ -48,3 +48,30 @@ if (target.includes('windows')) {
   }
 }
 console.log(`Packages ready for ${target}: ${output}`);
+
+// Preserve signed Tauri update payloads alongside the human-facing packages.
+const { readdirSync } = await import('node:fs');
+let signedSource;
+let updateName;
+let platform;
+if (target.includes('darwin')) {
+  const directory = path.join(release, 'bundle/macos');
+  const archive = readdirSync(directory).find(name => name.endsWith('.app.tar.gz'));
+  if (!archive) throw Error('Signed macOS updater archive missing');
+  signedSource = path.join(directory, archive); updateName = base + '.app.tar.gz';
+  platform = target.startsWith('aarch64') ? 'darwin-aarch64' : 'darwin-x86_64';
+} else if (target.includes('windows')) {
+  const directory = path.join(release, 'bundle/nsis');
+  signedSource = path.join(directory, readdirSync(directory).find(name => name.endsWith('-setup.exe')));
+  updateName = base + '-setup.exe'; platform = 'windows-x86_64';
+} else {
+  const directory = path.join(release, 'bundle/appimage');
+  signedSource = path.join(directory, readdirSync(directory).find(name => name.endsWith('.AppImage')));
+  updateName = base + '.AppImage'; platform = 'linux-x86_64';
+}
+if (path.resolve(signedSource) !== path.join(output, updateName)) cpSync(signedSource, path.join(output, updateName));
+cpSync(signedSource + '.sig', path.join(output, updateName + '.sig'));
+const signature = readFileSync(signedSource + '.sig', 'utf8').trim();
+writeFileSync(path.join(output, `update-${platform}.json`), JSON.stringify({
+  [platform]: { signature, url: `https://github.com/slhmc/slh/releases/download/v${version}/${updateName}` }
+}, null, 2));

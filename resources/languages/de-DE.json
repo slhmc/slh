@@ -1321,5 +1321,19 @@
     ,"Input/output": "Ein-/Ausgabe"
     ,"Size of the launcher folder, including builds, resources and backups.": "Größe des Launcher-Ordners einschließlich Profile, Ressourcen und Sicherungen."
     ,"Launcher file, network and device I/O, including WebView2. This is not a separate network counter.": "Datei-, Netzwerk- und Geräte-E/A des Launchers einschließlich WebView2. Dies ist kein separater Netzwerkzähler."
+  },
+  "updater": {
+    "title": "Launcher-Update",
+    "offer": "SLH {version} ist verfügbar. Update jetzt installieren?",
+    "preserve": "Instanzen, Konten, Einstellungen und eigene Sprachen bleiben erhalten.",
+    "active": "Beende Minecraft und warte auf den Abschluss der Downloads.",
+    "install": "Jetzt aktualisieren",
+    "later": "Später",
+    "restart": "Launcher neu starten",
+    "downloading": "Update wird heruntergeladen und geprüft…",
+    "installed": "Update installiert. Starte den Launcher neu.",
+    "failed": "Das Update konnte nicht installiert werden. Prüfe die Verbindung und versuche es erneut.",
+    "details": "Technische Details",
+    "unavailable": "Für diese Plattform ist kein installierbares Update verfügbar."
   }
 }

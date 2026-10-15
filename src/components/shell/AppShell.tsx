@@ -39,7 +39,7 @@ export function AppShell() {
       <Titlebar />
       <div className={`${styles.workspace} ${navigationPositionClass}`}>
         <AppSidebar onContextMenu={openNavigationMenu} />
-        <main className={styles.content}>
+        <main className={styles.content} data-slh-context-menu="true" onContextMenu={(event) => { if (!event.defaultPrevented && /Mac/i.test(navigator.platform)) openNavigationMenu(event); }}>
           <Outlet />
         </main>
       </div>

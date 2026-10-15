@@ -1,3 +1,5 @@
 src-tauri/migrations/*.sql text eol=lf
 patches/*.patch -whitespace
 crates/slh-core/migrations/*.sql text eol=lf
+
+/vendor/** linguist-vendored

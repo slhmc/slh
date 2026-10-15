@@ -12,7 +12,7 @@ export const isTauri =
   typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
 const previewBootstrap: BootstrapData = {
-  version: "0.2.0-dev",
+  version: "0.2.1-dev",
   buildUnix: 0,
   portableRoot: "E:\\SLH-Portable",
   firstRun: false,
