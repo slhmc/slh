@@ -1,12 +1,54 @@
-# Languages
+# Языки SLH
 
-Each JSON file in `resources/languages/` is one complete launcher language. The portable build also creates `data/languages/`; users can place their own locale files there without changing the application files.
+Подпись вкладки кастомной сборки — `installation.customSource`. Последний пункт выбора группы — `installation.createGroup`; он открывает ввод имени и создаёт выбранную группу после подтверждения.
 
-To add a language:
+Настройки подгонки названий, окна Minecraft и Java находятся в секции `settings`. Категории каталога используют `discover.categories`, `discover.allCategories` и `discover.categoriesUnavailable`; их названия приходят от провайдера и считаются содержимым. Короткие уведомления используют секцию `notifications`, сообщение масштаба — `notifications.scaleChanged` с параметром `percent`. Ошибка несовместимой Java — `errors.javaCompatibility` с параметрами `required` и `actual`.
 
-1. Copy `resources/languages/en-US.json` to `data/languages/<language-code>.json`.
-2. Change `meta.code` and `meta.name`.
-3. Translate the `common`, `navigation`, `titlebar`, `library`, `settings`, and `legacy` values.
-4. Restart SLH and select the new language under Settings → General → Language.
+Встроенные переводы: `resources/languages/en-US.json`, `ru-RU.json`, `de-DE.json`. Пользовательские переводы: `data/languages` рядом с данными установленного SLH. Из исходного проекта папка data может отсутствовать: она создаётся при запуске portable-версии.
 
-The `legacy` section covers older screens and backend status messages. Provider-owned project names and descriptions from Modrinth/CurseForge are intentionally not translated by SLH.
+## Добавление языка
+
+1. В настройках языка нажмите «Сохранить шаблон перевода» и выберите новый файл, например `data/languages/fr-FR.json`. Существующий файл не перезаписывается. Полный шаблон также находится в `resources/language-template.json`: в нём указан французский код, а значения оставлены на английском для перевода. Можно скопировать английский каталог и удалить раздел `legacy`.
+2. В `meta` укажите `code` (например `fr-FR`), `name` («Français») и `schemaVersion: 1`.
+3. Переведите строковые значения во всех разделах. Ключи, имена параметров и технические значения в `meta` не переводятся.
+4. Сохраните UTF-8 JSON. BOM допускается. Язык появится в списке автоматически; выберите его в настройках.
+
+SLH проверяет языки каждые 1,5 секунды, пока окно активно, и сразу после возвращения в окно. Изменения применяются без перезапуска и потери открытых окон или введённых данных. Есть кнопки «Открыть папку языков» и «Обновить языки».
+
+При ошибке в активном файле сохраняется последний рабочий перевод. В настройках показываются имя файла и причина. Исправьте JSON и сохраните: SLH обновит перевод автоматически. Если файл удалён, используется встроенный язык с тем же кодом, а при его отсутствии — английский.
+
+## Разделы каталога
+
+| Раздел | Содержимое |
+| --- | --- |
+| `meta` | Код, название и версия формата |
+| `common` | Общие действия, сообщения и совместимые старые строки |
+| `onboarding` | Первый запуск |
+| `navigation`, `titlebar`, `shell` | Навигация, верхняя панель, уведомления |
+| `home`, `library` | Главная страница и библиотека |
+| `discover`, `installation` | Каталог, установка, импорт, версии и файлы |
+| `instance`, `accounts`, `servers` | Сборка, аккаунты и серверы |
+| `settings` | Все секции настроек, включая палитру и языки |
+| `errors` | Понятные сообщения об ошибках команд |
+| `legacy` | Поддержка старых языковых файлов; новые переводы используют ключи секций |
+
+Существующие вложенные `texts` содержат стабильные ключи перенесённых надписей. Английский каталог содержит полный набор; пользовательский перевод может быть неполным. Приоритет: пользовательский файл → встроенный выбранный язык → английский.
+
+## Переменные и множественное число
+
+Сохраняйте параметры буквально: `{name}`, `{count}`, `{seconds}`. Файл с неверными параметрами не применяется: в настройках показывается ключ с ошибкой. Не меняйте имена параметров и не вставляйте HTML: значения отображаются как текст.
+
+```json
+{
+  "instanceCount": {
+    "one": "{count} instance dans cette bibliothèque",
+    "other": "{count} instances dans cette bibliothèque"
+  }
+}
+```
+
+Категории выбираются по правилам языка через `Intl.PluralRules`. У русского нужны `one`, `few`, `many`, `other`; у немецкого и английского — `one`, `other`. Новый пользовательский язык может добавить свои категории. Существующий строковый перевод счётчика также поддерживается.
+
+SLH не переводит названия сборок игрока, имена файлов, бренды, журналы Minecraft и описания проектов от Modrinth/CurseForge. Встроенного французского перевода нет: французский здесь — пример создания языка.
+
+Для разработчиков: добавляйте ключи одновременно в EN/RU/DE, сохраняйте параметры, запускайте `npm run check:ui` и следуйте `docs/UI_STYLE_GUIDE.md`. Адаптер `legacy` поддерживает старые файлы без замены текста в DOM.

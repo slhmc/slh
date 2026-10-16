@@ -29,7 +29,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; img-src 'self' asset: https://asset.localhost data: blob: https://cdn.modrinth.com https://staging-api.modrinth.com https://media.forgecdn.net; style-src 'self' 'unsafe-inline'; connect-src ipc: http://ipc.localhost https://assets.mojang.com",
+      "csp": "default-src 'self'; img-src 'self' asset: https://asset.localhost data: blob: https:; style-src 'self' 'unsafe-inline'; connect-src ipc: http://ipc.localhost https://assets.mojang.com",
       "assetProtocol": {
         "enable": true,
         "scope": []

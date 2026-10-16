@@ -1,4 +1,4 @@
-export type ViewMode = "grid" | "list";
+export type ViewMode = "grid" | "list" | "icons";
 
 export interface InstanceGroup {
   id: string;
@@ -101,8 +101,10 @@ export interface CurseForgeKeyStatus {
 }
 
 export interface GeneralSettings {
+  webview?: WebviewSettings;
   language: string;
   viewMode: ViewMode;
+  instanceOrder?: string[];
   rememberSection: boolean;
   lastSection: string;
   closeBehavior: string;
@@ -111,6 +113,9 @@ export interface GeneralSettings {
   /** Use the active Microsoft/Ely.by name as a temporary offline identity when there is no connection. */
   offlineFallbackWhenOffline?: boolean;
   keyboardZoom?: boolean;
+  compactHeader?: boolean;
+  /** Legacy storage: true = rows. The menu switch shows OFF for rows and ON for tiles. */
+  compactSettings?: boolean;
   visibleNavigation?: SidebarNavigationItem[];
   /** Stable order for all navigation entries, including hidden ones. */
   navigationOrder?: SidebarNavigationItem[];
@@ -159,6 +164,20 @@ export interface AppearanceColors {
   accent: string;
   accentHover: string;
   accentPressed: string;
+  success?: string;
+  warning?: string;
+  error?: string;
+  info?: string;
+}
+
+export interface WebviewSettings {
+  enabled: boolean;
+  extreme: boolean;
+  cpuCores: number;
+  backgroundCpuCores: number;
+  backgroundMemoryMb: number;
+  maxFps: number;
+  suspendAfterSeconds: number;
 }
 
 export interface AppearancePreset {
@@ -170,20 +189,22 @@ export interface AppearancePreset {
 export interface AppearanceSettings extends AppearanceColors {
   beautifulHome?: boolean;
   homeCharacterFps?: number;
+  homeCharacterMode?: 0 | 1 | 2;
   homeStatusVisible?: string[];
   homeStatusOrder?: string[];
-  homeMetricsScope?: "launcher" | "system";
   radius: number;
   density: string;
   scalePercent: number;
   activePresetId: string;
   presets: AppearancePreset[];
   minimalism?: boolean;
+  fitProjectTitles?: boolean;
   fontFamily?: "pixeloid" | "system" | "monospace" | "local";
   customFontPath?: string | null;
 }
 
 export interface NotificationSettings {
+  briefEnabled?: boolean;
   enabled: boolean;
   destination?: "launcher" | "windows";
   maxVisible: number;
@@ -212,6 +233,8 @@ export interface ConsoleSettings {
 }
 
 export interface MinecraftSettings {
+  fullscreen?: boolean;
+  closeLauncherOnExit?: boolean;
   javaMode: string;
   javaPath: string | null;
   memoryMinMb: number;
@@ -222,6 +245,11 @@ export interface MinecraftSettings {
 }
 
 export interface JavaSettings {
+  autoDetect?: boolean;
+  autoDownload?: boolean;
+  skipCompatibilityCheck?: boolean;
+  warnLowMemory?: boolean;
+  permGenMb?: number;
   installDirectory: string | null;
   detectedPath?: string | null;
 }
@@ -243,6 +271,9 @@ export interface AppSettings {
     concurrency: number;
     retries: number;
     bandwidthLimitKbps: number | null;
+    curseforgeDirectory?: string | null;
+    curseforgeImportArchives?: boolean;
+    curseforgeDeleteAfterInstall?: boolean;
   };
   privacy: {
     telemetry: boolean;
@@ -362,6 +393,7 @@ export interface BedrockPackageMetadata {
 }
 
 export interface JavaInstallation {
+  architecture?: string;
   path: string;
   version: string;
   majorVersion: number;
@@ -525,6 +557,8 @@ export interface ProgressEvent {
   operation: string;
   stage: string;
   message: string;
+  messageKey?: string;
+  params?: Record<string, string | number>;
   completed: number;
   total: number | null;
   downloadedBytes: number | null;
@@ -643,20 +677,10 @@ export interface ContentInstallResult {
 export interface CommandFailure {
   code: string;
   message: string;
+  messageKey?: string;
+  params?: Record<string, string | number>;
+  details?: { files?: ManualDownloadFile[]; directory?: string };
 }
 
-export interface SystemMetrics {
-  cpuPercent: number | null;
-  launcherCpuPercent: number | null;
-  launcherMemoryBytes: number;
-  launcherGpuPercent: number | null;
-  launcherIoReadPerSecond: number | null;
-  launcherIoWritePerSecond: number | null;
-  memoryUsedBytes: number;
-  memoryTotalBytes: number;
-  networkReceivedPerSecond: number | null;
-  networkSentPerSecond: number | null;
-  gpuPercent: number | null;
-  diskAvailableBytes: number | null;
-  diskTotalBytes: number | null;
-}
+export interface ManualDownloadFile { name: string; fileName: string; url: string }
+

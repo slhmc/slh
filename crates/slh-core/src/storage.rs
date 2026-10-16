@@ -15,6 +15,42 @@ use crate::error::{AppError, AppResult};
 use crate::models::{DownloadRecord, InstanceFileEntry, StorageSummary};
 use crate::state::AppState;
 
+pub async fn reveal_instance_category(state: &AppState, instance_id: &str, category: &str) -> AppResult<()> {
+    if matches!(category, "overview" | "settings") {
+        return reveal_instance_path(state, instance_id, None).await;
+    }
+    if !matches!(category, "mods" | "resourcepacks" | "shaders" | "worlds" | "screenshots" | "logs") {
+        return Err(AppError::InvalidInput("Unknown instance folder category".into()));
+    }
+    let instance = database::instance(&state.database, instance_id).await?;
+    let root = crate::instances::validated_instance_root(&state.paths, &instance.folder_name, &instance.game_dir)?;
+    if instance.loader_type == "bedrock" {
+        let roots = crate::bedrock_files::roots(&instance, &root);
+        let directories = crate::bedrock_files::directories_for_category(&roots, category);
+        let target = directories.iter().find(|path| is_plain_directory(path)).or_else(|| directories.first())
+            .ok_or_else(|| AppError::InvalidInput("This content folder is unavailable for Bedrock".into()))?;
+        if is_symlink_path(target)? { return Err(AppError::Security("Content folder cannot be a symbolic link".into())); }
+        std::fs::create_dir_all(target)?;
+        return open_in_explorer(target);
+    }
+    let game = PathBuf::from(&instance.game_dir);
+    let target = match category {
+        "mods" => game.join("mods"),
+        "resourcepacks" => game.join("resourcepacks"),
+        "shaders" => game.join("shaderpacks"),
+        "worlds" => game.join("saves"),
+        "screenshots" => game.join("screenshots"),
+        "logs" => root.join("logs"),
+        _ => unreachable!(),
+    };
+    if !target.exists() {
+        let parent = target.parent().ok_or_else(|| AppError::Security("Content folder has no parent".into()))?;
+        validate_existing_descendant(&root, parent)?;
+        tokio::fs::create_dir(&target).await?;
+    }
+    reveal_instance_path(state, instance_id, target.to_str()).await
+}
+
 pub async fn reveal_instance_path(
     state: &AppState,
     instance_id: &str,

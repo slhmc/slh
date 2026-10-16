@@ -530,6 +530,7 @@ pub async fn install_modpack(
     tokio::fs::create_dir_all(&pack_directory).await?;
     let archive_path = pack_directory.join(format!("{project_id}-{}.mrpack", version.id));
     let download_id = Uuid::new_v4().to_string();
+    let _archive_download_guard = crate::pack_operations::ArchiveDownloadGuard(state.database.clone(), download_id.clone());
     sqlx::query(
         "INSERT INTO downloads(id, source, url, destination, status, total_bytes) \
          VALUES (?, 'modrinth', ?, ?, 'running', ?)",

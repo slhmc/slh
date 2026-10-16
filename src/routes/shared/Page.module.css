@@ -44,7 +44,7 @@
 
 .sectionHeader h2 {
   margin: 0;
-  font-size: 15px;
+  font-size: 0.9375rem;
   letter-spacing: -0.015em;
 }
 
@@ -75,7 +75,7 @@
 .emptyState h2 {
   margin: 14px 0 7px;
   color: var(--color-text);
-  font-size: 19px;
+  font-size: 1.1875rem;
 }
 
 .emptyState p {

@@ -24,12 +24,12 @@
 .panelHeading h2,
 .statusHeader h2 {
   margin: 0;
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 
 .panelHeading span {
   color: var(--color-text-subtle);
-  font-size: 11px;
+  font-size: 0.75rem;
 }
 
 .recentList {
@@ -64,7 +64,7 @@
 .recentRow small {
   margin-top: 3px;
   color: var(--color-text-muted);
-  font-size: 11px;
+  font-size: 0.75rem;
   text-transform: capitalize;
 }
 
@@ -72,7 +72,7 @@
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 11px;
+  font-size: 0.75rem;
 }
 
 .empty {
@@ -111,12 +111,12 @@
 .statusRows small,
 .portable small {
   color: var(--color-text-muted);
-  font-size: 10px;
+  font-size: 0.75rem;
 }
 
 .statusRows strong {
   margin-top: 3px;
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 .portable {
@@ -130,7 +130,7 @@
   overflow: hidden;
   color: var(--color-text-muted);
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 0.75rem;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -173,7 +173,7 @@
 .quickActions small {
   margin-top: 4px;
   color: var(--color-text-muted);
-  font-size: 11px;
+  font-size: 0.75rem;
 }
 
 @media (max-width: 1180px) {

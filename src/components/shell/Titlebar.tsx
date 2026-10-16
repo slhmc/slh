@@ -1,45 +1,39 @@
-import { useEffect, useRef } from "react";
+import { useUiText } from "../../i18n/UiText";
+import { useCallback, useRef, useState, type ReactNode } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { open } from "@tauri-apps/plugin-dialog";
 import {
   DownloadSimple,
-  MagnifyingGlass,
   Minus,
   Plus,
   Square,
   X,
 } from "../icons";
 import { command, isTauri } from "../../lib/tauri";
-import type { ArchiveInspection, Instance } from "../../lib/types";
+import type { Instance } from "../../lib/types";
 import { useAppStore } from "../../stores/appStore";
 import { useI18n } from "../../i18n/I18nProvider";
 import common from "../common/Common.module.css";
 import styles from "./Titlebar.module.css";
+import { ArchiveImportDialog } from "../instance/ArchiveImportDialog";
 import launcherLogo from "../../assets/brand/Smile_LauncHer_logo.png";
 
-export function Titlebar() {
+export function Titlebar({ navigation }: { navigation?: ReactNode }) {
+  const uiText = useUiText();
   const { t, tr } = useI18n();
-  const search = useAppStore((state) => state.search);
-  const setSearch = useAppStore((state) => state.setSearch);
   const openWizard = useAppStore((state) => state.setCreateWizardOpen);
   const pushToast = useAppStore((state) => state.pushToast);
   const refresh = useAppStore((state) => state.refresh);
   const selectInstance = useAppStore((state) => state.selectInstance);
-  const searchRef = useRef<HTMLInputElement>(null);
+  const [archivePath, setArchivePath] = useState<string | null>(null);
+  const onArchiveImported = useCallback(async (instance: Instance, path: string) => {
+    await refresh();
+    selectInstance(instance.id);
+    pushToast({ tone: "success", title: uiText("shell.texts.instanceImported", "Instance {name} imported", { name: instance.name }), message: "" });
+    setArchivePath((current) => current === path ? null : current);
+  }, [refresh, selectInstance, pushToast, tr]);
   const importMenuRef = useRef<HTMLDetailsElement>(null);
 
-  useEffect(() => {
-    const handleKey = (event: KeyboardEvent) => {
-      // `code` is the physical key, unlike `key` which becomes "л" on a Russian layout.
-      if ((event.ctrlKey || event.metaKey) && event.code === "KeyK") {
-        event.preventDefault();
-        event.stopPropagation();
-        searchRef.current?.focus();
-      }
-    };
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
-  }, []);
 
   const windowAction = async (action: "minimize" | "maximize" | "close") => {
     if (!isTauri) return;
@@ -52,7 +46,7 @@ export function Titlebar() {
   const importArchive = async () => {
     importMenuRef.current?.removeAttribute("open");
     if (!isTauri) {
-      pushToast({ tone: "info", title: tr("Desktop action"), message: tr("Archive selection is available in the desktop application.") });
+      pushToast({ tone: "info", title: uiText("shell.texts.desktopAction", "Desktop action"), message: uiText("shell.texts.archiveSelectionIsAvailableInTheDesktopApplication", "Archive selection is available in the desktop application.") });
       return;
     }
     const selected = await open({
@@ -61,34 +55,13 @@ export function Titlebar() {
       filters: [{ name: "Minecraft and SLH archives", extensions: ["zip", "mrpack"] }],
     });
     if (!selected) return;
-    try {
-      const inspection = await command<ArchiveInspection>("inspect_archive", { archivePath: selected });
-      if (!inspection.canImport) {
-        pushToast({
-          tone: inspection.archiveType === "unknown" ? "error" : "info",
-          title: tr(inspection.archiveType === "unknown" ? "Unsupported archive" : "Archive cannot be imported"),
-          message: tr(inspection.message),
-        });
-        return;
-      }
-      const commandName = inspection.archiveType === "modrinth"
-        ? "import_modrinth_pack"
-        : inspection.archiveType === "curseforge"
-          ? "import_curseforge_pack"
-          : "import_slh_archive";
-      const instance = await command<Instance>(commandName, { request: { archivePath: selected, name: null } });
-      await refresh();
-      selectInstance(instance.id);
-      pushToast({ tone: "success", title: tr("Instance {name} imported", { name: instance.name }), message: "" });
-    } catch (error) {
-      pushToast({ tone: "error", title: tr("Archive could not be imported"), message: String((error as { message?: string }).message ?? error) });
-    }
+    setArchivePath(typeof selected === "string" ? selected : selected[0]);
   };
 
   const importFolder = async () => {
     importMenuRef.current?.removeAttribute("open");
     if (!isTauri) {
-      pushToast({ tone: "info", title: tr("Desktop action"), message: tr("Folder selection is available in the desktop application.") });
+      pushToast({ tone: "info", title: uiText("shell.texts.desktopAction", "Desktop action"), message: uiText("shell.texts.folderSelectionIsAvailableInTheDesktopApplication", "Folder selection is available in the desktop application.") });
       return;
     }
     const selected = await open({ multiple: false, directory: true });
@@ -99,40 +72,30 @@ export function Titlebar() {
       });
       await refresh();
       selectInstance(instance.id);
-      pushToast({ tone: "success", title: tr("Folder {name} imported", { name: instance.name }), message: "" });
+      pushToast({ tone: "success", title: uiText("shell.texts.folderImported", "Folder {name} imported", { name: instance.name }), message: "" });
     } catch (error) {
-      pushToast({ tone: "error", title: tr("Folder could not be imported"), message: String((error as { message?: string }).message ?? error) });
+      pushToast({ tone: "error", title: uiText("shell.texts.folderCouldNotBeImported", "Folder could not be imported"), message: String((error as { message?: string }).message ?? error) });
     }
   };
 
   return (
-    <header className={styles.titlebar} data-tauri-drag-region>
+    <>
+    <header className={`${styles.titlebar} ${navigation ? styles.compact : ""}`} data-tauri-drag-region>
       <div className={styles.title} data-tauri-drag-region>
-        <img className={styles.appLogo} src={launcherLogo} alt="Smile LauncHer logo" />
-        <span className={styles.appName}>Smile LauncHer</span>
+        <img className={styles.appLogo} src={launcherLogo} alt={uiText("shell.texts.smileLauncherLogo", "Smile LauncHer logo")} />
+        <span className={styles.appName}>{uiText("common.texts.smileLauncher", "Smile LauncHer")}</span>
         {!isTauri ? <span className={styles.preview}>{t("titlebar.browserPreview", "Browser preview")}</span> : null}
       </div>
-      <div className={styles.searchWrap}>
-        <MagnifyingGlass size={16} weight="bold" aria-hidden="true" />
-        <input
-          ref={searchRef}
-          data-global-search
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder={tr("Search instances")}
-          aria-label={tr("Search instances")}
-        />
-        <kbd>Ctrl K</kbd>
-      </div>
+      {navigation}
       <div className={styles.actions}>
-        <button className={common.secondaryButton} type="button" onClick={() => openWizard(true)}>
+        <button className={common.secondaryButton} type="button" aria-label={uiText("titlebar.newInstance", "New instance")} onClick={() => openWizard(true)}>
           <Plus size={16} weight="bold" />
-          {tr("New instance")}
+          <span>{uiText("titlebar.newInstance", "New instance")}</span>
         </button>
         <details name="slh-action-menu" data-action-menu className={styles.importMenu} ref={importMenuRef}>
-          <summary className={common.ghostButton} data-minimal-compact aria-label={tr("Import")}>
+          <summary className={common.ghostButton} data-minimal-compact aria-label={uiText("common.import", "Import")}>
             <DownloadSimple size={16} weight="bold" />
-            <span data-minimal-text>{tr("Import")}</span>
+            <span data-minimal-text>{uiText("common.import", "Import")}</span>
           </summary>
           <div className={styles.importOptions}>
             <button type="button" onClick={() => void importArchive()}>
@@ -147,16 +110,18 @@ export function Titlebar() {
         </details>
       </div>
       <div className={styles.windowControls}>
-        <button type="button" onClick={() => void windowAction("minimize")} aria-label="Minimize">
+        <button type="button" onClick={() => void windowAction("minimize")} aria-label={uiText("shell.texts.minimize", "Minimize")}>
           <Minus size={15} />
         </button>
-        <button type="button" onClick={() => void windowAction("maximize")} aria-label="Maximize">
+        <button type="button" onClick={() => void windowAction("maximize")} aria-label={uiText("shell.texts.maximize", "Maximize")}>
           <Square size={12} />
         </button>
-        <button className={styles.close} type="button" onClick={() => void windowAction("close")} aria-label="Close">
+        <button className={styles.close} type="button" onClick={() => void windowAction("close")} aria-label={uiText("common.close", "Close")}>
           <X size={15} />
         </button>
       </div>
     </header>
+    <ArchiveImportDialog archivePath={archivePath} onClose={() => setArchivePath(null)} onImported={onArchiveImported} />
+    </>
   );
 }

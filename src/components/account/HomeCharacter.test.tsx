@@ -4,7 +4,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { HomeCharacter } from "./HomeCharacter";
 import type { Account } from "../../lib/types";
 
-const mocks = vi.hoisted(() => ({ engines: [] as any[], command: vi.fn(), unavailable: false }));
+const mocks = vi.hoisted(() => ({ engines: [] as any[], command: vi.fn(), unavailable: false, resized: null as null | (() => void) }));
 vi.mock("../../lib/tauri", () => ({ command: mocks.command, isTauri: false }));
 vi.mock("../../i18n/I18nProvider", () => ({ useI18n: () => ({ tr: (value: string) => value }) }));
 vi.mock("../../vendor/mine3d/types", () => ({ SkinModelType: { Slim: "slim", Classic: "classic" } }));
@@ -28,13 +28,34 @@ beforeEach(() => {
   localStorage.clear();
   vi.spyOn(Math, "random").mockReturnValue(0);
   mocks.engines.length = 0; mocks.command.mockReset(); mocks.unavailable = false;
-  vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
+  mocks.resized = null;
+  vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(640);
+  vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(480);
+  vi.stubGlobal("ResizeObserver", class { constructor(callback: () => void) { mocks.resized=callback; } observe() {} disconnect() {} });
   vi.stubGlobal("PointerEvent", class extends MouseEvent {
     pointerId: number;
     constructor(type: string, options: PointerEventInit = {}) { super(type, options); this.pointerId = options.pointerId ?? 1; }
   });
 });
 afterEach(() => { cleanup(); vi.useRealTimers(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
+
+it("does not resize or reframe an unchanged or hidden canvas, then resumes it", async () => {
+  render(<HomeCharacter account={null} />);
+  await waitFor(() => expect(mocks.engines[0]?.start).toHaveBeenCalled());
+  const engine=mocks.engines[0];
+  expect(engine.setSize).toHaveBeenCalledWith(640,480);
+  await waitFor(() => expect(mocks.resized).not.toBeNull());
+  const sizes=engine.setSize.mock.calls.length;
+  const fits=engine.fitPlayerToFrame.mock.calls.length;
+  act(() => { mocks.resized!(); });
+  expect(engine.setSize).toHaveBeenCalledTimes(sizes);
+  expect(engine.fitPlayerToFrame).toHaveBeenCalledTimes(fits);
+  act(() => { window.dispatchEvent(new CustomEvent("slh-native-activity", {detail:false})); mocks.resized!(); });
+  expect(engine.setSize).toHaveBeenCalledTimes(sizes);
+  expect(engine.fitPlayerToFrame).toHaveBeenCalledTimes(fits);
+  act(() => { window.dispatchEvent(new CustomEvent("slh-native-activity", {detail:true})); });
+  expect(engine.setAnimationActive).toHaveBeenLastCalledWith(true,true);
+});
 
 it("plays only idle and ignores mouse clicks, Enter and Space", async () => {
   const view = render(<HomeCharacter account={null} />);
@@ -140,13 +161,18 @@ it("uses a fresh WebGL canvas when the downloaded skin replaces the startup skin
   expect(mocks.engines[mocks.engines.length - 1].setAnimationActive).toHaveBeenLastCalledWith(true, true);
 });
 
-it("applies saved FPS limits, including unlimited, without reusing a disposed canvas", async () => {
+it("changes FPS, including unlimited, on the same live scene and canvas", async () => {
   const view = render(<HomeCharacter account={null} frameRate={1} />);
   await waitFor(() => expect(mocks.engines[0]?.setAnimationFrameRate).toHaveBeenCalledWith(1));
   const oldCanvas = view.container.querySelector("canvas");
   view.rerender(<HomeCharacter account={null} frameRate={0} />);
   await waitFor(() => expect(mocks.engines[mocks.engines.length - 1]?.setAnimationFrameRate).toHaveBeenCalledWith(0));
-  expect(view.container.querySelector("canvas")).not.toBe(oldCanvas);
+  expect(view.container.querySelector("canvas")).toBe(oldCanvas);
+  expect(mocks.engines).toHaveLength(1);
+  expect(mocks.engines[0].dispose).not.toHaveBeenCalled();
+  view.rerender(<HomeCharacter account={null} frameRate={60} />);
+  expect(mocks.engines[0].setAnimationFrameRate).toHaveBeenLastCalledWith(60);
+  view.unmount();
   expect(mocks.engines[0].dispose).toHaveBeenCalledOnce();
 });
 
@@ -177,4 +203,18 @@ it("ignores a stale release event when the window is visible", async () => {
   await waitFor(() => expect(mocks.engines[0]?.start).toHaveBeenCalled());
   act(() => window.dispatchEvent(new CustomEvent("slh-release-scenes", { detail: 1 })));
   expect(mocks.engines[0].dispose).not.toHaveBeenCalled();
+});
+
+it("applies the latest FPS after a hidden scene was released without updating its disposed engine", async () => {
+  const view = render(<HomeCharacter account={null} frameRate={30} />);
+  await waitFor(() => expect(mocks.engines[0]?.start).toHaveBeenCalled());
+  const old = mocks.engines[0];
+  act(() => window.dispatchEvent(new CustomEvent("slh-native-activity", { detail: false })));
+  act(() => window.dispatchEvent(new CustomEvent("slh-release-scenes", { detail: 1 })));
+  old.setAnimationFrameRate.mockClear();
+  view.rerender(<HomeCharacter account={null} frameRate={60} />);
+  expect(old.setAnimationFrameRate).not.toHaveBeenCalled();
+  act(() => window.dispatchEvent(new CustomEvent("slh-native-activity", { detail: true })));
+  await waitFor(() => expect(mocks.engines[1]?.setAnimationFrameRate).toHaveBeenCalledWith(60));
+  expect(old.dispose).toHaveBeenCalledOnce();
 });

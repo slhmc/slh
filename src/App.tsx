@@ -1,10 +1,13 @@
 import { LauncherUpdateDialog, requestLauncherUpdate } from "./components/common/LauncherUpdateDialog";
-import { lazy, Suspense, useEffect, useRef, useState, type CSSProperties } from "react";
+import { useUiText } from "./i18n/UiText";
+import { buildTheme } from "./lib/theme";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { HashRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { useActionMenus } from "./lib/useActionMenus";
 import { subscribeWindowActivity } from "./lib/windowActivity";
+import { useCurseForgeArchiveImport } from "./lib/useCurseForgeArchiveImport";
 import { WarningCircle } from "./components/icons";
 import { I18nProvider, useI18n } from "./i18n/I18nProvider";
 import { command, isTauri } from "./lib/tauri";
@@ -22,13 +25,6 @@ const SettingsPage = lazy(() => import("./routes/Settings/SettingsPage").then((m
 const InstancePage = lazy(() => import("./routes/Instance/InstancePage").then((module) => ({ default: module.InstancePage })));
 import common from "./components/common/Common.module.css";
 import styles from "./App.module.css";
-
-function accentContrast(hex: string, dark: string, light: string) {
-  const red = Number.parseInt(hex.slice(1, 3), 16);
-  const green = Number.parseInt(hex.slice(3, 5), 16);
-  const blue = Number.parseInt(hex.slice(5, 7), 16);
-  return red * 0.299 + green * 0.587 + blue * 0.114 > 165 ? dark : light;
-}
 
 const mainSections = new Set(["home", "library", "discover", "servers"]);
 
@@ -49,10 +45,7 @@ function RememberSection() {
     if (!bootstrap?.settings.general.rememberSection) return;
     const section = location.pathname.split("/")[1]?.toLowerCase();
     if (!section || !mainSections.has(section) || bootstrap.settings.general.lastSection === section) return;
-    void command("update_setting", {
-      key: "general",
-      value: { ...bootstrap.settings.general, lastSection: section },
-    }).catch(() => undefined);
+    void command("remember_section", { section }).catch(() => undefined);
   }, [bootstrap, location.pathname]);
 
   return null;
@@ -68,6 +61,7 @@ export default function App() {
 }
 
 function AppContent() {
+  const uiText = useUiText();
   useActionMenus();
   useEffect(() => {
     const released = (event: Event) => {
@@ -75,7 +69,12 @@ function AppContent() {
       queueMicrotask(() => { if (isTauri) void command("scenes_released", { generation }).catch(() => undefined); });
     };
     window.addEventListener("slh-release-scenes", released);
-    return () => window.removeEventListener("slh-release-scenes", released);
+    const paused = (event: Event) => {
+      const generation = (event as CustomEvent<number>).detail;
+      queueMicrotask(() => { if (isTauri) void command("ui_paused", { generation }).catch(() => undefined); });
+    };
+    window.addEventListener("slh-ui-pause", paused);
+    return () => { window.removeEventListener("slh-release-scenes", released); window.removeEventListener("slh-ui-pause", paused); };
   }, []);
   useEffect(() => subscribeWindowActivity((active) => {
     document.documentElement.dataset.slhWindowActive = String(active);
@@ -83,6 +82,8 @@ function AppContent() {
   const initialize = useAppStore((state) => state.initialize);
   const bootstrap = useAppStore((state) => state.bootstrap);
   const loading = useAppStore((state) => state.loading);
+  useCurseForgeArchiveImport(bootstrap?.settings.downloads.curseforgeImportArchives === true,
+    bootstrap?.settings.downloads.curseforgeDirectory);
   const error = useAppStore((state) => state.error);
   const receiveProgress = useAppStore((state) => state.receiveProgress);
   const receiveLaunchState = useAppStore((state) => state.receiveLaunchState);
@@ -186,11 +187,11 @@ function AppContent() {
       void command("update_setting", {
         key: "appearance",
         value: { ...bootstrap.settings.appearance, scalePercent: next },
-      }).then(() => refresh()).catch(() => undefined);
+      }).then(async () => { await refresh(); pushToast({ brief: true, tone: "info", title: "notifications.scaleChanged", params: { percent: next }, message: "" }); }).catch(() => undefined);
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [bootstrap?.settings.appearance, bootstrap?.settings.general.keyboardZoom, refresh]);
+  }, [bootstrap?.settings.appearance, bootstrap?.settings.general.keyboardZoom, refresh, pushToast, uiText]);
   useEffect(() => {
     let active = true;
     let localFace: FontFace | undefined;
@@ -213,8 +214,25 @@ function AppContent() {
     };
   }, [bootstrap?.settings.appearance.customFontPath, bootstrap?.settings.appearance.fontFamily]);
 
-  if (loading) return <div className={styles.loading}><BrandLogo variant="icon" /><div className={styles.loadingBar}><span /></div><p>{tr("Preparing launcher data")}</p></div>;
-  if (error || !bootstrap) return <div className={styles.error}><WarningCircle size={42} /><h1>{tr("SLH could not start")}</h1><p>{error?.message ?? tr("The launcher backend did not return startup data.")}</p><button className={common.secondaryButton} type="button" onClick={() => void initialize()}>{tr("Retry")}</button></div>;
+  useEffect(() => {
+    const appearance = bootstrap?.settings.appearance;
+    if (!appearance) return;
+    const root = document.documentElement;
+    root.dataset.themeChanging = "true";
+    const family = appearance.fontFamily === "system" ? '"Segoe UI Variable", "Segoe UI", system-ui, sans-serif'
+      : appearance.fontFamily === "monospace" ? '"Cascadia Code", Consolas, monospace'
+      : appearance.fontFamily === "local" && localFontReady ? '"SLH Local Font", "Pixeloid Sans", sans-serif'
+      : '"Pixeloid Sans", "Segoe UI", system-ui, sans-serif';
+    const theme = buildTheme(appearance, family);
+    Object.entries(theme).forEach(([key, value]) => { if (key.startsWith("--")) root.style.setProperty(key, String(value)); });
+    root.style.colorScheme = String(theme.colorScheme);
+    void root.offsetHeight;
+    const frame = requestAnimationFrame(() => { delete root.dataset.themeChanging; });
+    return () => { cancelAnimationFrame(frame); delete root.dataset.themeChanging; };
+  }, [bootstrap?.settings.appearance, localFontReady]);
+
+  if (loading) return <div className={styles.loading}><BrandLogo variant="icon" /><div className={styles.loadingBar}><span /></div><p>{uiText("common.texts.preparingLauncherData", "Preparing launcher data")}</p></div>;
+  if (error || !bootstrap) return <div className={styles.error}><WarningCircle size={42} /><h1>{uiText("common.texts.slhCouldNotStart", "SLH could not start")}</h1><p>{error?.message ?? uiText("common.texts.theLauncherBackendDidNotReturnStartupData", "The launcher backend did not return startup data.")}</p><button className={common.secondaryButton} type="button" onClick={() => void initialize()}>{uiText("common.retry", "Retry")}</button></div>;
 
   const appearance = bootstrap.settings.appearance;
   const fontFamily = appearance.fontFamily === "system"
@@ -224,56 +242,13 @@ function AppContent() {
       : appearance.fontFamily === "local" && localFontReady
         ? '"SLH Local Font", "Pixeloid Sans", sans-serif'
         : '"Pixeloid Sans", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif';
-  const theme = {
-    "--color-bg": appearance.background,
-    "--color-sidebar": `color-mix(in srgb, ${appearance.background} 86%, ${appearance.surface})`,
-    "--color-surface": appearance.surface,
-    "--color-surface-2": appearance.surface2,
-    // A tertiary surface must remain a surface in dark themes. Mixing it with
-    // white text made every secondary button unexpectedly grey.
-    "--color-surface-3": `color-mix(in srgb, ${appearance.surface2} 68%, ${appearance.background})`,
-    "--color-border": appearance.border,
-    "--color-border-strong": `color-mix(in srgb, ${appearance.border} 64%, ${appearance.text})`,
-    "--color-text": appearance.text,
-    "--color-text-muted": appearance.textMuted,
-    "--color-text-subtle": `color-mix(in srgb, ${appearance.textMuted} 68%, ${appearance.surface})`,
-    "--color-accent": appearance.accent,
-    "--color-accent-hover": appearance.accentHover,
-    "--color-accent-pressed": appearance.accentPressed,
-    "--color-accent-contrast": accentContrast(appearance.accent, appearance.background, appearance.text),
-    "--color-focus": appearance.accentHover,
-    "--color-on-surface": appearance.text,
-    "--color-surface-deep": `color-mix(in srgb, ${appearance.background} 72%, ${appearance.surface})`,
-    "--color-surface-deeper": `color-mix(in srgb, ${appearance.background} 84%, ${appearance.surface})`,
-    "--color-surface-hover": `color-mix(in srgb, ${appearance.surface2} 78%, ${appearance.text})`,
-    "--color-accent-soft": `color-mix(in srgb, ${appearance.accent} 16%, transparent)`,
-    "--color-accent-border": `color-mix(in srgb, ${appearance.accent} 55%, ${appearance.border})`,
-    // Status colors are derived from the active palette, so custom themes do
-    // not fall back to unrelated fixed green/yellow/red UI colors.
-    "--color-success": `color-mix(in srgb, ${appearance.accentHover} 68%, ${appearance.text})`,
-    "--color-warning": `color-mix(in srgb, ${appearance.accent} 78%, ${appearance.text})`,
-    "--color-error": `color-mix(in srgb, ${appearance.accentPressed} 70%, ${appearance.text})`,
-    "--color-success-soft": `color-mix(in srgb, color-mix(in srgb, ${appearance.accentHover} 68%, ${appearance.text}) 15%, ${appearance.surface})`,
-    "--color-warning-soft": `color-mix(in srgb, color-mix(in srgb, ${appearance.accent} 78%, ${appearance.text}) 15%, ${appearance.surface})`,
-    "--color-error-soft": `color-mix(in srgb, color-mix(in srgb, ${appearance.accentPressed} 70%, ${appearance.text}) 15%, ${appearance.surface})`,
-    "--color-danger": `color-mix(in srgb, ${appearance.accentPressed} 70%, ${appearance.text})`,
-    "--color-link": `color-mix(in srgb, ${appearance.accentHover} 42%, ${appearance.text})`,
-    "--color-overlay": `color-mix(in srgb, ${appearance.background} 68%, transparent)`,
-    "--color-overlay-strong": `color-mix(in srgb, ${appearance.background} 86%, transparent)`,
-    "--color-shadow": `color-mix(in srgb, ${appearance.background} 84%, transparent)`,
-    "--color-highlight": `color-mix(in srgb, ${appearance.text} 12%, transparent)`,
-    "--color-scrollbar": `color-mix(in srgb, ${appearance.border} 72%, ${appearance.text})`,
-    "--shadow-panel": `0 16px 44px color-mix(in srgb, ${appearance.background} 28%, transparent)`,
-    "--shadow-dialog": `0 28px 90px color-mix(in srgb, ${appearance.background} 52%, transparent)`,
-    "--font-ui": fontFamily,
-    colorScheme: isLightColor(appearance.background) ? "light" : "dark",
-  } as CSSProperties;
+  const theme = buildTheme(appearance, fontFamily);
 
   return (
     <div style={theme} className={styles.themeRoot} data-minimalism={appearance.minimalism === true ? "true" : "false"}>
         <HashRouter>
           <RememberSection />
-          <Suspense fallback={<div role="status" aria-label="Loading" />}><Routes>
+          <Suspense fallback={<div role="status" aria-label={uiText("common.texts.loading", "Loading")} />}><Routes>
             <Route element={<AppShell />}>
               <Route index element={<StartupRoute />} />
               <Route path="home" element={<HomePage />} />
@@ -290,13 +265,4 @@ function AppContent() {
         </HashRouter>
     </div>
   );
-}
-
-function isLightColor(color: string): boolean {
-  const hex = color.replace("#", "");
-  if (hex.length !== 6) return false;
-  const red = Number.parseInt(hex.slice(0, 2), 16);
-  const green = Number.parseInt(hex.slice(2, 4), 16);
-  const blue = Number.parseInt(hex.slice(4, 6), 16);
-  return (red * 299 + green * 587 + blue * 114) / 1000 > 155;
 }

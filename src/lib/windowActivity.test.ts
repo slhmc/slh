@@ -36,3 +36,20 @@ it("removes listeners that finish registering after unmount", async () => {
   await vi.waitFor(() => expect(mocks.remove).toHaveBeenCalledTimes(2));
   expect(callback).toHaveBeenCalledTimes(1);
 });
+
+it("shares native listeners until the last view unsubscribes", async () => {
+  const first = vi.fn();
+  const second = vi.fn();
+  const stopFirst = subscribeWindowActivity(first);
+  const stopSecond = subscribeWindowActivity(second);
+  await vi.waitFor(() => expect(mocks.resized).not.toBeNull());
+  window.dispatchEvent(new CustomEvent("slh-native-activity", { detail: false }));
+  expect(first).toHaveBeenLastCalledWith(false);
+  expect(second).toHaveBeenLastCalledWith(false);
+  stopFirst();
+  expect(mocks.remove).not.toHaveBeenCalled();
+  window.dispatchEvent(new CustomEvent("slh-native-activity", { detail: true }));
+  expect(second).toHaveBeenLastCalledWith(true);
+  stopSecond();
+  await vi.waitFor(() => expect(mocks.remove).toHaveBeenCalledTimes(2));
+});

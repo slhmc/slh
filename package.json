@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "check": "npm run build && npm run test && cargo test --manifest-path src-tauri/Cargo.toml",
+    "check": "npm run check:ui && npm run build && npm run test && cargo test --manifest-path src-tauri/Cargo.toml",
     "preview": "vite preview",
     "test": "vitest run",
     "test:bedrock-native": "powershell -ExecutionPolicy Bypass -File scripts/test-bedrock-native.ps1",
@@ -18,16 +18,16 @@
     "build:bedrock-native": "powershell -ExecutionPolicy Bypass -File scripts/build-bedrock-native.ps1",
     "tauri:build": "npm run build:bedrock-native && tauri build --no-bundle",
     "portable": "powershell -ExecutionPolicy Bypass -File scripts/build-portable.ps1",
-    "postinstall": "node scripts/patch-webkit-compat.mjs",
-    "check:ui": "node scripts/check-ui.mjs"
+    "check:ui": "node scripts/check-ui.mjs",
+    "test:ui": "playwright test --config playwright.ui.config.ts",
+    "test:portable": "powershell -ExecutionPolicy Bypass -File scripts/test-portable-build.ps1",
+    "postinstall": "node scripts/patch-webkit-compat.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "2.11.1",
     "@tauri-apps/plugin-dialog": "2.7.2",
     "@tauri-apps/plugin-notification": "2.4.0",
     "@tauri-apps/plugin-opener": "2.5.4",
-    "@tauri-apps/plugin-process": "2.3.1",
-    "@tauri-apps/plugin-updater": "2.12.0",
     "pixelarticons": "^2.2.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
@@ -41,9 +41,12 @@
     "skinview3d": "^3.4.2",
     "three": "0.182.0",
     "zod": "4.4.3",
-    "zustand": "5.0.14"
+    "zustand": "5.0.14",
+    "@tauri-apps/plugin-updater": "2.12.0",
+    "@tauri-apps/plugin-process": "2.3.1"
   },
   "devDependencies": {
+    "@babel/parser": "^7.28.5",
     "@playwright/test": "1.62.1",
     "@tauri-apps/cli": "2.11.4",
     "@testing-library/react": "16.3.2",

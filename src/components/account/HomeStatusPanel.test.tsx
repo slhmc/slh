@@ -51,8 +51,15 @@ it("defers invalidated storage while minimized and refreshes when restored", asy
 });
 
 it("does not scan storage when hidden in the status layout", async () => {
-  mocks.bootstrap.settings.appearance.homeStatusVisible = ["cpu", "gpu", "memory"];
+  mocks.bootstrap.settings.appearance.homeStatusVisible = ["launcher"];
   await act(async () => { render(<HomeStatusPanel />); });
   await act(async () => { await vi.advanceTimersByTimeAsync(60_000); });
   expect(mocks.command).not.toHaveBeenCalled();
+});
+
+it("does not render or sample a legacy metrics-only selection", async () => {
+  mocks.bootstrap.settings.appearance.homeStatusVisible=["memory","cpu","gpu"];
+  const view=render(<HomeStatusPanel />); await act(async()=>{await vi.advanceTimersByTimeAsync(9000);});
+  expect(mocks.command).not.toHaveBeenCalled();
+  expect(view.container.querySelectorAll('small')).toHaveLength(0);
 });

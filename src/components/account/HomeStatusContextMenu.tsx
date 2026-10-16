@@ -1,3 +1,4 @@
+import { useUiText } from "../../i18n/UiText";
 import { createPortal } from "react-dom";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Check, HardDrives } from "../icons";
@@ -5,7 +6,7 @@ import { command } from "../../lib/tauri";
 import type { AppearanceSettings } from "../../lib/types";
 import { useAppStore } from "../../stores/appStore";
 import { useI18n } from "../../i18n/I18nProvider";
-import { homeStatusIds, homeStatusItems, homeStatusOrder, type HomeStatusId } from "../../lib/homeStatus";
+import { homeDefaultStatusIds, homeStatusItems, homeStatusOrder, type HomeStatusId } from "../../lib/homeStatus";
 import styles from "../shell/NavigationContextMenu.module.css";
 
 const items = homeStatusItems;
@@ -16,6 +17,7 @@ interface HomeStatusContextMenuProps {
 }
 
 export function HomeStatusContextMenu({ position, onClose }: HomeStatusContextMenuProps) {
+  const uiText = useUiText();
   const { tr } = useI18n();
   const bootstrap = useAppStore((state) => state.bootstrap);
   const refresh = useAppStore((state) => state.refresh);
@@ -57,7 +59,7 @@ export function HomeStatusContextMenu({ position, onClose }: HomeStatusContextMe
     menuRef.current.style.top = `${y}px`;
   }, [position]);
 
-  const visibleIds = bootstrap?.settings.appearance.homeStatusVisible ?? homeStatusIds;
+  const visibleIds = bootstrap?.settings.appearance.homeStatusVisible ?? homeDefaultStatusIds;
   const order = homeStatusOrder(bootstrap?.settings.appearance.homeStatusOrder);
   const visible = new Set(visibleIds);
   const toggle = async (id: HomeStatusId) => {
@@ -72,7 +74,7 @@ export function HomeStatusContextMenu({ position, onClose }: HomeStatusContextMe
       });
       await refresh();
     } catch (error) {
-      pushToast({ tone: "error", title: tr("Launcher status layout was not saved"), message: String((error as { message?: string }).message ?? error) });
+      pushToast({ tone: "error", title: uiText("accounts.texts.launcherStatusLayoutWasNotSaved", "Launcher status layout was not saved"), message: String((error as { message?: string }).message ?? error) });
     }
   };
 
@@ -91,7 +93,7 @@ export function HomeStatusContextMenu({ position, onClose }: HomeStatusContextMe
     } catch (error) {
       setDraggedId(null);
       setDropTarget(null);
-      pushToast({ tone: "error", title: tr("Launcher status layout was not saved"), message: String((error as { message?: string }).message ?? error) });
+      pushToast({ tone: "error", title: uiText("accounts.texts.launcherStatusLayoutWasNotSaved", "Launcher status layout was not saved"), message: String((error as { message?: string }).message ?? error) });
     }
   };
 
@@ -151,8 +153,8 @@ export function HomeStatusContextMenu({ position, onClose }: HomeStatusContextMe
 
   if (!bootstrap || !position) return null;
   const orderedItems = order.map((id) => items.find((item) => item.id === id)).filter((item): item is (typeof items)[number] => Boolean(item));
-  return createPortal(<><div ref={menuRef} className={`${styles.menu} slh-context-menu`} role="menu" aria-label={tr("Launcher status")} style={{ left: position.x, top: position.y }} onPointerDown={(event) => event.stopPropagation()}>
-    <header><HardDrives size={17} /><strong>{tr("Launcher status")}</strong></header>
+  return createPortal(<><div ref={menuRef} className={`${styles.menu} slh-context-menu`} role="menu" aria-label={uiText("accounts.texts.launcherStatus", "Launcher status")} style={{ left: position.x, top: position.y }} onPointerDown={(event) => event.stopPropagation()}>
+    <header><HardDrives size={17} /><strong>{uiText("accounts.texts.launcherStatus", "Launcher status")}</strong></header>
     <div>{orderedItems.map(({ id, label, icon: Icon }) => <div key={id}>
       <div className={`${styles.itemRow} ${draggedId === id ? styles.dragging : ""} ${dropTarget?.id === id ? (dropTarget.after ? styles.insertAfter : styles.insertBefore) : ""}`} data-slh-status-order={id} onPointerDown={(event) => { if (event.button === 0) pointerDragRef.current = { id, startX: event.clientX, startY: event.clientY, dragging: false }; }}>
       <button type="button" className={styles.itemToggle} role="menuitemcheckbox" aria-checked={visible.has(id)} onClick={() => void toggle(id)}>

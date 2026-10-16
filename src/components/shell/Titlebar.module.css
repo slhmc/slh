@@ -3,7 +3,7 @@
   z-index: 40;
   display: grid;
   height: var(--titlebar-height);
-  grid-template-columns: minmax(190px, 1fr) minmax(260px, 420px) auto auto;
+  grid-template-columns: minmax(100px, 1fr) auto auto;
   align-items: center;
   border-bottom: 1px solid var(--color-border);
   background: var(--color-sidebar);
@@ -28,7 +28,7 @@
 
 .appName {
   overflow: hidden;
-  font-size: 12px;
+  font-size: 0.75rem;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -37,47 +37,7 @@
   padding-left: 8px;
   border-left: 1px solid var(--color-border);
   color: var(--color-warning);
-  font-size: 11px;
-}
-
-.searchWrap {
-  display: grid;
-  height: 30px;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 8px;
-  padding: 0 8px 0 10px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  color: var(--color-text-muted);
-  background: var(--color-surface);
-}
-
-.searchWrap:focus-within {
-  border-color: var(--color-focus);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-focus) 20%, transparent);
-}
-
-.searchWrap input {
-  min-width: 0;
-  border: 0;
-  color: var(--color-text);
-  background: transparent;
-  font-size: 12px;
-}
-
-.searchWrap input::placeholder {
-  color: var(--color-text-subtle);
-}
-
-.searchWrap kbd {
-  padding: 2px 5px;
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
-  color: var(--color-text-muted);
-  background: var(--color-surface-2);
-  font-family: var(--font-ui);
-  font-size: 9px;
+  font-size: 0.75rem;
 }
 
 .actions {
@@ -89,7 +49,7 @@
 
 .actions button {
   min-height: 30px;
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 .importMenu {
@@ -102,7 +62,7 @@
   align-items: center;
   gap: 7px;
   padding: 0 10px;
-  font-size: 12px;
+  font-size: 0.75rem;
   list-style: none;
   cursor: pointer;
 }
@@ -143,12 +103,12 @@
 }
 
 .importOptions strong {
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 .importOptions span {
   color: var(--color-text-muted);
-  font-size: 10px;
+  font-size: 0.75rem;
 }
 
 .windowControls {
@@ -182,6 +142,12 @@
   }
 
   .titlebar {
-    grid-template-columns: 100px minmax(220px, 1fr) auto auto;
+    grid-template-columns: minmax(40px, 1fr) auto auto;
   }
 }
+
+.compact.titlebar { grid-template-columns: 44px minmax(0, 1fr) auto auto; }
+.compact .appName, .compact .preview { display: none; }
+.compact .actions { padding-left: 4px; }
+
+@media (max-width: 620px) { .actions > button span, .importMenu summary span { display: none; } .actions > button { padding: 0 8px; min-width: 32px; } .windowControls button { width: 32px; } }

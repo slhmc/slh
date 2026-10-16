@@ -10,6 +10,7 @@ $ErrorActionPreference = 'Stop'
 $measurementLauncher = Get-Process -Id $LauncherId -ErrorAction SilentlyContinue
 if (-not $measurementLauncher) { throw 'Launcher is not running; no measurement was taken.' }
 $measurementStartTime = $measurementLauncher.StartTime
+$measurementTree = @{}
 $measurementMetadata = [ordered]@{
     Scenario = $Scenario
     LauncherPath = $measurementLauncher.Path
@@ -33,6 +34,15 @@ function Get-LauncherIds {
         })
         $ids += @($children.ProcessId)
     } while ($children.Count -gt 0)
+    foreach ($member in @($all | Where-Object ProcessId -in $ids)) {
+        $identity = "$($member.ProcessId):$($member.CreationDate.ToUniversalTime().ToString('o'))"
+        $measurementTree[$identity] = [ordered]@{
+            Id = $member.ProcessId; ParentId = $member.ParentProcessId
+            Name = $member.Name; Path = $member.ExecutablePath
+            StartedUtc = $member.CreationDate.ToUniversalTime().ToString('o')
+            Version = if ($member.ExecutablePath) { try { [Diagnostics.FileVersionInfo]::GetVersionInfo($member.ExecutablePath).FileVersion } catch { $null } } else { $null }
+        }
+    }
     return $ids
 }
 Start-Sleep -Seconds $WarmupSeconds
@@ -46,6 +56,7 @@ $discovered = 0.0
 $rows = @()
 $gpuAt = -10.0
 $gpu = @{}
+$gpuMemory = @{}
 while ($clock.Elapsed.TotalSeconds -lt $DurationSeconds) {
     Start-Sleep -Seconds 3
     Assert-LauncherRunning
@@ -54,10 +65,17 @@ while ($clock.Elapsed.TotalSeconds -lt $DurationSeconds) {
         $discovered = $clock.Elapsed.TotalSeconds
     }
     $processes = @(Get-Process -Id $ids -ErrorAction SilentlyContinue)
+    # Task Manager's Processes/Memory column uses private working set. Total
+    # working set counts shared runtime pages once per process and overstates it.
+    $privateWorkingSets = @{}
+    Get-CimInstance Win32_PerfRawData_PerfProc_Process | Where-Object { $_.IDProcess -in $ids } | ForEach-Object {
+        $privateWorkingSets[[int]$_.IDProcess] = [double]$_.WorkingSetPrivate
+    }
     $now = $clock.Elapsed.TotalSeconds
     $delta = $now - $last
     if ($IncludeGpu -and $now - $gpuAt -ge 5) {
         $gpu = @{}
+        $gpuMemory = @{}
         try {
             $counters = @(Get-CimInstance Win32_PerfFormattedData_GPUPerformanceCounters_GPUEngine -ErrorAction Stop)
             foreach ($group in @('launcher', 'webview')) {
@@ -65,6 +83,19 @@ while ($clock.Elapsed.TotalSeconds -lt $DurationSeconds) {
                 $selected = @($counters | Where-Object { $_.Name -match '^pid_(\d+)_' -and [int]$Matches[1] -in $pids })
                 if ($selected.Count -gt 0) {
                     $gpu[$group] = ($selected | Group-Object { $_.Name -replace '^pid_\d+_', '' } | ForEach-Object { ($_.Group | Measure-Object UtilizationPercentage -Sum).Sum } | Measure-Object -Maximum).Maximum
+                }
+            }
+        } catch { }
+        try {
+            $counters = @(Get-CimInstance Win32_PerfFormattedData_GPUPerformanceCounters_GPUProcessMemory -ErrorAction Stop)
+            foreach ($group in @('launcher', 'webview')) {
+                $pids = @($processes | Where-Object { ($_.Id -eq $LauncherId) -eq ($group -eq 'launcher') } | Select-Object -ExpandProperty Id)
+                $selected = @($counters | Where-Object { $_.Name -match '^pid_(\d+)_' -and [int]$Matches[1] -in $pids })
+                if ($selected.Count -gt 0) {
+                    $gpuMemory[$group] = @{
+                        Dedicated = ($selected | Measure-Object DedicatedUsage -Sum).Sum / 1MB
+                        Shared = ($selected | Measure-Object SharedUsage -Sum).Sum / 1MB
+                    }
                 }
             }
         } catch { }
@@ -77,8 +108,11 @@ while ($clock.Elapsed.TotalSeconds -lt $DurationSeconds) {
             Seconds = [Math]::Round($now, 2); Group = $group
             IntervalSeconds = $delta
             GpuPercent = if ($gpu.ContainsKey($group)) { $gpu[$group] } else { $null }
+            GpuDedicatedMiB = if ($gpuMemory.ContainsKey($group)) { $gpuMemory[$group].Dedicated } else { $null }
+            GpuSharedMiB = if ($gpuMemory.ContainsKey($group)) { $gpuMemory[$group].Shared } else { $null }
             CpuPercent = 100 * $cpu / $delta / [Environment]::ProcessorCount
             WorkingSetMiB = ($members | Measure-Object WorkingSet64 -Sum).Sum / 1MB
+            PrivateWorkingSetMiB = ($members | ForEach-Object { $privateWorkingSets[$_.Id] } | Measure-Object -Sum).Sum / 1MB
             PrivateBytesMiB = ($members | Measure-Object PrivateMemorySize64 -Sum).Sum / 1MB
             ProcessCount = $members.Count
         }
@@ -92,9 +126,8 @@ $parent = Split-Path -Parent ([IO.Path]::GetFullPath($OutputPath))
 $rows | ConvertTo-Json | Set-Content -LiteralPath $OutputPath -Encoding UTF8
 $measurementMetadata.CompletedUtc = [DateTime]::UtcNow.ToString('o')
 $measurementMetadata.ActualDurationSeconds = $clock.Elapsed.TotalSeconds
-$measurementMetadata.WebviewRuntimeVersions = @($processes | Where-Object Id -ne $LauncherId | ForEach-Object {
-    try { $_.FileVersionInfo.FileVersion } catch { } # A child may exit just after the last sample.
-} | Sort-Object -Unique)
+$measurementMetadata.ProcessTree = @($measurementTree.Values | Sort-Object Id,StartedUtc)
+$measurementMetadata.WebviewRuntimeVersions = @($measurementTree.Values | Where-Object Name -eq 'msedgewebview2.exe' | ForEach-Object { $_.Version } | Where-Object { $_ } | Sort-Object -Unique)
 $measurementMetadata | ConvertTo-Json | Set-Content -LiteralPath ($OutputPath + '.metadata.json') -Encoding UTF8
 foreach ($group in @('launcher', 'webview')) {
     $members = @($rows | Where-Object Group -eq $group)
@@ -102,6 +135,7 @@ foreach ($group in @('launcher', 'webview')) {
         Group = $group; Samples = $members.Count
         CpuPercent = [Math]::Round(($members | Measure-Object CpuPercent -Average).Average, 3)
         WorkingSetMiB = [Math]::Round(($members | Measure-Object WorkingSetMiB -Average).Average, 1)
+        PrivateWorkingSetMiB = [Math]::Round(($members | Measure-Object PrivateWorkingSetMiB -Average).Average, 1)
         PrivateBytesMiB = [Math]::Round(($members | Measure-Object PrivateBytesMiB -Average).Average, 1)
     } | ConvertTo-Json -Compress
 }

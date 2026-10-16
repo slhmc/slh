@@ -1,0 +1,37 @@
+name: SLH Linux distribution checks
+on:
+  workflow_dispatch:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  compile:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: fedora:latest
+            distro: fedora
+          - image: archlinux:base
+            distro: arch
+    container: ${{ matrix.image }}
+    steps:
+      - name: Install Fedora build dependencies
+        if: matrix.distro == 'fedora'
+        run: dnf install -y git gcc gcc-c++ make curl file pkgconf-pkg-config openssl-devel dbus-devel webkit2gtk4.1-devel libappindicator-gtk3-devel librsvg2-devel libxdo-devel
+      - name: Install Arch build dependencies
+        if: matrix.distro == 'arch'
+        run: pacman -Syu --noconfirm --needed git base-devel curl file pkgconf openssl dbus webkit2gtk-4.1 libappindicator-gtk3 librsvg xdotool
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.8.0'
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: '1.97.1'
+      - run: npm ci
+      - run: cargo test --manifest-path crates/slh-core/Cargo.toml --locked --lib
+      - run: npx tauri build --no-bundle -- --locked
+      # These checks compile against each distribution. GUI, WebGL, keyring
+      # and compositor behavior still require a desktop session on that OS.

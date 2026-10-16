@@ -1,0 +1,7 @@
+.body { display: grid; gap: 18px; }
+.body p { margin: 6px 0 0; color: var(--color-text-muted); }
+.progress { display: flex; gap: 12px; align-items: center; color: var(--color-text-muted); }
+.progress svg { flex-shrink: 0; }
+.actions { display: flex; justify-content: flex-end; gap: 10px; }
+.spin { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }

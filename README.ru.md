@@ -7,7 +7,7 @@
 <p align="center">Minecraft Java Edition · Отдельные сборки · Моды и модпаки · Настраиваемый интерфейс</p>
 
 <p align="center">
-  <a href="https://github.com/slhmc/slh/releases/tag/v0.2.0"><img src="assets/readme/buttons/download-ru.png" width="420" alt="Скачать SLH"></a>
+  <a href="https://github.com/slhmc/slh/releases/tag/v0.2.1"><img src="assets/readme/buttons/download-ru.png" width="420" alt="Скачать SLH"></a>
 </p>
 <p align="center">
   <a href="https://slhmc.github.io/"><img src="assets/readme/buttons/website-ru.png" width="200" alt="Сайт SLH"></a>
@@ -63,7 +63,7 @@ SLH объединяет игру, контент и настройки в од�
 
 ## Скачать и начать играть
 
-Доступна предварительная версия [v0.2.0](https://github.com/slhmc/slh/releases/tag/v0.2.0). Выбери пакет для своей системы
+Доступна предварительная версия [v0.2.0](https://github.com/slhmc/slh/releases/tag/v0.2.1). Выбери пакет для своей системы
 
 > ⚠️ **Linux и macOS не проверены вручную.** Сборки для всех четырёх целей прошли сборку и модульные тесты, но запуск лаунчера и Minecraft на Linux и macOS ещё не проверялся
 

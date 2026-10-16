@@ -7,12 +7,14 @@ import { AppSidebar } from "./AppSidebar";
 import { Titlebar } from "./Titlebar";
 const CreateInstanceWizard = lazy(() => import("../instance/CreateInstanceWizard").then((module) => ({ default: module.CreateInstanceWizard })));
 import { ToastCenter } from "../common/ToastCenter";
+import { PackJobDialog } from "../instance/PackJobDialog";
 import { NavigationContextMenu } from "./NavigationContextMenu";
 import styles from "./AppShell.module.css";
 import { useAppStore } from "../../stores/appStore";
 
 export function AppShell() {
   const bootstrap = useAppStore((state) => state.bootstrap);
+  const compactHeader = bootstrap?.settings.general.compactHeader === true;
   const wizardOpen = useAppStore((state) => state.createWizardOpen);
   const [navigationMenuPosition, setNavigationMenuPosition] = useState<{ x: number; y: number } | null>(null);
   const closeNavigationMenu = useCallback(() => setNavigationMenuPosition(null), []);
@@ -36,9 +38,9 @@ export function AppShell() {
 
   return (
     <div className={styles.app} onContextMenu={(event) => event.preventDefault()}>
-      <Titlebar />
-      <div className={`${styles.workspace} ${navigationPositionClass}`}>
-        <AppSidebar onContextMenu={openNavigationMenu} />
+      <Titlebar navigation={compactHeader ? <AppSidebar compact onContextMenu={openNavigationMenu} /> : undefined} />
+      <div className={`${styles.workspace} ${compactHeader ? styles.compactWorkspace : navigationPositionClass}`}>
+        {!compactHeader ? <AppSidebar onContextMenu={openNavigationMenu} /> : null}
         <main className={styles.content} data-slh-context-menu="true" onContextMenu={(event) => { if (!event.defaultPrevented && /Mac/i.test(navigator.platform)) openNavigationMenu(event); }}>
           <Outlet />
         </main>
@@ -47,6 +49,7 @@ export function AppShell() {
       <AccountPopover />
       {wizardOpen ? <Suspense fallback={null}><CreateInstanceWizard /></Suspense> : null}
       <ToastCenter />
+      <PackJobDialog />
       <NavigationContextMenu position={navigationMenuPosition} onClose={closeNavigationMenu} />
     </div>
   );

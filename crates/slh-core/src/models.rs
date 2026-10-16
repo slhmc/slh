@@ -701,3 +701,6 @@ pub struct ContentInstallResult {
     pub unchanged_files: u64,
     pub backups_created: u64,
 }
+
+#[derive(Clone, Debug, serde::Serialize)]
+pub struct ContentCategory { pub id: String, pub name: String }

@@ -59,6 +59,7 @@ jobs:
       - run: npm run build
       - run: npm run check:ui
       - run: npm test
+      - run: node --test services/curseforge-relay/relay.test.mjs
       - run: cargo test --manifest-path crates/slh-core/Cargo.toml --locked --lib
       - run: cargo test --manifest-path src-tauri/Cargo.toml --locked --lib
       - if: github.event_name != 'pull_request'

@@ -104,6 +104,8 @@ Copy-Item -LiteralPath (Join-Path $projectRoot 'THIRD_PARTY_NOTICES.md') -Destin
 Copy-Item -LiteralPath (Join-Path $projectRoot 'LICENSE') -Destination (Join-Path $licensesOutput 'GPL-3.0.txt') -Force
 Copy-Item -LiteralPath (Join-Path $projectRoot 'src\assets\fonts\OFL.txt') -Destination (Join-Path $licensesOutput 'Pixeloid-OFL.txt') -Force
 Copy-Item -LiteralPath (Join-Path $projectRoot 'node_modules\pixelarticons\LICENSE') -Destination (Join-Path $licensesOutput 'Pixelarticons-MIT.txt') -Force
+Copy-Item -LiteralPath (Join-Path $projectRoot 'LANGUAGES.md') -Destination (Join-Path $outputRoot 'LANGUAGES.md') -Force
+Copy-Item -LiteralPath (Join-Path $projectRoot 'resources\language-template.json') -Destination (Join-Path $resourcesOutput 'language-template.json') -Force
 Copy-Item -LiteralPath (Join-Path $projectRoot 'README.md') -Destination (Join-Path $outputRoot 'README.txt') -Force
 
 if ($CleanData) {

@@ -84,6 +84,9 @@ export class StudioPostFx {
   }
 
   dispose(): void {
+    // EffectComposer only owns its two targets and copy pass. Each installed
+    // pass owns additional targets, materials and textures.
+    for (const pass of this._composer.passes) pass.dispose();
     this._composer.dispose();
   }
 }

@@ -12,5 +12,9 @@ fn main() {
     if std::env::args().any(|arg| arg == "--check-webview-runtime") {
         std::process::exit(if tauri::webview_version().is_ok() { 0 } else { 2 });
     }
+    #[cfg(windows)]
+    if std::env::args().any(|arg| arg == "--check-system-notification") {
+        std::process::exit(if slh_lib::check_system_notification() { 0 } else { 4 });
+    }
     slh_lib::run()
 }

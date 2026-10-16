@@ -359,7 +359,21 @@ function keepBoxFaces(geo: BoxGeometry, visible: boolean[]): void {
     for (let i = face * 6; i < face * 6 + 6; i++) kept.push(index.getX(i));
   }
 
-  geo.setIndex(kept);
+  // Removing indices alone keeps all six faces' vertex buffers alive. Compact
+  // those buffers too; no UV/normal changes and no hidden faces sent to the GPU.
+  const vertices = [...new Set(kept)];
+  const remap = new Map(vertices.map((vertex, index) => [vertex, index]));
+  for (const name of ["position", "normal", "uv"]) {
+    const source = geo.getAttribute(name) as BufferAttribute;
+    const data = new Float32Array(vertices.length * source.itemSize);
+    vertices.forEach((vertex, index) => {
+      for (let axis = 0; axis < source.itemSize; axis++) {
+        data[index * source.itemSize + axis] = source.array[vertex * source.itemSize + axis];
+      }
+    });
+    geo.setAttribute(name, new BufferAttribute(data, source.itemSize));
+  }
+  geo.setIndex(kept.map(vertex => remap.get(vertex)!));
   geo.clearGroups();
 }
 

@@ -332,26 +332,17 @@ async fn prepare_and_spawn(
         .java_version
         .as_ref()
         .map(|value| value.major_version);
-    let selected_java = if let Some(path) = &instance.java_path {
+    let minecraft_settings = database::setting(&state.database, "minecraft").await?;
+    let java_settings = database::setting(&state.database, "java").await?;
+    let configured_java = instance.java_path.as_deref().or_else(|| minecraft_settings.get("javaPath").and_then(serde_json::Value::as_str).filter(|value| !value.is_empty() && minecraft_settings["javaMode"].as_str() == Some("custom")));
+    let selected_java = if let Some(path) = configured_java {
         let inspected = java::inspect(Path::new(path)).await?;
-        if required_java.is_some_and(|required| inspected.major_version < required) {
-            return Err(AppError::Conflict(format!(
-                "Java {} or newer is required, but {} is Java {}",
-                required_java.unwrap_or_default(),
-                path,
-                inspected.major_version
-            )));
+        if java_settings["skipCompatibilityCheck"].as_bool() != Some(true) && required_java.is_some_and(|required| inspected.major_version < required) {
+            return Err(AppError::JavaCompatibility { required: required_java.unwrap_or_default(), actual: inspected.major_version, path: path.into() });
         }
         inspected
     } else {
-        let detected = java::discover_fast(state, required_java)
-            .await?
-            .into_iter()
-            .find(|candidate| candidate.compatible);
-        match detected {
-            Some(runtime) => runtime,
-            None => java::install_compatible_managed(app, state, required_java).await?,
-        }
+        java::resolve_automatic(app, state, required_java).await?
     };
     let runtime_target = crate::platform::RuntimeTarget {
         os: crate::platform::OperatingSystem::current(),
@@ -370,17 +361,28 @@ async fn prepare_and_spawn(
             return Err(AppError::Conflict("Selected Java architecture or OS differs from installed native libraries; reinstall the instance for this runtime".into()));
         }
     }
-    let arguments = build_launch_arguments(
-        state,
+    let mut arguments = build_launch_arguments(
+        &state.paths.cache,
         &instance,
         &credentials,
         &details,
         &version_root,
+        &minecraft_settings,
         crate::platform::RuntimeTarget {
             os: crate::platform::OperatingSystem::current(),
             java_arch: crate::platform::Architecture::from_java(&selected_java.architecture)?,
         },
     )?;
+    if selected_java.major_version < 8 {
+        if let Some(size) = java_settings["permGenMb"].as_u64().filter(|value| *value > 0) { arguments.insert(0, format!("-XX:PermSize={size}M")); }
+    }
+    if java_settings["warnLowMemory"].as_bool() != Some(false) {
+        let mut system = sysinfo::System::new(); system.refresh_memory();
+        if instance.memory_max_mb as u64 * 1024 * 1024 > system.available_memory() {
+            let _ = app.emit(crate::host::EventKind::OperationProgress, serde_json::json!({ "operationId": instance.id, "instanceId": instance.id, "operation": "launch", "stage": "memory-warning", "message": "Configured Minecraft memory exceeds currently available memory", "messageKey": "progress.memoryWarning", "completed": 0, "total": null }));
+        }
+    }
+    let close_launcher_on_exit = minecraft_settings["closeLauncherOnExit"].as_bool() == Some(true);
     let launch_id = Uuid::new_v4().to_string();
     let log_path = instance_root
         .join("logs")
@@ -563,7 +565,9 @@ async fn prepare_and_spawn(
                 "durationSeconds": duration
             }),
         );
-        if hide_on_launch && restore_on_exit {
+        if close_launcher_on_exit && state.running_instances.read().await.is_empty() {
+            if let Some(window) = app.window() { let _ = window.quit(); }
+        } else if hide_on_launch && restore_on_exit {
             if let Some(window) = app.window() {
                 if let Err(error) = window.show() {
                     tracing::warn!(%error, "could not restore launcher after Minecraft exited");
@@ -577,11 +581,12 @@ async fn prepare_and_spawn(
 }
 
 fn build_launch_arguments(
-    state: &AppState,
+    cache: &Path,
     instance: &Instance,
     credentials: &AccountLaunchCredentials,
     details: &VersionDetails,
     version_root: &Path,
+    settings: &serde_json::Value,
     target: crate::platform::RuntimeTarget,
 ) -> AppResult<Vec<String>> {
     let instance_root = PathBuf::from(&instance.game_dir)
@@ -589,8 +594,8 @@ fn build_launch_arguments(
         .ok_or_else(|| AppError::InvalidInput("Instance game directory has no parent".into()))?
         .to_path_buf();
     let natives = instance_root.join("natives").join(&details.id);
-    let libraries_root = state.paths.cache.join("minecraft").join("libraries");
-    let assets_root = state.paths.cache.join("minecraft").join("assets");
+    let libraries_root = cache.join("minecraft").join("libraries");
+    let assets_root = cache.join("minecraft").join("assets");
     let mut classpath = Vec::<String>::new();
     for library in &details.libraries {
         if !rules_allow_for(&library.rules, true, target) {
@@ -652,13 +657,14 @@ fn build_launch_arguments(
     values.insert("${auth_xuid}".into(), String::new());
     values.insert("${user_type}".into(), credentials.user_type.clone());
     values.insert("${version_type}".into(), "SLH".into());
-    values.insert("${resolution_width}".into(), "1280".into());
-    values.insert("${resolution_height}".into(), "720".into());
+    values.insert("${resolution_width}".into(), settings["resolutionWidth"].as_u64().unwrap_or(1280).to_string());
+    values.insert("${resolution_height}".into(), settings["resolutionHeight"].as_u64().unwrap_or(720).to_string());
 
     let mut arguments = vec![
         format!("-Xms{}M", instance.memory_min_mb),
         format!("-Xmx{}M", instance.memory_max_mb),
     ];
+    if let Some(extra) = settings["jvmArgs"].as_array() { arguments.extend(extra.iter().filter_map(|v| v.as_str().map(str::to_owned))); }
     arguments.extend(credentials.extra_jvm_arguments.iter().cloned());
     if let Some(version_arguments) = &details.arguments {
         arguments.extend(expand_arguments(&version_arguments.jvm, &values, target));
@@ -695,6 +701,8 @@ fn build_launch_arguments(
                 .map(|value| replace_values(value, &values)),
         );
     }
+    if settings["fullscreen"].as_bool() == Some(true) { arguments.push("--fullscreen".into()); }
+    if !arguments.iter().any(|v| v == "--width") { arguments.extend(["--width".into(), values["${resolution_width}"].clone(), "--height".into(), values["${resolution_height}"].clone()]); }
     Ok(arguments)
 }
 
@@ -733,4 +741,46 @@ fn replace_values(mut input: String, values: &HashMap<String, String>) -> String
         input = input.replace(placeholder, value);
     }
     input
+}
+
+#[cfg(test)]
+mod preference_tests {
+    use super::*;
+
+    #[test]
+    fn window_and_jvm_preferences_reach_modern_and_legacy_launch_commands() {
+        let instance = Instance {
+            id: "fixture".into(), name: "Fixture".into(), group_id: None, icon_path: None,
+            folder_name: "fixture".into(), icon_key: "cube".into(), icon_background: None,
+            icon_foreground: None, minecraft_version: "fixture".into(), loader_type: "vanilla".into(),
+            loader_version: None, status: "installed".into(), created_at: String::new(),
+            last_played_at: None, last_launched_at: None, playtime_seconds: 0, java_path: None,
+            memory_min_mb: 1024, memory_max_mb: 8192, game_dir: "/instances/fixture/game".into(),
+            config_schema_version: 1, bedrock_profile_mode: "shared".into(),
+        };
+        let credentials = AccountLaunchCredentials { username: "Player".into(), uuid: "test-uuid".into(),
+            access_token: "fixture-token".into(), user_type: "legacy".into(), extra_jvm_arguments: vec![] };
+        for modern in [true, false] {
+            let mut details: VersionDetails = serde_json::from_value(serde_json::json!({
+                "id":"fixture", "type":"release", "mainClass":"net.minecraft.Main", "assets":"fixture",
+                "assetIndex":{"id":"fixture", "sha1":"", "url":"https://example.test/assets"},
+                "downloads":{"client":{"url":"https://example.test/client"}},
+                "minecraftArguments":"--username ${auth_player_name}"
+            })).unwrap();
+            if modern { details.arguments = Some(serde_json::from_value(serde_json::json!({
+                "jvm":["-cp","${classpath}"], "game":["--username","${auth_player_name}","--width","${resolution_width}","--height","${resolution_height}"]
+            })).unwrap()); }
+            let settings = serde_json::json!({ "fullscreen":true,"resolutionWidth":854,"resolutionHeight":480,
+                "jvmArgs":["-Dfixture=a value with spaces","-XX:+UseG1GC"] });
+            let args = build_launch_arguments(Path::new("/cache"), &instance, &credentials, &details, Path::new("/version"), &settings, crate::platform::RuntimeTarget::host()).unwrap();
+            let main = args.iter().position(|v| v == "net.minecraft.Main").unwrap();
+            assert!(args[..main].contains(&"-Dfixture=a value with spaces".into()));
+            assert!(args[..main].contains(&"-Xms1024M".into()));
+            assert!(args[..main].contains(&"-Xmx8192M".into()));
+            assert_eq!(args.iter().filter(|v| *v == "--width").count(), 1);
+            assert!(args.windows(2).any(|v| v == ["--width", "854"]));
+            assert!(args.windows(2).any(|v| v == ["--height", "480"]));
+            assert!(args[main..].contains(&"--fullscreen".into()));
+        }
+    }
 }

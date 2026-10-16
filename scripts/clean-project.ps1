@@ -25,7 +25,6 @@ $projectRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..')).TrimEnd('\
 $relativePaths = @(
     'src-tauri/target'
     'crates/slh-core/target'
-    'crates/slh-native/target'
     'dist'
     'test-results'
     'node_modules/.vite'

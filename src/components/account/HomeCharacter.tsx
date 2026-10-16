@@ -1,49 +1,32 @@
+import { useUiText } from "../../i18n/UiText";
 import { useEffect, useRef, useState } from "react";
 import type { Account } from "../../lib/types";
-import { command } from "../../lib/tauri";
 import { subscribeWindowActivity } from "../../lib/windowActivity";
-import type { HomeSkin } from "../../lib/home";
 import { homeCharacterFps } from "../../lib/homeCharacterFps";
-import { homeSkinCache, homeSkinKey, initialHomeSkin, readHomeView, saveHomeView } from "../../lib/homeCharacterState";
+import { readHomeView, saveHomeView } from "../../lib/homeCharacterState";
 import type { SkinViewEngine } from "../../vendor/mine3d/core/scene-loop";
-import { useI18n } from "../../i18n/I18nProvider";
+import { useHomeSkin } from "../../lib/useHomeSkin";
 import styles from "./HomeCharacter.module.css";
 
 export function HomeCharacter({ account, frameRate }: { account: Account | null; frameRate?: number }) {
+  const uiText = useUiText();
   const fps = homeCharacterFps(frameRate);
-  const { tr } = useI18n();
+  const engineRef = useRef<SkinViewEngine | null>(null);
+  const fpsRef = useRef(fps);
+  
   const host = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const fallbackCanvas = useRef<HTMLCanvasElement>(null);
-  const [skin, setSkin] = useState<HomeSkin>(() => initialHomeSkin(account));
+  const skin = useHomeSkin(account);
   const [failed, setFailed] = useState(false);
   const [sceneEpoch, setSceneEpoch] = useState(0);
   const view = useRef(readHomeView());
   const [scale, setScale] = useState(view.current.scale);
 
   useEffect(() => {
-    let alive = true;
-    const fallback = initialHomeSkin(account);
-    let ticket = 0;
-    setSkin(fallback);
-    const load = async () => {
-      const current = ++ticket;
-      if (!account || account.provider === "offline") return;
-      try {
-        const result = await homeSkinCache.load(homeSkinKey(account), () => command<HomeSkin>("get_home_account_skin", { accountId: account.id }));
-        if (alive && current === ticket && result.dataUrl) setSkin(result);
-      } catch { /* The bundled default remains usable without a network. */ }
-    };
-    const refresh = (event: Event) => {
-      if (account && (event as CustomEvent<string>).detail === account.id) {
-        homeSkinCache.invalidate(homeSkinKey(account));
-        void load();
-      }
-    };
-    void load();
-    window.addEventListener("slh-account-avatar-updated", refresh);
-    return () => { alive = false; window.removeEventListener("slh-account-avatar-updated", refresh); };
-  }, [account?.id, account?.provider, account?.providerUuid]);
+    fpsRef.current = fps;
+    engineRef.current?.setAnimationFrameRate(fps);
+  }, [fps]);
 
   useEffect(() => {
     const element = canvas.current;
@@ -55,7 +38,9 @@ export function HomeCharacter({ account, frameRate }: { account: Account | null;
     let observer: ResizeObserver | undefined;
     let saveTimer: number | undefined;
     let visible = !document.hidden;
-    let resize = () => {};
+    let resize: (forceFit?: boolean) => void = () => {};
+    let previousWidth = 0;
+    let previousHeight = 0;
     const wheel = (event: WheelEvent) => {
       if (!event.ctrlKey) return;
       event.preventDefault();
@@ -64,7 +49,7 @@ export function HomeCharacter({ account, frameRate }: { account: Account | null;
       view.current.scale = Math.max(.2, Math.min(1, view.current.scale * Math.exp(-pixels * .0015)));
       setScale(view.current.scale);
       saveHomeView(view.current);
-      resize();
+      resize(true);
     };
     const rememberRotation = () => {
       if (!engine) return;
@@ -78,6 +63,7 @@ export function HomeCharacter({ account, frameRate }: { account: Account | null;
         return;
       }
       if (engine) {
+        if (visible) resize();
         engine.setAnimationActive(visible, visible);
         if (!visible) {
           engine.stop();
@@ -87,7 +73,7 @@ export function HomeCharacter({ account, frameRate }: { account: Account | null;
         }
       }
     };
-    const lost = (event: Event) => { event.preventDefault(); observer?.disconnect(); engine?.dispose(); engine = undefined; setFailed(true); };
+    const lost = (event: Event) => { event.preventDefault(); observer?.disconnect(); engine?.controls.removeEventListener("change", rememberRotation); engine?.dispose(); engineRef.current = null; engine = undefined; setFailed(true); };
     const release = () => {
       if (visible || released) return;
       released = true;
@@ -96,6 +82,7 @@ export function HomeCharacter({ account, frameRate }: { account: Account | null;
       engine?.controls.removeEventListener("change", rememberRotation);
       element.removeEventListener("webglcontextlost", lost);
       engine?.dispose();
+      if (engineRef.current === engine) engineRef.current = null;
       engine = undefined;
       window.clearTimeout(saveTimer);
       saveHomeView(view.current);
@@ -103,6 +90,7 @@ export function HomeCharacter({ account, frameRate }: { account: Account | null;
     setFailed(false);
     void Promise.all([import("../../vendor/mine3d/core/scene-loop"), import("../../vendor/mine3d/core/skin-animations"), import("../../vendor/mine3d/types"), import("../../lib/homeCharacterPose")]).then(async ([renderer, animations, types, poses]) => {
       if (!alive) return;
+      // The full stage includes the broad, soft contact shadow.
       engine = new renderer.SkinViewEngine(element, {
         autoResize: false, modelType: skin.model === "slim" ? types.SkinModelType.Slim : types.SkinModelType.Classic,
         autoDetectModel: false, transparent: true, enableEffects: false, enableControls: true, enableClickNudge: false, enableAltPan: false,
@@ -110,7 +98,8 @@ export function HomeCharacter({ account, frameRate }: { account: Account | null;
       });
       engine.controls.enablePan = false;
       engine.setRenderOnDemand(true);
-      engine.setAnimationFrameRate(fps);
+      engineRef.current = engine;
+      engine.setAnimationFrameRate(fpsRef.current);
       engine.controls.enableZoom = false;
       engine.controls.enableDamping = true;
       engine.controls.dampingFactor = 0.08;
@@ -122,19 +111,24 @@ export function HomeCharacter({ account, frameRate }: { account: Account | null;
       engine.setCursorFollow(false);
       const bounds = poses.homePoseBounds();
       engine.setPoseHook(({ player }) => poses.stabilizeHomePose(player, true, bounds));
-      resize = () => {
-        engine?.setSize(container.clientWidth, container.clientHeight);
-        engine?.fitPlayerToFrame({ fillY: .84 * view.current.scale, maxFillX: .86 * view.current.scale, offsetY: .015 });
-        if (visible) engine?.start();
+      resize = (forceFit = false) => {
+        if (!engine || !visible) return;
+        const height = container.clientHeight;
+        const width = container.clientWidth;
+        if (width < 1 || height < 1) return;
+        const changed = width !== previousWidth || height !== previousHeight;
+        if (changed) { element.style.width = `${width}px`; engine.setSize(width, height); previousWidth = width; previousHeight = height; }
+        if (changed || forceFit) engine.fitPlayerToFrame({ fillY: .84 * view.current.scale, maxFillX: .86 * view.current.scale, offsetY: .015 });
+        engine.start();
       };
       resize();
-      observer = new ResizeObserver(resize);
+      observer = new ResizeObserver(() => resize());
       observer.observe(container);
       await engine.setSkin(skin.dataUrl!);
       if (!alive) return;
       await engine.setCape(null);
       if (!alive) return;
-      resize();
+      resize(true);
       if (view.current.yaw !== undefined) {
         const camera = engine.controls.object;
         const target = engine.controls.target;
@@ -146,7 +140,7 @@ export function HomeCharacter({ account, frameRate }: { account: Account | null;
       engine.controls.addEventListener("change", rememberRotation);
       engine.setAnimationActive(visible, visible);
       if (!visible) engine.stop();
-    }).catch(() => { if (alive) { engine?.dispose(); engine = undefined; setFailed(true); } });
+    }).catch(() => { if (alive) { engine?.dispose(); if (engineRef.current === engine) engineRef.current = null; engine = undefined; setFailed(true); } });
     container.addEventListener("wheel", wheel, { passive: false, capture: true });
     element.addEventListener("webglcontextlost", lost);
     window.addEventListener("slh-release-scenes", release);
@@ -160,8 +154,9 @@ export function HomeCharacter({ account, frameRate }: { account: Account | null;
       element.removeEventListener("webglcontextlost", lost); unsubscribeActivity();
       window.removeEventListener("slh-release-scenes", release);
       engine?.dispose();
+      if (engineRef.current === engine) engineRef.current = null;
     };
-  }, [skin.dataUrl, skin.model, fps, sceneEpoch]);
+  }, [skin.dataUrl, skin.model, sceneEpoch]);
 
   useEffect(() => {
     if (!failed || !skin.dataUrl) return;
@@ -186,10 +181,10 @@ export function HomeCharacter({ account, frameRate }: { account: Account | null;
   }, [failed, skin]);
 
   return <div ref={host} className={styles.host} role="group"
-    aria-label={`${account?.username ?? tr("Offline")}. ${tr("Drag to rotate. Ctrl + wheel to zoom.")}`}>
+    aria-label={`${account?.username ?? uiText("accounts.texts.offline", "Offline")}. ${uiText("accounts.texts.dragToRotateCtrlWheelToZoom", "Drag to rotate. Ctrl + wheel to zoom.")}`}>
     {/* A disposed WebGL context belongs to its canvas. A new skin gets a fresh
         canvas so delayed context-loss events cannot break its new renderer. */}
-    <canvas key={`${skin.model}:${skin.dataUrl}:${fps}:${sceneEpoch}`} ref={canvas} className={failed ? styles.hidden : styles.canvas} />
+    <canvas key={`${skin.model}:${skin.dataUrl}:${sceneEpoch}`} ref={canvas} className={failed ? styles.hidden : styles.canvas} />
     {failed ? <canvas ref={fallbackCanvas} className={styles.flat} style={{ height: `${82 * scale}%` }} aria-hidden="true" /> : null}
   </div>;
 }

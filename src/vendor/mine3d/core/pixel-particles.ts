@@ -38,17 +38,18 @@ interface Particle {
 const MOTE_COLORS = [0xffffff, 0xe8eef8, 0xfff4e0, 0xd8e4ff];
 const AMBIENT_MOTE_TARGET = 12;
 
-const DUST_GEO = new BoxGeometry(1, 1, 1);
-const GLOW_GEO = new PlaneGeometry(1, 1);
 const DUST_COLORS = [0x9a9284, 0xc4b498, 0x7a7468, 0xd2c4a8, 0xb0a898, 0xe8dcc8];
-
-/** Общая мягкая текстура для Sprite — не dispose на каждую частицу */
-const SOFT_GLOW_MAP = createSoftGlowTexture();
 
 /** Пиксельная пыль / аура смены скина */
 export class PixelParticles {
   readonly group = new Group();
   private readonly _pool: Particle[] = [];
+  private _dustGeometry: BoxGeometry | null = null;
+  private _glowGeometry: PlaneGeometry | null = null;
+  private _glowMap: CanvasTexture | null = null;
+  private get dustGeometry(): BoxGeometry { return this._dustGeometry ??= new BoxGeometry(1, 1, 1); }
+  private get glowGeometry(): PlaneGeometry { return this._glowGeometry ??= new PlaneGeometry(1, 1); }
+  private get glowMap(): CanvasTexture { return this._glowMap ??= createSoftGlowTexture(); }
 
   /** Дым пыли от удара о пол */
   spawnDust(origin: Vector3, count = 48): void {
@@ -60,7 +61,7 @@ export class PixelParticles {
         opacity: 1,
         depthWrite: false,
       });
-      const mesh = new Mesh(DUST_GEO, mat);
+      const mesh = new Mesh(this.dustGeometry, mat);
       const startSize = 0.7 + Math.random() * 1.1;
       mesh.scale.setScalar(startSize);
       mesh.position.copy(origin);
@@ -117,7 +118,7 @@ export class PixelParticles {
   private _spawnMote(origin: Vector3): void {
     const color = MOTE_COLORS[(Math.random() * MOTE_COLORS.length) | 0]!;
     const mat = new SpriteMaterial({
-      map: SOFT_GLOW_MAP,
+      map: this.glowMap,
       color: new Color(color),
       transparent: true,
       opacity: 0,
@@ -167,7 +168,7 @@ export class PixelParticles {
       blending: AdditiveBlending,
       side: DoubleSide,
     });
-    const mesh = new Mesh(GLOW_GEO, mat);
+    const mesh = new Mesh(this.glowGeometry, mat);
     mesh.rotation.x = -Math.PI / 2;
     mesh.position.set(origin.x, FLOOR_Y + 0.12, origin.z);
     mesh.scale.setScalar(2);
@@ -196,7 +197,7 @@ export class PixelParticles {
     for (let i = 0; i < count; i++) {
       const color = colors[(Math.random() * colors.length) | 0]!;
       const mat = new SpriteMaterial({
-        map: SOFT_GLOW_MAP,
+        map: this.glowMap,
         color: new Color(color),
         transparent: true,
         opacity: 0,
@@ -300,6 +301,12 @@ export class PixelParticles {
       p.material.dispose();
     }
     this._pool.length = 0;
+    this._dustGeometry?.dispose();
+    this._glowGeometry?.dispose();
+    this._glowMap?.dispose();
+    this._dustGeometry = null;
+    this._glowGeometry = null;
+    this._glowMap = null;
   }
 }
 

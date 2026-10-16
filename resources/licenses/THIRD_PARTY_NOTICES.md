@@ -63,11 +63,3 @@ GPU sampling uses the Windows PDH API.
 The separate native prototype uses Slint 1.18.1 and wgpu 30.0.1. Slint offers GPL-3.0-only, Slint Royalty-free 2.0, and commercial licensing alternatives; see https://slint.dev/license. Desktop distribution must follow the selected Slint license. The prototype does not change the licensing of the existing Tauri frontend.
 
 wgpu, glam, bytemuck, directories, tar, flate2, and keyring are covered by their upstream permissive licenses. Exact dependencies and versions are recorded in `crates/slh-native/Cargo.lock` and `crates/slh-core/Cargo.lock`. Pixeloid Sans retains its existing SIL OFL attribution above.
-
-## Launcher updater (0.2.1)
-
-Tauri updater and process plugins are used under MIT OR Apache-2.0.
-The updater verifies signed packages with minisign-verify (MIT).
-The Markdown autolink dependency retains its MIT license; the install-time
-compatibility patch removes unsupported lookbehind syntax and retains its
-existing preceding-character validation for Monterey WebKit.

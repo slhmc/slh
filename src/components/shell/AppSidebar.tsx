@@ -1,3 +1,4 @@
+import { useUiText } from "../../i18n/UiText";
 import {
   ArrowRight,
   Compass,
@@ -44,9 +45,11 @@ function dockArrowRotation(position: NavigationDockPosition): number {
 
 interface AppSidebarProps {
   onContextMenu?: MouseEventHandler<HTMLElement>;
+  compact?: boolean;
 }
 
-export function AppSidebar({ onContextMenu }: AppSidebarProps) {
+export function AppSidebar({ onContextMenu, compact = false }: AppSidebarProps) {
+  const uiText = useUiText();
   const settingsActive = Boolean(useMatch("/settings/*"));
   const { t, tr } = useI18n();
   const bootstrap = useAppStore((state) => state.bootstrap);
@@ -57,7 +60,7 @@ export function AppSidebar({ onContextMenu }: AppSidebarProps) {
   const visible = new Set(bootstrap?.settings.general.visibleNavigation ?? defaultSidebarNavigation);
   const configured = bootstrap?.settings.general.navigationOrder ?? defaultSidebarNavigation;
   const navigationPosition = bootstrap?.settings.general.navigationPosition ?? "left";
-  const positionClass = navigationPosition === "right"
+  const positionClass = compact ? styles.compact : navigationPosition === "right"
     ? styles.right
     : navigationPosition === "top"
       ? styles.top
@@ -88,7 +91,7 @@ export function AppSidebar({ onContextMenu }: AppSidebarProps) {
       if (nextPosition === navigationPosition || !bootstrap) return;
       void command("update_setting", { key: "general", value: { ...bootstrap.settings.general, navigationPosition: nextPosition } satisfies GeneralSettings })
         .then(() => refresh())
-        .catch((error) => pushToast({ tone: "error", title: tr("Navigation position was not saved"), message: String((error as { message?: string }).message ?? error) }));
+        .catch((error) => pushToast({ tone: "error", title: uiText("shell.texts.navigationPositionWasNotSaved", "Navigation position was not saved"), message: String((error as { message?: string }).message ?? error) }));
     };
     const cancel = () => { dockDragRef.current = null; setDockDrag(null); };
     window.addEventListener("pointermove", onMove, { passive: false });
@@ -104,7 +107,7 @@ export function AppSidebar({ onContextMenu }: AppSidebarProps) {
   }, [bootstrap, navigationPosition, pushToast, refresh, tr]);
 
   const beginDockDrag = (event: React.PointerEvent<HTMLElement>) => {
-    if (!event.ctrlKey || event.button !== 0) return;
+    if (compact || !event.ctrlKey || event.button !== 0) return;
     const source = (event.target as HTMLElement).closest<HTMLElement>("[data-navigation-item]");
     if (!source) return;
     event.preventDefault();
@@ -121,7 +124,7 @@ export function AppSidebar({ onContextMenu }: AppSidebarProps) {
         <BrandLogo variant="horizontal" />
         <BrandLogo variant="icon" />
       </div>
-      <nav className={styles.navigation} aria-label={tr("Main navigation")}>
+      <nav className={styles.navigation} aria-label={uiText("shell.texts.mainNavigation", "Main navigation")}>
         {orderedItems.filter((item) => item.id !== sidebarSettings.id && visible.has(item.id)).map(({ id, path, label, labelKey, icon: Icon }) => (
           <NavLink
             key={path}
@@ -129,6 +132,7 @@ export function AppSidebar({ onContextMenu }: AppSidebarProps) {
             data-navigation-item={id}
             data-minimal-navigation
             aria-label={t(labelKey, label)}
+            title={t(labelKey, label)}
             className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ""}`}
           >
             <Icon size={20} weight="duotone" />
@@ -137,14 +141,14 @@ export function AppSidebar({ onContextMenu }: AppSidebarProps) {
         ))}
       </nav>
       <div className={styles.bottom}>
-        <button className={styles.account} data-account-popover-anchor type="button" onClick={() => setAccountOpen(true)}>
+        <button aria-label={active?.username ?? uiText("shell.texts.noAccount", "No account")} className={styles.account} data-account-popover-anchor type="button" onClick={() => setAccountOpen(true)}>
           <AccountAvatar account={active} className={styles.avatar} />
           <span className={styles.accountText}>
-            <strong>{active?.username ?? tr("No account")}</strong>
-            <small data-minimal-text>{active ? `${active.provider} · ${tr(active.authStatus)}` : tr("Choose an identity")}</small>
+            <strong data-minimal-title>{active?.username ?? uiText("shell.texts.noAccount", "No account")}</strong>
+            <small data-minimal-text>{active ? `${active.provider} · ${tr(active.authStatus)}` : uiText("shell.texts.chooseAnIdentity", "Choose an identity")}</small>
           </span>
         </button>
-        {visible.has(sidebarSettings.id) ? <Link to={sidebarSettings.path} data-navigation-item={sidebarSettings.id} data-minimal-navigation aria-label={t(sidebarSettings.labelKey, sidebarSettings.label)} aria-current={settingsActive ? "page" : undefined} className={`${styles.navItem} ${settingsActive ? styles.active : ""}`}>
+        {visible.has(sidebarSettings.id) ? <Link to={sidebarSettings.path} data-navigation-item={sidebarSettings.id} data-minimal-navigation aria-label={t(sidebarSettings.labelKey, sidebarSettings.label)} title={t(sidebarSettings.labelKey, sidebarSettings.label)} aria-current={settingsActive ? "page" : undefined} className={`${styles.navItem} ${settingsActive ? styles.active : ""}`}>
           <GearSix size={20} weight="duotone" />
             <span data-minimal-text>{t(sidebarSettings.labelKey, sidebarSettings.label)}</span>
         </Link> : null}

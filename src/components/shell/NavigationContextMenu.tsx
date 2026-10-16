@@ -1,3 +1,4 @@
+import { useUiText } from "../../i18n/UiText";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Check, Compass } from "../icons";
 import { command } from "../../lib/tauri";
@@ -15,7 +16,8 @@ interface NavigationContextMenuProps {
 }
 
 export function NavigationContextMenu({ position, onClose }: NavigationContextMenuProps) {
-  const { t, tr } = useI18n();
+  const uiText = useUiText();
+  const { t } = useI18n();
   const bootstrap = useAppStore((state) => state.bootstrap);
   const refresh = useAppStore((state) => state.refresh);
   const pushToast = useAppStore((state) => state.pushToast);
@@ -71,7 +73,7 @@ export function NavigationContextMenu({ position, onClose }: NavigationContextMe
       });
       await refresh();
     } catch (error) {
-      pushToast({ tone: "error", title: tr("Navigation was not saved"), message: String((error as { message?: string }).message ?? error) });
+      pushToast({ tone: "error", title: uiText("shell.texts.navigationWasNotSaved", "Navigation was not saved"), message: String((error as { message?: string }).message ?? error) });
     }
   };
 
@@ -90,7 +92,7 @@ export function NavigationContextMenu({ position, onClose }: NavigationContextMe
     } catch (error) {
       setDraggedId(null);
       setDropTarget(null);
-      pushToast({ tone: "error", title: tr("Navigation was not saved"), message: String((error as { message?: string }).message ?? error) });
+      pushToast({ tone: "error", title: uiText("shell.texts.navigationWasNotSaved", "Navigation was not saved"), message: String((error as { message?: string }).message ?? error) });
     }
   };
 

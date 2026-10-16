@@ -133,7 +133,7 @@ where
     let temporary = temporary_path(&plan.destination);
     let mut last_error = None;
     for attempt in 1..=3 {
-        match download_once(client, plan, &temporary, &mut on_progress).await {
+        match download_once(client, plan, &temporary, attempt > 1, &mut on_progress).await {
             Ok(bytes) => {
                 if plan.destination.exists() {
                     tokio::fs::remove_file(&plan.destination).await?;
@@ -159,10 +159,17 @@ async fn download_once(
     client: &reqwest::Client,
     plan: &DownloadPlan,
     temporary: &Path,
+    use_http1: bool,
     on_progress: &mut impl FnMut(u64, Option<u64>),
 ) -> AppResult<u64> {
     let max_bytes = plan.max_bytes.unwrap_or(MAX_DOWNLOAD_BYTES);
-    let response = client.get(&plan.url).send().await?.error_for_status()?;
+    let mut request = client.get(&plan.url)
+        .timeout(std::time::Duration::from_secs(300))
+        .header(reqwest::header::ACCEPT_ENCODING, "identity");
+    // Some CDN HTTP/2 streams reset during large pack downloads. Retry using
+    // HTTP/1.1 without changing the source or skipping hash verification.
+    if use_http1 { request = request.version(reqwest::Version::HTTP_11); }
+    let response = request.send().await?.error_for_status()?;
     let total = response.content_length();
     if total.is_some_and(|length| length > max_bytes) {
         return Err(AppError::Security(format!(
@@ -431,6 +438,33 @@ fn temporary_path(destination: &Path) -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn retries_an_interrupted_response_and_verifies_the_completed_file() {
+        use tokio::net::TcpListener;
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move {
+            for attempt in 0..2 {
+                let (mut socket, _) = listener.accept().await.unwrap();
+                let mut request = vec![0; 4096];
+                let count = socket.read(&mut request).await.unwrap();
+                let request = String::from_utf8_lossy(&request[..count]).to_lowercase();
+                assert!(request.contains("accept-encoding: identity"));
+                if attempt == 0 {
+                    socket.write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 1000\r\nConnection: close\r\n\r\npartial").await.unwrap();
+                } else {
+                    socket.write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 11\r\nConnection: close\r\n\r\nhello world").await.unwrap();
+                }
+            }
+        });
+        let directory = tempfile::tempdir().unwrap();
+        let plan = DownloadPlan { url: format!("http://{address}/mod.jar"), destination: directory.path().join("mod.jar"),
+            sha1: Some("2aae6c35c94fcfb415dbe95f408b9ce91ee846ed".into()), max_bytes: None };
+        assert_eq!(download_verified(&reqwest::Client::new(), &plan).await.unwrap(), 11);
+        assert_eq!(tokio::fs::read(&plan.destination).await.unwrap(), b"hello world");
+        server.await.unwrap();
+    }
 
     #[test]
     fn parses_http_content_ranges() {

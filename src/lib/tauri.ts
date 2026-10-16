@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { engine } from "../i18n/engine";
 import { markStorageChanged } from "./storageUsage";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type {
@@ -206,9 +207,13 @@ function normalizeFailure(error: unknown): CommandFailure {
   if (typeof error === "object" && error !== null) {
     const candidate = error as Partial<CommandFailure>;
     if (typeof candidate.message === "string") {
+      if (candidate.messageKey) engine.rememberDiagnostic(candidate.message, candidate.messageKey, candidate.params);
       return {
         code: typeof candidate.code === "string" ? candidate.code : "command_error",
         message: candidate.message,
+        messageKey: candidate.messageKey,
+        params: candidate.params,
+        details: candidate.details,
       };
     }
   }
@@ -220,6 +225,15 @@ function normalizeFailure(error: unknown): CommandFailure {
 
 export async function command<T>(name: string, args?: Record<string, unknown>): Promise<T> {
   if (!isTauri) {
+    if (name === "run_pack_install") return command<T>(String(args?.commandName), args?.args as Record<string, unknown>);
+    if (name === "scan_curseforge_downloads") return [] as T;
+    if (name === "get_locale_revision") return String(args?.code ?? "en-US") as T;
+    if (name === "get_locale_snapshot") {
+      const code = String(args?.code ?? "en-US");
+      const messages = await command<Record<string, unknown>>("load_locale", { code });
+      return { code, messages, locales: previewBootstrap.locales, diagnostics: [], valid: true } as T;
+    }
+    if (name === "open_languages_folder" || name === "export_language_template") return undefined as T;
     if (name === "get_bootstrap") {
       return structuredClone(previewBootstrap) as T;
     }
@@ -246,8 +260,34 @@ export async function command<T>(name: string, args?: Record<string, unknown>): 
         updateAvailable: false,
       } as T;
     }
+    if (name === "list_content_categories") {
+      return (args?.provider === "curseforge" ? [{id:"4471",name:"Adventure and RPG"},{id:"4472",name:"Optimization"}] : [{id:"adventure",name:"Adventure"},{id:"optimization",name:"Optimization"}]) as T;
+    }
+    if (name === "create_group") {
+      const request=args?.request as {name:string}; const group={id:crypto.randomUUID(),name:request.name,sortOrder:previewBootstrap.groups.length,collapsed:false,createdAt:new Date().toISOString()}; previewBootstrap.groups.push(group); return group as T;
+    }
+    if (name === "set_group_collapsed") {
+      const request = args?.request as { groupId: string; collapsed: boolean };
+      const group = previewBootstrap.groups.find(item => item.id === request.groupId);
+      if (group) group.collapsed = request.collapsed;
+      return undefined as T;
+    }
+    if (name === "assign_instance_group") {
+      const request = args?.request as { instanceId: string; groupId: string | null };
+      const instance = previewBootstrap.instances.find(item => item.id === request.instanceId);
+      if (instance) instance.groupId = request.groupId;
+      return undefined as T;
+    }
     if (name === "update_setting") {
+      const key = String(args?.key ?? "");
+      if (key in previewBootstrap.settings) (previewBootstrap.settings as unknown as Record<string, unknown>)[key] = structuredClone(args?.value);
       return args?.value as T;
+    }
+    if (name === "remember_section") {
+      if (previewBootstrap.settings.general.rememberSection && ["home", "library", "discover", "servers"].includes(String(args?.section))) {
+        previewBootstrap.settings.general.lastSection = String(args?.section);
+      }
+      return undefined as T;
     }
     if (name === "get_account_avatar") {
       return null as T;
@@ -286,6 +326,7 @@ export async function command<T>(name: string, args?: Record<string, unknown>): 
       return { ...current, ...request } as T;
     }
     if (name === "delete_instance") {
+      previewBootstrap.instances = previewBootstrap.instances.filter(instance => instance.id !== args?.instanceId);
       return {
         instanceId: String(args?.instanceId ?? "preview-1"),
         backupPath: null,
@@ -346,26 +387,38 @@ export async function command<T>(name: string, args?: Record<string, unknown>): 
     }
     if (name === "search_modrinth" || name === "search_curseforge") {
       const projects = [
-        { projectId: "AANobbMI", slug: "sodium", title: "Sodium", description: "A modern rendering engine for Minecraft that improves frame rates and reduces micro-stutter.", projectType: "mod", iconUrl: "https://cdn.modrinth.com/data/AANobbMI/icon.png", downloads: 129000000, follows: 310000, author: "JellySquid3", categories: ["optimization", "fabric", "quilt"], versions: ["26.2", "1.21.8", "1.21.7"], dateModified: "2026-08-01T10:00:00Z" },
-        { projectId: "P7dR8mSH", slug: "fabric-api", title: "Fabric API", description: "Essential hooks and interoperability utilities for mods using Fabric.", projectType: "mod", iconUrl: "https://cdn.modrinth.com/data/P7dR8mSH/icon.png", downloads: 188000000, follows: 240000, author: "modmuss50", categories: ["library", "fabric"], versions: ["26.2", "1.21.8", "1.21.7"], dateModified: "2026-08-02T10:00:00Z" },
+        { projectId: "AANobbMI", slug: "sodium", title: "Sodium", description: "A modern rendering engine for Minecraft that improves frame rates and reduces micro-stutter.", projectType: "mod", iconUrl: "https://cdn.modrinth.com/data/AANobbMI/icon.png", downloads: 129000000, follows: 310000, author: "JellySquid3", categories: ["optimization", "fabric", "quilt"], versions: ["26.2", "1.21.8", "1.21.7", "1.20.1"], dateModified: "2026-08-01T10:00:00Z" },
+        { projectId: "P7dR8mSH", slug: "fabric-api", title: "Fabric API", description: "Essential hooks and interoperability utilities for mods using Fabric.", projectType: "mod", iconUrl: "https://cdn.modrinth.com/data/P7dR8mSH/icon.png", downloads: 188000000, follows: 240000, author: "modmuss50", categories: ["library", "fabric"], versions: ["26.2", "1.21.8", "1.21.7", "1.20.1"], dateModified: "2026-08-02T10:00:00Z" },
         { projectId: "5ZwdcRci", slug: "fabulously-optimized", title: "Fabulously Optimized", description: "A performance-focused modpack with familiar quality-of-life features and broad compatibility.", projectType: "modpack", iconUrl: null, downloads: 8200000, follows: 120000, author: "robotkoer", categories: ["optimization", "lightweight"], versions: ["1.21.8", "1.21.7"], dateModified: "2026-08-02T10:00:00Z" },
-        { projectId: "preview-resourcepack", slug: "stay-true", title: "Stay True", description: "A refined resource pack that keeps the familiar Minecraft art direction.", projectType: "resourcepack", iconUrl: null, downloads: 21000000, follows: 94000, author: "Trrig", categories: ["16x", "vanilla-like"], versions: ["26.2", "1.21.8"], dateModified: "2026-08-03T10:00:00Z" },
-        { projectId: "preview-shader", slug: "complementary-unbound", title: "Complementary Unbound", description: "A configurable shader pack focused on quality, performance, and broad hardware support.", projectType: "shader", iconUrl: null, downloads: 35000000, follows: 180000, author: "EminGTR", categories: ["realistic", "fantasy"], versions: ["26.2", "1.21.8"], dateModified: "2026-08-03T10:00:00Z" },
-        { projectId: "238222", slug: "skyblock-world", title: "SkyBlock World", description: "A downloadable Minecraft world distributed as a verified CurseForge archive.", projectType: "world", iconUrl: null, downloads: 1200000, follows: 18000, author: "WorldBuilder", categories: ["creation", "adventure"], versions: ["26.2", "1.21.8"], dateModified: "2026-08-03T10:00:00Z" },
+        { projectId: "preview-resourcepack", slug: "stay-true", title: "Stay True", description: "A refined resource pack that keeps the familiar Minecraft art direction.", projectType: "resourcepack", iconUrl: null, downloads: 21000000, follows: 94000, author: "Trrig", categories: ["16x", "vanilla-like"], versions: ["26.2", "1.21.8", "1.20.1"], dateModified: "2026-08-03T10:00:00Z" },
+        { projectId: "preview-shader", slug: "complementary-unbound", title: "Complementary Unbound", description: "A configurable shader pack focused on quality, performance, and broad hardware support.", projectType: "shader", iconUrl: null, downloads: 35000000, follows: 180000, author: "EminGTR", categories: ["realistic", "fantasy"], versions: ["26.2", "1.21.8", "1.20.1"], dateModified: "2026-08-03T10:00:00Z" },
+        { projectId: "238222", slug: "skyblock-world", title: "SkyBlock World", description: "A downloadable Minecraft world distributed as a verified CurseForge archive.", projectType: "world", iconUrl: null, downloads: 1200000, follows: 18000, author: "WorldBuilder", categories: ["creation", "adventure"], versions: ["26.2", "1.21.8", "1.20.1"], dateModified: "2026-08-03T10:00:00Z" },
       ];
       const requestedType = String(args?.projectType ?? "");
       const requestedVersion = String(args?.gameVersion ?? "");
       const requestedLoader = String(args?.loader ?? "");
+      const categoryId = String(args?.category ?? "");
+      const requestedCategory = ({ "4471": "adventure", "4472": "optimization" } as Record<string,string>)[categoryId] ?? categoryId;
       const hits = projects.filter((project) => (
         (!requestedType || project.projectType === requestedType)
         && (!requestedVersion || project.versions.includes(requestedVersion))
         && (!requestedLoader || !["mod", "modpack"].includes(project.projectType) || project.categories.includes(requestedLoader))
+        && (!requestedCategory || project.categories.includes(requestedCategory))
       ));
       return {
         hits,
         offset: 0,
         limit: 24,
         totalHits: hits.length,
+      } as T;
+    }
+    if (name === "get_modrinth_project_details" || name === "get_curseforge_project_details") {
+      return {
+        projectId: String(args?.projectId ?? "5ZwdcRci"), body: "Preview modpack", gallery: [],
+        modpackVersions: [
+          { id: "preview-pack-latest", name: "Latest pack", versionNumber: "2.0", gameVersions: ["1.21.8"], loaders: ["fabric"] },
+          { id: "preview-pack-previous", name: "Previous pack", versionNumber: "1.0", gameVersions: ["1.21.7"], loaders: ["fabric"] },
+        ],
       } as T;
     }
     if (name === "list_sync_mappings") {
@@ -436,7 +489,9 @@ export async function command<T>(name: string, args?: Record<string, unknown>): 
       return { installedFiles: 1, unchangedFiles: 0, backupsCreated: 0 } as T;
     }
     if (name === "install_modrinth_modpack" || name === "install_curseforge_modpack") {
-      return { ...previewBootstrap.instances[1], id: "preview-modpack", name: String(args?.name ?? "Modrinth pack") } as T;
+      const instance = { ...previewBootstrap.instances[1], id: "preview-modpack", name: String(args?.name ?? "Modrinth pack") };
+      previewBootstrap.instances = [...previewBootstrap.instances.filter(item => item.id !== instance.id), instance];
+      return instance as T;
     }
     throw {
       code: "desktop_backend_unavailable",
@@ -468,12 +523,12 @@ export async function listenConsoleLine(
   return listen<ConsoleLineEvent>("slh-console-line", (event) => handler(event.payload));
 }
 
-export async function revealInstancePath(instanceId: string, path?: string): Promise<void> {
+export async function revealInstancePath(instanceId: string, path?: string, category?: string): Promise<void> {
   if (!isTauri) {
     throw {
       code: "desktop_backend_unavailable",
       message: "Opening Explorer requires the SLH desktop backend.",
     } satisfies CommandFailure;
   }
-  await command("reveal_instance_path", { instanceId, path });
+  await command("reveal_instance_path", { instanceId, path, ...(category ? { category } : {}) });
 }

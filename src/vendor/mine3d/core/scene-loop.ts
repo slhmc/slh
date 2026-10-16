@@ -247,7 +247,7 @@ export class SkinViewEngine {
   private readonly _floor: Mesh;
   private readonly _ground: Mesh;
   private readonly _contactShadow: Mesh;
-  private readonly _atmosphere: StudioAtmosphere;
+  private _atmosphere: StudioAtmosphere | null = null;
   /** Bloom + OutputPass — только основной вьювер, не мини-превью */
   private _postFx: StudioPostFx | null = null;
   /** Extrude outer-пикселей в воксели (3D Skin Layers) */
@@ -362,9 +362,7 @@ export class SkinViewEngine {
     // ===== Three.js сцена =====
     ColorManagement.enabled = true;
     this.scene = new Scene();
-    this._atmosphere = new StudioAtmosphere();
-    this.scene.background = this._atmosphere.backgroundTexture;
-    this.scene.add(this._atmosphere.group);
+    if (!options.transparent) this._ensureAtmosphere();
     this.lighting = setupProductLighting(this.scene);
     const floorParts = createFloorAndContactShadow(this.scene);
     this._floor = floorParts.floor;
@@ -609,6 +607,15 @@ export class SkinViewEngine {
     return this._transparent;
   }
 
+  private _ensureAtmosphere(): StudioAtmosphere {
+    if (!this._atmosphere) {
+      this._atmosphere = new StudioAtmosphere();
+      this.scene.add(this._atmosphere.group);
+    }
+    this.scene.background = this._atmosphere.backgroundTexture;
+    return this._atmosphere;
+  }
+
   /** Прозрачный фон: без атмосферы, пола и контактной тени */
   setTransparentBackground(enabled: boolean): void {
     this._transparent = enabled;
@@ -621,17 +628,17 @@ export class SkinViewEngine {
       this._floor.visible = false;
       this._ground.visible = false;
       this._contactShadow.visible = false;
-      this._atmosphere.setVisible(false);
+      this._atmosphere?.setVisible(false);
       this._postFx?.setBloomBoost(0);
     } else {
-      this.scene.background = this._atmosphere.backgroundTexture;
+      this._ensureAtmosphere();
       this.renderer.setClearColor(STUDIO_CLEAR_COLOR, 1);
       if (this._debugEnabled) this._applySceneVisibility();
       else {
         this._floor.visible = true;
         this._ground.visible = true;
         this._contactShadow.visible = true;
-        this._atmosphere.setVisible(true);
+        this._atmosphere?.setVisible(true);
       }
     }
   }
@@ -1298,7 +1305,20 @@ export class SkinViewEngine {
 
   /** Cap player rendering, including interaction. Zero follows display refresh. */
   setAnimationFrameRate(fps: number): void {
-    this._animationFrameRate = fps === 0 ? Infinity : Math.max(1, Math.min(60, fps));
+    const rate = fps === 0 ? Infinity : Math.max(1, Math.min(60, fps));
+    if (this._animationFrameRate === rate) return;
+    this._animationFrameRate = rate;
+    // Samples from an intentional 1 FPS cap must not downgrade image quality
+    // after switching to 30/60 FPS on the same renderer.
+    this._fpsSamples.length = 0;
+    this._fpsFrames = this._fpsElapsed = this._fpsAvg = 0;
+    this._qualityElapsed = 0;
+    if (this._running) {
+      cancelAnimationFrame(this._rafId);
+      clearTimeout(this._frameTimer);
+      this._frameTimer = undefined;
+      this._scheduleFrame();
+    }
   }
 
   private _controlsStart = (): void => { this._controlsActive = true; this.start(); };
@@ -1403,7 +1423,8 @@ export class SkinViewEngine {
     this._nudgeUnbind = null;
     this._disposeDebugOverlays();
     this._particles.dispose();
-    this._atmosphere.dispose();
+    this._atmosphere?.dispose();
+    this._atmosphere = null;
     this._postFx?.dispose();
     this._postFx = null;
     this._resizeObserver?.disconnect();
@@ -1437,6 +1458,15 @@ export class SkinViewEngine {
     for (const texture of textures) texture.dispose();
     this.renderer.dispose();
     this.renderer.forceContextLoss();
+    // Release canvas backing stores even if a late load temporarily retains
+    // the disposed engine. A new scene always owns a fresh canvas.
+    this.canvas.width = this.canvas.height = 1;
+    this.skinCanvas.width = this.skinCanvas.height = 1;
+    this.capeCanvas.width = this.capeCanvas.height = 1;
+    this.scene.clear();
+    this.skinTexture = null;
+    this.capeTexture = null;
+    this._envMap = null;
   }
 
   /**
@@ -1666,7 +1696,7 @@ export class SkinViewEngine {
     }
     this._swayCosmetics();
     this._syncIdleFx(deltaTime);
-    if (this._enableEffects) this._atmosphere.update(deltaTime);
+    if (this._enableEffects) this._atmosphere?.update(deltaTime);
     if (this._particlesEnabled && (!this._debugEnabled || this._debugOpts.particles)) {
       this._particles.update(deltaTime);
     }
@@ -1765,7 +1795,7 @@ export class SkinViewEngine {
       this._floor.visible = true;
       this._ground.visible = true;
       this._contactShadow.visible = true;
-      this._atmosphere.setVisible(true);
+      this._atmosphere?.setVisible(true);
     }
     this.lighting.setCastShadows(true);
     this.renderer.shadowMap.enabled = true;
@@ -1782,7 +1812,7 @@ export class SkinViewEngine {
     this._floor.visible = o.floor;
     this._ground.visible = o.ground;
     this._contactShadow.visible = o.contactShadow;
-    this._atmosphere.setVisible(o.atmosphere);
+    this._atmosphere?.setVisible(o.atmosphere);
   }
 
   private _applySkinPartVisibility(): void {

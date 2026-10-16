@@ -1,4 +1,5 @@
 pub mod curseforge;
+pub(crate) mod curseforge_http;
 pub mod install;
 pub mod modrinth;
 
@@ -18,6 +19,7 @@ pub trait ContentProvider: Send + Sync {
         project_type: Option<&str>,
         game_version: Option<&str>,
         loader: Option<&str>,
+        category: Option<&str>,
         sort: Option<&str>,
         offset: u64,
         limit: u64,
@@ -40,6 +42,7 @@ impl ContentProvider for ModrinthProvider {
         project_type: Option<&str>,
         game_version: Option<&str>,
         loader: Option<&str>,
+        category: Option<&str>,
         sort: Option<&str>,
         offset: u64,
         limit: u64,
@@ -50,6 +53,7 @@ impl ContentProvider for ModrinthProvider {
             project_type,
             game_version,
             loader,
+            category,
             sort,
             offset,
             limit,
@@ -71,6 +75,7 @@ impl ContentProvider for CurseForgeProvider {
         project_type: Option<&str>,
         game_version: Option<&str>,
         loader: Option<&str>,
+        category: Option<&str>,
         sort: Option<&str>,
         offset: u64,
         limit: u64,
@@ -81,6 +86,7 @@ impl ContentProvider for CurseForgeProvider {
             project_type,
             game_version,
             loader,
+            category,
             sort,
             offset,
             limit,
@@ -96,6 +102,7 @@ pub async fn search(
     project_type: Option<&str>,
     game_version: Option<&str>,
     loader: Option<&str>,
+    category: Option<&str>,
     sort: Option<&str>,
     offset: u64,
     limit: u64,
@@ -117,6 +124,7 @@ pub async fn search(
             project_type,
             game_version,
             loader,
+            category,
             sort,
             offset,
             limit,

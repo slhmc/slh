@@ -1,3 +1,4 @@
+import { useUiText } from "../../i18n/UiText";
 import { useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -33,6 +34,7 @@ interface InstanceSidePanelProps {
 }
 
 export function InstanceSidePanel({ instance, onDelete, onContextMenu }: InstanceSidePanelProps) {
+  const uiText = useUiText();
   const [busy, setBusy] = useState(false);
   const [groupDialogOpen, setGroupDialogOpen] = useState(false);
   const [offlineNameDialogOpen, setOfflineNameDialogOpen] = useState(false);
@@ -71,8 +73,8 @@ export function InstanceSidePanel({ instance, onDelete, onContextMenu }: Instanc
         await command("open_bedrock_store");
         pushToast({
           tone: "info",
-          title: tr("Open Microsoft Store"),
-          message: tr("Install Minecraft from Microsoft Store."),
+          title: uiText("installation.texts.openMicrosoftStore", "Open Microsoft Store"),
+          message: uiText("installation.texts.installMinecraftFromMicrosoftStore", "Install Minecraft from Microsoft Store."),
         });
         return;
       }
@@ -85,7 +87,7 @@ export function InstanceSidePanel({ instance, onDelete, onContextMenu }: Instanc
     } catch (error) {
       pushToast({
         tone: "error",
-        title: tr("Microsoft Store versions could not be loaded"),
+        title: uiText("installation.texts.microsoftStoreVersionsCouldNotBeLoaded", "Microsoft Store versions could not be loaded"),
         message: String((error as { message?: string }).message ?? error),
       });
     } finally {
@@ -93,6 +95,7 @@ export function InstanceSidePanel({ instance, onDelete, onContextMenu }: Instanc
     }
   };
   const useStoreVersion = async (version: MinecraftVersionSummary) => {
+  const uiText = useUiText();
     setStoreDialogOpen(false);
     try {
       await command<Instance>("update_instance", {
@@ -115,7 +118,7 @@ export function InstanceSidePanel({ instance, onDelete, onContextMenu }: Instanc
     } catch (error) {
       pushToast({
         tone: "error",
-        title: tr("Store version could not be selected"),
+        title: uiText("installation.texts.storeVersionCouldNotBeSelected", "Store version could not be selected"),
         message: String((error as { message?: string }).message ?? error),
       });
       await refresh();
@@ -133,9 +136,9 @@ export function InstanceSidePanel({ instance, onDelete, onContextMenu }: Instanc
       } else {
         const result = await command<{ usedOfflineFallback?: boolean }>("launch_instance", { instanceId: instance.id, offlineUsername });
         if (result.usedOfflineFallback) {
-          pushToast({ tone: "error", title: tr("No internet connection"), message: tr("Minecraft was launched with a temporary offline identity.") });
+          pushToast({ tone: "error", title: uiText("installation.texts.noInternetConnection", "No internet connection"), message: uiText("installation.texts.minecraftWasLaunchedWithATemporaryOfflineIdentity", "Minecraft was launched with a temporary offline identity.") });
         } else {
-          pushToast({ tone: "success", title: tr("Minecraft started"), message: `${instance.name} ${tr("is running.")}` });
+          pushToast({ tone: "success", title: uiText("installation.texts.minecraftStarted", "Minecraft started"), message: `${instance.name} ${uiText("installation.texts.isRunning", "is running.")}` });
         }
       }
       await refresh();
@@ -149,7 +152,7 @@ export function InstanceSidePanel({ instance, onDelete, onContextMenu }: Instanc
       const message = String((error as { message?: string }).message ?? error);
       pushToast({
         tone: "error",
-        title: installable ? tr("Installation failed") : tr("Launch failed"),
+        title: installable ? uiText("common.texts.installationFailed", "Installation failed") : uiText("installation.texts.launchFailed", "Launch failed"),
         message,
         action: bedrockToastAction(tr, message),
       });
@@ -163,10 +166,10 @@ export function InstanceSidePanel({ instance, onDelete, onContextMenu }: Instanc
     setBusy(true);
     try {
       await command("kill_instance", { instanceId: instance.id });
-      pushToast({ tone: "info", title: tr("Minecraft stopped"), message: `${instance.name} ${tr("was stopped")}.` });
+      pushToast({ tone: "info", title: uiText("installation.texts.minecraftStopped", "Minecraft stopped"), message: `${instance.name} ${uiText("installation.texts.wasStopped", "was stopped")}.` });
       await refresh();
     } catch (error) {
-      pushToast({ tone: "error", title: tr("Stop failed"), message: String((error as { message?: string }).message ?? error) });
+      pushToast({ tone: "error", title: uiText("installation.texts.stopFailed", "Stop failed"), message: String((error as { message?: string }).message ?? error) });
       await refresh();
     } finally {
       setBusy(false);
@@ -178,20 +181,20 @@ export function InstanceSidePanel({ instance, onDelete, onContextMenu }: Instanc
       await refresh();
       setGroupDialogOpen(false);
     } catch (error) {
-      pushToast({ tone: "error", title: tr("Group was not updated"), message: String((error as { message?: string }).message ?? error) });
+      pushToast({ tone: "error", title: uiText("installation.texts.groupWasNotUpdated", "Group was not updated"), message: String((error as { message?: string }).message ?? error) });
     }
   };
   const actionButtons: Record<string, ReactNode> = {
-    mods: <button type="button" data-minimal-compact aria-label={tr(instance.loaderType === "bedrock" ? "Add-ons" : "Mods")} onClick={() => navigate(`/instance/${instance.id}?tab=mods`)}><PuzzlePiece size={19} /><span data-minimal-text>{tr(instance.loaderType === "bedrock" ? "Add-ons" : "Mods")}</span></button>,
-    resourcepacks: instance.loaderType === "bedrock" ? <button type="button" data-minimal-compact aria-label={tr("Resource packs")} onClick={() => navigate(`/instance/${instance.id}?tab=resourcepacks`)}><Stack size={19} /><span data-minimal-text>{tr("Resource packs")}</span></button> : null,
-    worlds: <button type="button" data-minimal-compact aria-label={tr("Worlds")} onClick={() => navigate(`/instance/${instance.id}?tab=worlds`)}><Worlds size={19} /><span data-minimal-text>{tr("Worlds")}</span></button>,
-    screenshots: instance.loaderType === "bedrock" ? null : <button type="button" data-minimal-compact aria-label={tr("Screenshots")} onClick={() => navigate(`/instance/${instance.id}?tab=screenshots`)}><Image size={19} /><span data-minimal-text>{tr("Screenshots")}</span></button>,
-    folder: <button type="button" data-minimal-compact aria-label={tr("Folder")} onClick={() => void revealInstancePath(instance.id, instance.gameDir).catch((error) => pushToast({ tone: "error", title: tr("Folder could not be opened"), message: String((error as { message?: string }).message ?? error) }))}><FolderOpen size={19} /><span data-minimal-text>{tr("Folder")}</span></button>,
-    logs: <button type="button" data-minimal-compact aria-label={tr("Logs")} onClick={() => navigate(`/instance/${instance.id}?tab=logs`)}><FileText size={19} /><span data-minimal-text>{tr("Logs")}</span></button>,
-    settings: <button type="button" data-minimal-compact aria-label={tr("Settings")} onClick={() => navigate(`/instance/${instance.id}?tab=settings`)}><Wrench size={19} /><span data-minimal-text>{tr("Settings")}</span></button>,
-    group: <button type="button" data-minimal-compact aria-label={tr("Group")} onClick={() => setGroupDialogOpen(true)}><Stack size={19} /><span data-minimal-text>{tr("Group")}</span></button>,
-    export: <button type="button" data-minimal-compact aria-label={tr("Export")} onClick={() => navigate(`/instance/${instance.id}?tab=settings&export=1`)}><Export size={19} /><span data-minimal-text>{tr("Export")}</span></button>,
-    delete: <button className={styles.deleteAction} type="button" data-minimal-compact aria-label={tr("Delete instance")} disabled={!onDelete || operationActive || busy || instance.status === "running" || instance.status === "installing" || instance.status === "launching"} onClick={() => onDelete?.()}><Trash size={19} /><span data-minimal-text>{tr("Delete instance")}</span></button>,
+    mods: <button type="button" data-minimal-compact aria-label={tr(instance.loaderType === "bedrock" ? uiText("installation.texts.addOns", "Add-ons") : uiText("navigation.mods", "Mods"))} onClick={() => navigate(`/instance/${instance.id}?tab=mods`)}><PuzzlePiece size={19} /><span data-minimal-text>{tr(instance.loaderType === "bedrock" ? uiText("installation.texts.addOns", "Add-ons") : uiText("navigation.mods", "Mods"))}</span></button>,
+    resourcepacks: instance.loaderType === "bedrock" ? <button type="button" data-minimal-compact aria-label={uiText("installation.texts.resourcePacks", "Resource packs")} onClick={() => navigate(`/instance/${instance.id}?tab=resourcepacks`)}><Stack size={19} /><span data-minimal-text>{uiText("installation.texts.resourcePacks", "Resource packs")}</span></button> : null,
+    worlds: <button type="button" data-minimal-compact aria-label={uiText("installation.texts.worlds", "Worlds")} onClick={() => navigate(`/instance/${instance.id}?tab=worlds`)}><Worlds size={19} /><span data-minimal-text>{uiText("installation.texts.worlds", "Worlds")}</span></button>,
+    screenshots: instance.loaderType === "bedrock" ? null : <button type="button" data-minimal-compact aria-label={uiText("installation.texts.screenshots", "Screenshots")} onClick={() => navigate(`/instance/${instance.id}?tab=screenshots`)}><Image size={19} /><span data-minimal-text>{uiText("installation.texts.screenshots", "Screenshots")}</span></button>,
+    folder: <button type="button" data-minimal-compact aria-label={uiText("common.folder", "Folder")} onClick={() => void revealInstancePath(instance.id, instance.gameDir).catch((error) => pushToast({ tone: "error", title: uiText("installation.texts.folderCouldNotBeOpened", "Folder could not be opened"), message: String((error as { message?: string }).message ?? error) }))}><FolderOpen size={19} /><span data-minimal-text>{uiText("common.folder", "Folder")}</span></button>,
+    logs: <button type="button" data-minimal-compact aria-label={uiText("installation.texts.logs", "Logs")} onClick={() => navigate(`/instance/${instance.id}?tab=logs`)}><FileText size={19} /><span data-minimal-text>{uiText("installation.texts.logs", "Logs")}</span></button>,
+    settings: <button type="button" data-minimal-compact aria-label={uiText("navigation.settings", "Settings")} onClick={() => navigate(`/instance/${instance.id}?tab=settings`)}><Wrench size={19} /><span data-minimal-text>{uiText("navigation.settings", "Settings")}</span></button>,
+    group: <button type="button" data-minimal-compact aria-label={uiText("library.group", "Group")} onClick={() => setGroupDialogOpen(true)}><Stack size={19} /><span data-minimal-text>{uiText("library.group", "Group")}</span></button>,
+    export: <button type="button" data-minimal-compact aria-label={uiText("installation.texts.export", "Export")} onClick={() => navigate(`/instance/${instance.id}?tab=settings&export=1`)}><Export size={19} /><span data-minimal-text>{uiText("installation.texts.export", "Export")}</span></button>,
+    delete: <button className={styles.deleteAction} type="button" data-minimal-compact aria-label={uiText("installation.texts.deleteInstance", "Delete instance")} disabled={!onDelete || operationActive || busy || instance.status === "running" || instance.status === "installing" || instance.status === "launching"} onClick={() => onDelete?.()}><Trash size={19} /><span data-minimal-text>{uiText("installation.texts.deleteInstance", "Delete instance")}</span></button>,
   };
   const actionOrder = panelOptions.actionOrder?.length ? panelOptions.actionOrder : Object.keys(actionButtons);
 
@@ -207,35 +210,35 @@ export function InstanceSidePanel({ instance, onDelete, onContextMenu }: Instanc
         {panelOptions.showArtwork ? <InstanceArtwork instance={instance} size="large" /> : null}
         <div className={styles.identity}>
           <h2>{instance.name}</h2>
-          <p data-minimal-text>Minecraft {instance.minecraftVersion} · {instance.loaderType === "neoforge" ? "NeoForge" : instance.loaderType === "bedrock" ? "Bedrock" : instance.loaderType}</p>
+          <p data-minimal-text>{uiText("settings.minecraft", "Minecraft")}{" "}{instance.minecraftVersion} · {instance.loaderType === "neoforge" ? "NeoForge" : instance.loaderType === "bedrock" ? uiText("installation.texts.bedrock", "Bedrock") : instance.loaderType}</p>
         </div>
         <button
           type="button"
           className={`${styles.playButton} ${instance.status === "running" ? styles.killButton : ""}`}
           disabled={busy || storeLookupBusy || operationActive || instance.status === "installing" || instance.status === "launching" || (instance.loaderType === "bedrock" && bootstrap?.settings.bedrock.enabled === false && instance.status !== "running")}
-          title={instance.loaderType === "bedrock" && bootstrap?.settings.bedrock.enabled === false ? tr("Enable Bedrock in Settings first") : undefined}
+          title={instance.loaderType === "bedrock" && bootstrap?.settings.bedrock.enabled === false ? uiText("installation.texts.enableBedrockInSettingsFirst", "Enable Bedrock in Settings first") : undefined}
           onClick={() => void (instance.status === "running" ? kill() : play())}
         >
           {busy || storeLookupBusy || operationActive || instance.status === "installing" || instance.status === "launching" ? <SpinnerGap className={styles.spin} size={20} weight="bold" /> : instance.status === "running" ? <X size={20} weight="bold" /> : <Play size={20} weight="fill" />}
-          {instance.status === "running" ? tr("Kill") : instance.status === "launching" ? tr("Launching") : instance.status === "installing" ? tr("Installing") : storeLookupBusy ? tr("Checking Microsoft Store") : installable ? tr(instance.status === "error" ? "Retry installation" : "Install") : tr("Play")}
+          {instance.status === "running" ? uiText("installation.texts.kill", "Kill") : instance.status === "launching" ? uiText("installation.texts.launching", "Launching") : instance.status === "installing" ? uiText("installation.texts.installing", "Installing") : storeLookupBusy ? uiText("installation.texts.checkingMicrosoftStore", "Checking Microsoft Store") : installable ? tr(instance.status === "error" ? "Retry installation" : uiText("installation.texts.install", "Install")) : uiText("common.play", "Play")}
         </button>
-        {instance.loaderType === "bedrock" && installable ? <button className={common.secondaryButton} type="button" disabled={busy || storeLookupBusy || operationActive} onClick={() => void openBedrockStorePicker()}>{tr("Use Store version")}</button> : null}
+        {instance.loaderType === "bedrock" && installable ? <button className={common.secondaryButton} type="button" disabled={busy || storeLookupBusy || operationActive} onClick={() => void openBedrockStorePicker()}>{uiText("installation.texts.useStoreVersion", "Use Store version")}</button> : null}
         <div className={styles.quickGrid}>
           {actionOrder.filter((id) => !panelOptions.hiddenActions.includes(id) && actionButtons[id]).map((id) => <span key={id}>{actionButtons[id]}</span>)}
         </div>
         {panelOptions.showMetadata ? <div className={styles.metadata}>
           <div><Clock size={16} /><span>{formatPlaytime(instance.playtimeSeconds, locale, tr)}</span></div>
-          <div><span>{tr("Status")}</span><span className={instance.status === "error" ? common.errorBadge : instance.status === "installed" ? common.successBadge : common.badge}>{tr(instance.status)}</span></div>
-          {instance.loaderType === "bedrock" ? <><div><span>{tr("Bedrock version")}</span><strong>{instance.minecraftVersion}</strong></div><div><span>{tr("Profile")}</span><strong>{tr(instance.bedrockProfileMode === "isolated" ? "Isolated profile" : "Shared Store data")}</strong></div></> : <><div><span>{tr("Memory")}</span><strong>{instance.memoryMaxMb / 1024} GB</strong></div><div><span>{tr("Loader")}</span><strong>{instance.loaderVersion ?? instance.loaderType}</strong></div></>}
+          <div><span>{uiText("installation.texts.status", "Status")}</span><span className={instance.status === "error" ? common.errorBadge : instance.status === "installed" ? common.successBadge : common.badge}>{tr(instance.status)}</span></div>
+          {instance.loaderType === "bedrock" ? <><div><span>{uiText("installation.texts.bedrockVersion", "Bedrock version")}</span><strong>{instance.minecraftVersion}</strong></div><div><span>{uiText("installation.texts.profile", "Profile")}</span><strong>{tr(instance.bedrockProfileMode === "isolated" ? uiText("installation.texts.isolatedProfile", "Isolated profile") : uiText("installation.texts.sharedStoreData", "Shared Store data"))}</strong></div></> : <><div><span>{uiText("installation.texts.memory", "Memory")}</span><strong>{instance.memoryMaxMb / 1024}{" "}{uiText("installation.texts.gb", "GB")}</strong></div><div><span>{uiText("library.loader", "Loader")}</span><strong>{instance.loaderVersion ?? instance.loaderType}</strong></div></>}
         </div> : null}
       </div>
-      <Dialog open={groupDialogOpen} title={tr("Assign group")} description={tr("Choose where this instance appears in the library.")} onClose={() => setGroupDialogOpen(false)} width="small">
+      <Dialog open={groupDialogOpen} title={uiText("installation.texts.assignGroup", "Assign group")} description={uiText("installation.texts.chooseWhereThisInstanceAppearsInTheLibrary", "Choose where this instance appears in the library.")} onClose={() => setGroupDialogOpen(false)} width="small">
         <div className={styles.groupDialog}>
-          <button className={instance.groupId === null ? common.button : common.secondaryButton} type="button" onClick={() => void assignGroup(null)}>{tr("Ungrouped")}</button>
+          <button className={instance.groupId === null ? common.button : common.secondaryButton} type="button" onClick={() => void assignGroup(null)}>{uiText("library.ungrouped", "Ungrouped")}</button>
           {bootstrap?.groups.map((group) => <button key={group.id} className={instance.groupId === group.id ? common.button : common.secondaryButton} type="button" onClick={() => void assignGroup(group.id)}>{group.name}</button>)}
         </div>
       </Dialog>
-      <Dialog open={offlineNameDialogOpen} title={tr("Offline launch")} description={tr("No internet connection is available. The selected online account will remain selected; this launch uses a temporary offline identity only.")} onClose={() => setOfflineNameDialogOpen(false)} width="small">
+      <Dialog open={offlineNameDialogOpen} title={uiText("installation.texts.offlineLaunch", "Offline launch")} description={uiText("installation.texts.noInternetConnectionIsAvailableTheSelectedOnlineAccount", "No internet connection is available. The selected online account will remain selected; this launch uses a temporary offline identity only.")} onClose={() => setOfflineNameDialogOpen(false)} width="small">
         <form className={styles.offlineLaunchForm} onSubmit={(event) => {
           event.preventDefault();
           const username = offlineName.trim();
@@ -243,19 +246,18 @@ export function InstanceSidePanel({ instance, onDelete, onContextMenu }: Instanc
           setOfflineNameDialogOpen(false);
           void play(username);
         }}>
-          <label><span>{tr("Minecraft nickname")}</span><input className={common.input} autoFocus maxLength={16} value={offlineName} onChange={(event) => setOfflineName(event.target.value)} placeholder="Player" /></label>
-          <small>{tr("Use 3–16 Latin letters, numbers, or underscores.")}</small>
-          <div><button className={common.secondaryButton} type="button" onClick={() => setOfflineNameDialogOpen(false)}>{tr("Cancel")}</button><button className={common.button} type="submit" disabled={!offlineName.trim()}><Play size={16} /> {tr("Launch offline")}</button></div>
+          <label><span>{uiText("installation.texts.minecraftNickname", "Minecraft nickname")}</span><input className={common.input} autoFocus maxLength={16} value={offlineName} onChange={(event) => setOfflineName(event.target.value)} placeholder={uiText("installation.texts.player", "Player")} /></label>
+          <small>{uiText("installation.texts.use316LatinLettersNumbersOrUnderscores", "Use 3–16 Latin letters, numbers, or underscores.")}</small>
+          <div><button className={common.secondaryButton} type="button" onClick={() => setOfflineNameDialogOpen(false)}>{uiText("common.cancel", "Cancel")}</button><button className={common.button} type="submit" disabled={!offlineName.trim()}><Play size={16} /> {uiText("installation.texts.launchOffline", "Launch offline")}</button></div>
         </form>
       </Dialog>
-      <Dialog open={storeDialogOpen} title={tr("Select installed Store version")} description={tr("Choose a version already installed by Microsoft Store. SLH launches it directly, without downloading or Developer Mode.")} onClose={() => setStoreDialogOpen(false)} width="small">
+      <Dialog open={storeDialogOpen} title={uiText("installation.texts.selectInstalledStoreVersion", "Select installed Store version")} description={uiText("installation.texts.chooseAVersionAlreadyInstalledByMicrosoftStoreSlh", "Choose a version already installed by Microsoft Store. SLH launches it directly, without downloading or Developer Mode.")} onClose={() => setStoreDialogOpen(false)} width="small">
         <div className={styles.groupDialog}>
           {storeVersions.map((version) => (
-            <button className={common.secondaryButton} type="button" key={`${version.packageFamilyName ?? "store"}-${version.id}`} onClick={() => void useStoreVersion(version)}>
-              Minecraft {version.id} · {version.channel === "preview" ? tr("Preview") : tr("Release")}
+            <button className={common.secondaryButton} type="button" key={`${version.packageFamilyName ?? "store"}-${version.id}`} onClick={() => void useStoreVersion(version)}>{uiText("settings.minecraft", "Minecraft")}{version.id} · {version.channel === "preview" ? uiText("installation.texts.preview", "Preview") : uiText("installation.texts.release", "Release")}
             </button>
           ))}
-          <button className={common.ghostButton} type="button" onClick={() => setStoreDialogOpen(false)}>{tr("Cancel")}</button>
+          <button className={common.ghostButton} type="button" onClick={() => setStoreDialogOpen(false)}>{uiText("common.cancel", "Cancel")}</button>
         </div>
       </Dialog>
     </aside>

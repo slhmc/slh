@@ -7,6 +7,7 @@ const host = process.env.TAURI_DEV_HOST;
 // https://vite.dev/config/
 export default defineConfig(async () => ({
   plugins: [react()],
+  // Only the launcher is an entry point; vendored projects are reference sources.
   build: { target: ["es2021", "safari15"] },
   optimizeDeps: { entries: ["index.html"] },
 
@@ -31,7 +32,7 @@ export default defineConfig(async () => ({
       : undefined,
     watch: {
       // 3. tell Vite to ignore watching `src-tauri`
-      ignored: ["**/src-tauri/**"],
+      ignored: ["**/src-tauri/**", "**/target/**", "**/artifacts/**", "**/release/**", "**/test-results/**"],
     },
   },
 }));

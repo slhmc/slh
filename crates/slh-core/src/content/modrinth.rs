@@ -133,6 +133,7 @@ pub async fn search(
     project_type: Option<&str>,
     game_version: Option<&str>,
     loader: Option<&str>,
+    category: Option<&str>,
     sort: Option<&str>,
     offset: u64,
     limit: u64,
@@ -171,6 +172,11 @@ pub async fn search(
             facet_groups.push(vec![format!("categories:{loader}")]);
         }
     }
+    if let Some(category) = category.filter(|value| !value.is_empty()) {
+        if category.len() > 80 || !category.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_') { return Err(AppError::InvalidInput("Invalid Modrinth category".into())); }
+        facet_groups.push(vec![format!("categories:{category}")]);
+    }
+    let cache_key = format!("{cache_key}:category:{}", category.unwrap_or(""));
     let facets = serde_json::to_string(&facet_groups)?;
     let response = state
         .http
@@ -252,3 +258,8 @@ fn approved_media_url(value: String) -> Option<String> {
         ))
     .then_some(value)
 }
+
+ pub async fn categories(state: &AppState, project_type: &str) -> AppResult<Vec<crate::models::ContentCategory>> {
+  let data: Vec<serde_json::Value> = state.http.get("https://api.modrinth.com/v2/tag/category").send().await?.error_for_status()?.json().await?;
+  Ok(data.iter().filter(|v| v["project_type"].as_str() == Some(project_type)).filter_map(|v| Some(crate::models::ContentCategory { id: v["name"].as_str()?.into(), name: v["name"].as_str()?.replace('-', " ") })).collect())
+ }

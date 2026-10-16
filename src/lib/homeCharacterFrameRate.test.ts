@@ -9,11 +9,33 @@ it("keeps all saved limits and defaults old or invalid settings to 30 FPS", () =
 });
 
 it("removes the application cap for unlimited and accepts 1 FPS", () => {
-  const state = { _animationFrameRate: 30 };
+  const state = { _animationFrameRate: 30, _fpsSamples: [] };
   SkinViewEngine.prototype.setAnimationFrameRate.call(state as unknown as SkinViewEngine, 0);
   expect(state._animationFrameRate).toBe(Infinity);
   SkinViewEngine.prototype.setAnimationFrameRate.call(state as unknown as SkinViewEngine, 1);
   expect(state._animationFrameRate).toBe(1);
+});
+
+it("reschedules a live FPS change and discards samples from the old cap without altering quality", () => {
+  const cancel = vi.fn();
+  vi.stubGlobal("cancelAnimationFrame", cancel);
+  const state = {
+    _animationFrameRate: 1, _fpsSamples: [1, 1, 1], _fpsFrames: 1,
+    _fpsElapsed: 1, _fpsAvg: 1, _qualityElapsed: 9, _qualityLevel: 0,
+    _running: true, _rafId: 17, _frameTimer: undefined,
+    _scheduleFrame: vi.fn(),
+  };
+  try {
+    SkinViewEngine.prototype.setAnimationFrameRate.call(state as unknown as SkinViewEngine, 60);
+    expect(state._fpsSamples).toEqual([]);
+    expect(state._fpsAvg).toBe(0);
+    expect(state._qualityElapsed).toBe(0);
+    expect(state._qualityLevel).toBe(0);
+    expect(cancel).toHaveBeenCalledWith(17);
+    expect(state._scheduleFrame).toHaveBeenCalledOnce();
+    SkinViewEngine.prototype.setAnimationFrameRate.call(state as unknown as SkinViewEngine, 60);
+    expect(state._scheduleFrame).toHaveBeenCalledOnce();
+  } finally { vi.unstubAllGlobals(); }
 });
 
 it("does not reduce image quality because idle deliberately renders at 30 FPS", () => {

@@ -379,8 +379,8 @@ pub async fn import_folder(
             loader_type: detected.loader_type,
             loader_version: detected.loader_version,
             java_path: None,
-            memory_min_mb: 512,
-            memory_max_mb: 4096,
+            memory_min_mb: crate::settings::minecraft_memory_defaults(&state.database).await?.0,
+            memory_max_mb: crate::settings::minecraft_memory_defaults(&state.database).await?.1,
             icon_key: None,
             icon_background: None,
             icon_foreground: None,
@@ -819,8 +819,8 @@ pub async fn import_modrinth_pack(
             loader_type: loader_type.into(),
             loader_version,
             java_path: None,
-            memory_min_mb: 512,
-            memory_max_mb: 4096,
+            memory_min_mb: crate::settings::minecraft_memory_defaults(&state.database).await?.0,
+            memory_max_mb: crate::settings::minecraft_memory_defaults(&state.database).await?.1,
             icon_key: None,
             icon_background: None,
             icon_foreground: None,
@@ -941,7 +941,15 @@ pub async fn import_curseforge_pack(
     state: &AppState,
     request: ImportSlhRequest,
 ) -> AppResult<Instance> {
+    import_curseforge_pack_tracked(app, state, request, None).await
+}
+
+pub async fn import_curseforge_pack_tracked(
+    app: &Host, state: &AppState, request: ImportSlhRequest, progress_key: Option<String>,
+) -> AppResult<Instance> {
+    let operation_id = progress_key.unwrap_or_else(|| Uuid::new_v4().to_string());
     let archive_path = PathBuf::from(&request.archive_path);
+    let source_signature = crate::content::curseforge::archive_source_signature(&archive_path).await?;
     let source_for_manifest = archive_path.clone();
     let manifest = tokio::task::spawn_blocking(move || -> AppResult<CurseForgePackManifest> {
         let file = File::open(source_for_manifest)?;
@@ -976,6 +984,17 @@ pub async fn import_curseforge_pack(
         .filter(|file| file.required)
         .map(|file| (file.project_id, file.file_id))
         .collect::<Vec<_>>();
+    let metadata_total = required_files.len() as u64;
+    let mut metadata_completed = 0;
+    let metadata_progress = |completed| {
+        let _ = app.emit(crate::host::EventKind::OperationProgress, ProgressEvent {
+            operation_id: operation_id.clone(), instance_id: None, operation: "import".into(),
+            stage: "pack-metadata".into(), message: "Preparing files".into(), completed,
+            total: Some(metadata_total), downloaded_bytes: None, total_bytes: None,
+        });
+    };
+    metadata_progress(0);
+    crate::content::curseforge::prefetch_pack_metadata(state, &required_files).await?;
     // Resolving a CurseForge pack entry normally needs several API calls. Do
     // those lookups concurrently; the download URL and SHA-1 are still
     // validated before anything is written to the instance.
@@ -988,8 +1007,16 @@ pub async fn import_curseforge_pack(
         },
     ))
     .buffer_unordered(metadata_concurrency);
+    let mut manual_files = Vec::new();
     while let Some((project_id, file_id, download)) = metadata.next().await {
         let download = download?;
+        metadata_completed += 1;
+        metadata_progress(metadata_completed);
+        if let Some(url) = &download.manual_download_url {
+            if download.local_path.is_none() {
+                manual_files.push(crate::error::ManualDownloadFile { name: download.display_name.clone(), file_name: download.file_name.clone(), url: url.clone() });
+            }
+        }
         if !project_ids.insert(project_id) {
             return Err(AppError::Conflict(format!(
                 "CurseForge pack repeats project {}",
@@ -1000,6 +1027,7 @@ pub async fn import_curseforge_pack(
             "mod" => "mods",
             "resourcepack" => "resourcepacks",
             "shader" => "shaderpacks",
+            "world" => "saves",
             kind => {
                 return Err(AppError::Unavailable(format!(
                     "CurseForge pack requires unsupported {kind} project {}",
@@ -1032,33 +1060,81 @@ pub async fn import_curseforge_pack(
             download,
         });
     }
-    let created = instances::create_instance(
+    if !manual_files.is_empty() {
+        manual_files.sort_by(|a, b| a.name.cmp(&b.name));
+        let directory = crate::content::curseforge::browser_download_directory(state).await?
+            .unwrap_or_else(|| state.paths.downloads.join("curseforge-manual"));
+        tokio::fs::create_dir_all(&directory).await?;
+        return Err(AppError::ManualDownloads { directory: directory.to_string_lossy().into_owned(), files: manual_files });
+    }
+    let requested_name = match request.name {
+        Some(name) => instances::validate_display_name(&name)?,
+        None => crate::content::curseforge::safe_modpack_name(&manifest.name),
+    };
+    use sha1::Digest;
+    let mut archive_file = tokio::fs::File::open(&archive_path).await?;
+    let mut archive_digest = sha1::Sha1::new();
+    let mut hash_buffer = vec![0_u8; 128 * 1024];
+    loop {
+        let count = tokio::io::AsyncReadExt::read(&mut archive_file, &mut hash_buffer).await?;
+        if count == 0 { break; }
+        archive_digest.update(&hash_buffer[..count]);
+    }
+    let archive_hash = hex::encode(archive_digest.finalize());
+    drop(archive_file);
+    let origin_key = format!("curseforge-import:{archive_hash}");
+    let previous_id = crate::database::setting(&state.database, &origin_key).await.ok()
+        .and_then(|value| value.get("instanceId").and_then(Value::as_str).map(str::to_owned));
+    let previous = match previous_id {
+        Some(id) => {
+            let instance = crate::database::instance(&state.database, &id).await.ok();
+            if instance.as_ref().is_some_and(|instance| instance.status == "installing") {
+                return Err(AppError::Conflict("This modpack is already being installed".into()));
+            }
+            instance.filter(|instance| instance.status == "error" || instance.status == "created")
+        },
+        None => None,
+    };
+    let instance_name = instances::allocate_unique_display_name(&state.database, &requested_name).await?;
+    let created = if let Some(previous) = previous { previous } else { instances::create_instance(
         &state.database,
         &state.paths,
         CreateInstanceRequest {
-            name: request.name.unwrap_or(manifest.name),
+            name: instance_name,
             group_id: None,
             minecraft_version: manifest.minecraft.version,
             loader_type: loader_type.into(),
             loader_version,
             java_path: None,
-            memory_min_mb: 512,
-            memory_max_mb: 4096,
+            memory_min_mb: crate::settings::minecraft_memory_defaults(&state.database).await?.0,
+            memory_max_mb: crate::settings::minecraft_memory_defaults(&state.database).await?.1,
             icon_key: None,
             icon_background: None,
             icon_foreground: None,
             bedrock_profile_mode: None,
         },
     )
-    .await?;
+    .await? };
+    crate::database::set_setting(&state.database, &origin_key, &serde_json::json!({
+        "instanceId": created.id,
+        "archivePath": archive_path.to_string_lossy(),
+        "pending": true,
+    })).await?;
     // Keep the newly-created instance busy for the entire pack import. The
     // public installer command uses an atomic claim as well, so a stale UI
     // cannot launch a duplicate installation in parallel.
-    sqlx::query("UPDATE instances SET status = 'installing' WHERE id = ?")
+    let claim = sqlx::query("UPDATE instances SET status = 'installing' WHERE id = ? AND status IN ('created', 'error')")
         .bind(&created.id)
         .execute(&state.database)
         .await?;
-    let operation_id = Uuid::new_v4().to_string();
+    if claim.rows_affected() != 1 {
+        return Err(AppError::Conflict("This modpack is already being installed".into()));
+    }
+    let _ = app.emit(crate::host::EventKind::OperationProgress, ProgressEvent {
+        operation_id: operation_id.clone(), instance_id: Some(created.id.clone()),
+        operation: "import".into(), stage: "pack-files".into(), message: "Installing modpack files".into(),
+        completed: 0, total: Some(prepared.len() as u64), downloaded_bytes: Some(0), total_bytes: Some(total_size),
+    });
     let game_dir = PathBuf::from(&created.game_dir);
     let total_files = prepared.len() as u64;
     let result = async {
@@ -1074,16 +1150,25 @@ pub async fn import_curseforge_pack(
         let mut destinations = Vec::with_capacity(prepared.len());
         let mut download_ids = Vec::with_capacity(prepared.len());
         for file in &prepared {
-            let destination = game_dir
-                .join(file.destination_folder)
-                .join(&file.download.file_name);
+            let destination = if file.download.project_type == "world" {
+                state.paths.downloads.join("curseforge-worlds").join(format!("{}-{}.zip", file.project_id, file.file_id))
+            } else {
+                game_dir.join(file.destination_folder).join(&file.download.file_name)
+            };
+            if let Some(source) = &file.download.local_path {
+                if let Some(parent) = destination.parent() { tokio::fs::create_dir_all(parent).await?; }
+                tokio::fs::copy(source, &destination).await?;
+                if !crate::minecraft::download::verify_sha1(&destination, &file.download.sha1).await? {
+                    return Err(AppError::Security(format!("Manually downloaded file changed during import: {}", file.download.file_name)));
+                }
+            }
             let download_id = Uuid::new_v4().to_string();
             sqlx::query(
                 "INSERT INTO downloads(id, source, url, destination, status, total_bytes) \
                  VALUES (?, 'curseforge', ?, ?, 'running', ?)",
             )
             .bind(&download_id)
-            .bind(&file.download.url)
+            .bind(file.download.manual_download_url.as_deref().unwrap_or(&file.download.url))
             .bind(destination.to_string_lossy().into_owned())
             .bind(file.download.size_bytes as i64)
             .execute(&state.database)
@@ -1144,6 +1229,13 @@ pub async fn import_curseforge_pack(
             }
         };
         for (index, file) in prepared.iter().enumerate() {
+            let installed_path = if file.download.project_type == "world" {
+                let destination = game_dir.join("saves").join(format!("curseforge-{}", file.project_id));
+                crate::content::curseforge::install_world_archive(
+                    state, &created.id, &destinations[index], &destination, None,
+                ).await?;
+                destination
+            } else { destinations[index].clone() };
             sqlx::query(
                 "UPDATE downloads SET status = 'complete', downloaded_bytes = ?, \
                  updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?",
@@ -1166,7 +1258,7 @@ pub async fn import_curseforge_pack(
             .bind(file.file_id.to_string())
             .bind(&file.download.project_type)
             .bind(&file.download.display_name)
-            .bind(destinations[index].to_string_lossy().into_owned())
+            .bind(installed_path.to_string_lossy().into_owned())
             .bind(&file.download.sha1)
             .execute(&state.database)
             .await?;
@@ -1189,6 +1281,18 @@ pub async fn import_curseforge_pack(
                 total_bytes: Some(total_size),
             },
         );
+    }
+    if result.is_ok() {
+        let _ = crate::database::set_setting(&state.database, &origin_key, &serde_json::json!({
+            "instanceId": created.id,
+            "archivePath": archive_path.to_string_lossy(),
+            "pending": false,
+        })).await;
+        let files = prepared.iter().map(|file| (file.download.file_name.clone(), file.download.sha1.clone())).collect::<Vec<_>>();
+        let _ = crate::database::set_setting(&state.database, &source_signature, &serde_json::json!(true)).await;
+        if let Err(error) = crate::content::curseforge::cleanup_pack_downloads(state, &files, &archive_path, &archive_hash).await {
+            tracing::warn!(%error, "Installed CurseForge pack; some downloaded source files could not be cleaned");
+        }
     }
     if let Err(error) = &result {
         let _ = app.emit(
@@ -1250,7 +1354,7 @@ fn inspect_archive_sync(path: &Path) -> AppResult<ArchiveInspection> {
 
 fn inspect_archive_sync_with_key(
     path: &Path,
-    curseforge_available: bool,
+    _curseforge_available: bool,
 ) -> AppResult<ArchiveInspection> {
     let file = File::open(path)?;
     let mut archive = zip::ZipArchive::new(file)?;
@@ -1329,7 +1433,8 @@ fn inspect_archive_sync_with_key(
                     })
             })
             .map_or((None, None), |(kind, version)| (Some(kind), Some(version)));
-        let can_import = curseforge_available;
+        // Both a personal API key and the default SLH relay can resolve file IDs.
+        let can_import = true;
         return Ok(ArchiveInspection {
             archive_type: "curseforge".into(),
             name: value.get("name").and_then(Value::as_str).map(str::to_owned),
@@ -1789,6 +1894,32 @@ fn copy_file_atomic(source: &Path, destination: &Path) -> AppResult<()> {
 mod tests {
     use super::*;
 
+    #[tokio::test]
+    #[ignore = "requires SLH_CURSEFORGE_PACK_FIXTURE and the live CurseForge API/relay"]
+    async fn one_block_horror_reports_all_manual_files_before_creating_instance() {
+        let archive_path = std::env::var("SLH_CURSEFORGE_PACK_FIXTURE").unwrap();
+        let directory = tempfile::tempdir().unwrap();
+        let paths = crate::portable::PortablePaths::from_executable(
+            &directory.path().join("SLH.exe"), Some(directory.path().to_path_buf()),
+        ).unwrap();
+        let state = AppState::initialize_isolated_at(paths).await.unwrap();
+        let error = import_curseforge_pack(&Host::silent(), &state, ImportSlhRequest {
+            archive_path, name: Some("OneBlock fixture".into()),
+        }).await.unwrap_err().to_string();
+        assert!(error.contains("Creeper Ore!"), "{error}");
+        assert!(error.contains("Low On Fire"), "{error}");
+        assert_eq!(error.matches("https://www.curseforge.com/").count(), 14, "{error}");
+        // Exercise the catalog's real archive download as well as local import.
+        // Pre-seeding this archive would hide CDN/network failures in this path.
+        let catalog_error = crate::content::curseforge::install_modpack(
+            &Host::silent(), &state, "1204182", Some("Catalog fixture".into()), Some("9086419".into()),
+        ).await.unwrap_err().to_string();
+        assert_eq!(catalog_error.matches("https://www.curseforge.com/").count(), 14, "{catalog_error}");
+        let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM instances").fetch_one(&state.database).await.unwrap();
+        assert_eq!(count, 0);
+        state.database.close().await;
+    }
+
     fn write_archive(path: &Path, entries: &[(&str, &[u8])]) {
         let file = File::create(path).unwrap();
         let mut zip = zip::ZipWriter::new(file);
@@ -1898,7 +2029,7 @@ mod tests {
     }
 
     #[test]
-    fn curseforge_pack_reports_loader_and_key_gate() {
+    fn curseforge_pack_reports_loader_and_supports_relay_without_key() {
         let directory = tempfile::tempdir().unwrap();
         let archive_path = directory.path().join("sample.zip");
         let manifest = br#"{
@@ -1919,10 +2050,8 @@ mod tests {
         assert_eq!(inspection.minecraft_version.as_deref(), Some("1.20.1"));
         assert_eq!(inspection.loader_type.as_deref(), Some("forge"));
         assert_eq!(inspection.loader_version.as_deref(), Some("47.3.0"));
-        assert_eq!(
-            inspection.can_import,
-            crate::content::curseforge::environment_api_key().is_some()
-        );
+        assert!(inspection.can_import);
+        assert!(inspect_archive_sync_with_key(&archive_path, false).unwrap().can_import);
     }
 
     #[test]

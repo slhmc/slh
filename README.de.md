@@ -7,7 +7,7 @@
 <p align="center">Minecraft Java Edition · Getrennte Instanzen · Mods und Modpacks · Anpassbare Oberfläche</p>
 
 <p align="center">
-  <a href="https://github.com/slhmc/slh/releases/tag/v0.2.0"><img src="assets/readme/buttons/download-de.png" width="420" alt="SLH herunterladen"></a>
+  <a href="https://github.com/slhmc/slh/releases/tag/v0.2.1"><img src="assets/readme/buttons/download-de.png" width="420" alt="SLH herunterladen"></a>
 </p>
 <p align="center">
   <a href="https://slhmc.github.io/"><img src="assets/readme/buttons/website-de.png" width="200" alt="SLH-Webseite"></a>
@@ -63,7 +63,7 @@ SLH verbindet Spiel, Inhalte und Einstellungen in einem Launcher. Erstelle getre
 
 ## Herunterladen und spielen
 
-Teste die [Vorabversion v0.2.0](https://github.com/slhmc/slh/releases/tag/v0.2.0). Wähle ein Paket für dein Betriebssystem.
+Teste die [Vorabversion v0.2.0](https://github.com/slhmc/slh/releases/tag/v0.2.1). Wähle ein Paket für dein Betriebssystem.
 
 > ⚠️ **Linux und macOS wurden nicht manuell getestet.** Alle vier Desktop-Ziele wurden gebaut und haben Unit-Tests bestanden. Der Start von SLH und Minecraft unter Linux und macOS wurde noch nicht überprüft.
 

@@ -2,7 +2,7 @@ use serde_json::{Map, Value};
 use sqlx::SqlitePool;
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions, SqliteSynchronous};
 
-use crate::error::AppResult;
+use crate::error::{AppError, AppResult};
 
 static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!("./migrations");
 use crate::models::{Account, Instance, InstanceGroup};
@@ -59,6 +59,22 @@ async fn repair_legacy_initial_migration(pool: &SqlitePool) -> AppResult<bool> {
     Ok(true)
 }
 
+// Local Windows builds shipped the same migration 18 with CRLF bytes.
+// Accept only that exact known checksum; schema and user rows stay unchanged.
+async fn repair_local_home_migration(pool: &SqlitePool) -> AppResult<bool> {
+    let expected = MIGRATOR.iter().find(|migration| migration.version == 18)
+        .ok_or_else(|| AppError::Unavailable("Missing home migration".into()))?;
+    let actual: Option<Vec<u8>> = sqlx::query_scalar("SELECT checksum FROM _sqlx_migrations WHERE version = 18")
+        .fetch_optional(pool).await?;
+    if !actual.as_deref().is_some_and(|checksum| checksum_hex(checksum) == "21C0303D99B08C9DC18BD4CF0EE8D62CBB86776C5742BD3184294AD6A653E0216CC51A586864121ADB01A92411031AB3") {
+        return Ok(false);
+    }
+    sqlx::query("UPDATE _sqlx_migrations SET checksum = ? WHERE version = 18")
+        .bind(expected.checksum.as_ref()).execute(pool).await?;
+    tracing::warn!("normalized the known CRLF home-migration checksum from a local build");
+    Ok(true)
+}
+
 pub async fn connect(paths: &PortablePaths) -> AppResult<SqlitePool> {
     let options = SqliteConnectOptions::new()
         .filename(paths.database())
@@ -70,14 +86,15 @@ pub async fn connect(paths: &PortablePaths) -> AppResult<SqlitePool> {
         .max_connections(8)
         .connect_with(options)
         .await?;
-    match MIGRATOR.run(&pool).await {
-        Ok(()) => {}
-        Err(sqlx::migrate::MigrateError::VersionMismatch(1))
-            if repair_legacy_initial_migration(&pool).await? =>
-        {
-            MIGRATOR.run(&pool).await?;
+    loop {
+        match MIGRATOR.run(&pool).await {
+            Ok(()) => break,
+            Err(sqlx::migrate::MigrateError::VersionMismatch(1))
+                if repair_legacy_initial_migration(&pool).await? => {}
+            Err(sqlx::migrate::MigrateError::VersionMismatch(18))
+                if repair_local_home_migration(&pool).await? => {}
+            Err(error) => return Err(error.into()),
         }
-        Err(error) => return Err(error.into()),
     }
     Ok(pool)
 }
@@ -247,24 +264,46 @@ pub async fn instance(pool: &SqlitePool, id: &str) -> AppResult<Instance> {
 
 #[cfg(test)]
 mod tests {
+    #[tokio::test]
+    async fn upgrades_known_local_home_checksum_without_resetting_preferences() {
+        use sha2::{Digest, Sha384};
+        let root = tempfile::tempdir().unwrap();
+        let paths = crate::portable::PortablePaths::from_executable(&root.path().join("SLH.exe"), Some(root.path().to_path_buf())).unwrap();
+        std::fs::create_dir_all(&paths.data).unwrap();
+        let pool = super::connect(&paths).await.unwrap();
+        let preferences = serde_json::json!({"custom":{"keep":true},"webview":{"enabled":false}});
+        super::set_setting(&pool, "general", &preferences).await.unwrap();
+        let legacy = Sha384::digest(include_str!("../migrations/0018_beautiful_home.sql").replace("\n", "\r\n").as_bytes());
+        sqlx::query("UPDATE _sqlx_migrations SET checksum = ? WHERE version = 18").bind(legacy.as_slice()).execute(&pool).await.unwrap();
+        pool.close().await;
+        let pool = super::connect(&paths).await.unwrap();
+        assert_eq!(super::setting(&pool,"general").await.unwrap(), preferences);
+        sqlx::query("UPDATE _sqlx_migrations SET checksum = ? WHERE version = 18").bind(vec![0_u8;48]).execute(&pool).await.unwrap();
+        pool.close().await;
+        assert!(super::connect(&paths).await.is_err(), "Unknown migration hashes must still be rejected");
+    }
+
     #[test]
-    fn semantic_color_migration_matches_existing_development_profiles() {
-        let migration = super::MIGRATOR.iter().find(|migration| migration.version == 19).unwrap();
-        assert!(super::checksum_hex(migration.checksum.as_ref()).starts_with("BBCF451346B64A5E"));
+    fn semantic_color_migration_keeps_existing_local_profile_checksum() {
+        use sha2::{Digest, Sha384};
+        let digest = super::checksum_hex(&Sha384::digest(include_bytes!("../migrations/0019_semantic_colors.sql")));
+        assert!(digest.starts_with("BBCF451346B64A5E"));
     }
 
     #[tokio::test]
-    async fn repairs_only_the_bedrock_only_navigation_list() {
-        let pool = sqlx::sqlite::SqlitePoolOptions::new().max_connections(1)
-            .connect("sqlite::memory:").await.unwrap();
+    async fn navigation_repair_restores_broken_singleton_and_preserves_custom_preferences() {
+        let pool = sqlx::sqlite::SqlitePoolOptions::new().max_connections(1).connect("sqlite::memory:").await.unwrap();
         super::MIGRATOR.run(&pool).await.unwrap();
-        for (list, expected) in [("[\"bedrock\"]", 13), ("[\"java\",\"bedrock\"]", 2)] {
-            sqlx::query("INSERT OR REPLACE INTO settings(key,value_json) VALUES('general', json_object('settingsNavigationVisible',json(?)))")
-                .bind(list).execute(&pool).await.unwrap();
-            sqlx::raw_sql(include_str!("../migrations/0020_repair_settings_navigation.sql"))
-                .execute(&pool).await.unwrap();
-            let value = super::setting(&pool, "general").await.unwrap();
-            assert_eq!(value["settingsNavigationVisible"].as_array().unwrap().len(), expected);
+        for list in [serde_json::json!(["bedrock"]), serde_json::json!(["java", "bedrock"]), serde_json::json!([])] {
+            let original = serde_json::json!({"settingsNavigationVisible":list,"future":{"custom":true},"webview":{"enabled":true}});
+            super::set_setting(&pool, "general", &original).await.unwrap();
+            sqlx::raw_sql(include_str!("../migrations/0020_repair_settings_navigation.sql")).execute(&pool).await.unwrap();
+            let actual = super::setting(&pool, "general").await.unwrap();
+            if list == serde_json::json!(["bedrock"]) {
+                assert!(actual["settingsNavigationVisible"].as_array().unwrap().len()>1);
+                assert_eq!(actual["future"],original["future"]);
+                assert_eq!(actual["webview"],original["webview"]);
+            } else { assert_eq!(actual,original); }
         }
     }
 

@@ -4,6 +4,10 @@
 
 React renders the application and owns transient presentation state. Rust owns the database, filesystem, downloads, hashing, archive extraction, account security, Java discovery, game installation, process launch, and synchronization. Communication uses typed Tauri commands and progress events.
 
+This repository contains the Tauri/WebView2 launcher. The backend lives in `crates/slh-core`; `src-tauri` supplies the desktop host, commands, and operating-system integrations.
+
+The native Bedrock helper in `vendor/LeviLauncher` and its build scripts belong to the launcher and are required for its Windows Bedrock integration.
+
 ## Backend modules
 
 - `portable`: executable-relative storage layout and directory initialization

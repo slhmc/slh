@@ -55,3 +55,8 @@
     grid-template-columns: minmax(0, 1fr) 76px;
   }
 }
+
+.compactWorkspace { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); grid-template-areas: "content"; }
+
+@media (max-width: 900px) { .app { --sidebar-width: 176px; } }
+@media (max-width: 620px) { .app { --sidebar-width: 68px; } }

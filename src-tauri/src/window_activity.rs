@@ -2,9 +2,22 @@
 use std::sync::{Arc, atomic::{AtomicBool, AtomicU64, Ordering}};
 use tauri::Manager;
 #[derive(Clone)]
-pub struct Activity { pub active: Arc<AtomicBool>, generation: Arc<AtomicU64> }
+pub struct Activity { pub active: Arc<AtomicBool>, generation: Arc<AtomicU64>, suspensions: Arc<AtomicU64> }
 impl Default for Activity {
-    fn default() -> Self { Self { active: Arc::new(AtomicBool::new(true)), generation: Arc::new(AtomicU64::new(0)) } }
+    fn default() -> Self { Self { active: Arc::new(AtomicBool::new(true)), generation: Arc::new(AtomicU64::new(0)), suspensions: Arc::new(AtomicU64::new(0)) } }
+}
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ActivityStatus { active: bool, successful_suspensions: u64 }
+#[tauri::command]
+pub fn get_window_activity(activity: tauri::State<'_, Activity>) -> ActivityStatus {
+    ActivityStatus { active: activity.active.load(Ordering::Acquire), successful_suspensions: activity.suspensions.load(Ordering::Acquire) }
+}
+#[tauri::command]
+pub fn ui_paused(window: tauri::WebviewWindow, activity: tauri::State<'_, Activity>, generation: u64) {
+    if activity.current_hidden(generation) {
+        platform(&window, false, true);
+    }
 }
 impl Activity {
     fn current_hidden(&self, generation: u64) -> bool {
@@ -27,21 +40,24 @@ pub fn refresh(window: &tauri::WebviewWindow, activity: &Activity) {
         if activity.active.swap(active, Ordering::AcqRel) == active { return; }
         let generation = activity.generation.fetch_add(1, Ordering::AcqRel) + 1;
         if active { platform(window, true, false); }
-        let _ = window.eval(&format!("window.dispatchEvent(new CustomEvent('slh-native-activity',{{detail:{active}}}));"));
+        let pause = if active { String::new() } else { format!("window.dispatchEvent(new CustomEvent('slh-ui-pause',{{detail:{generation}}}));") };
+        let _ = window.eval(&format!("window.dispatchEvent(new CustomEvent('slh-native-activity',{{detail:{active}}}));{pause}"));
         let view: &tauri::Webview = window.as_ref();
         let result = if active { view.show() } else { view.hide() };
         if let Err(error) = result { tracing::warn!(%error, "webview visibility update failed"); }
         if active { return; }
         platform(window, false, false);
-        let current = window.clone();
-        let activity = activity.clone();
-        tauri::async_runtime::spawn(async move {
-            tokio::time::sleep(std::time::Duration::from_secs(30)).await;
-            if !activity.current_hidden(generation) { return; }
-            let _ = current.eval(&format!("window.dispatchEvent(new CustomEvent('slh-release-scenes',{{detail:{generation}}}));"));
-            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
-            if activity.current_hidden(generation) { platform(&current, false, true); }
-        });
+        suspend_after_pause(window, activity, generation);
+}
+
+fn suspend_after_pause(window: &tauri::WebviewWindow, activity: &Activity, generation: u64) {
+    let current = window.clone();
+    let activity = activity.clone();
+    tauri::async_runtime::spawn(async move {
+        // Fallback if the UI cannot acknowledge its stopped animations.
+        tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+        if activity.current_hidden(generation) { platform(&current, false, true); }
+    });
 }
 
 #[cfg(not(windows))]
@@ -55,16 +71,22 @@ fn platform(window: &tauri::WebviewWindow, active: bool, suspend: bool) {
     if let Err(error) = window.with_webview(move |view| unsafe {
         if activity.active.load(Ordering::Acquire) != active || activity.generation.load(Ordering::Acquire) != generation { return; }
         let Ok(webview) = view.controller().CoreWebView2() else { return; };
-        if let Ok(memory) = webview.cast::<ICoreWebView2_19>() {
-            let level = if active { COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_NORMAL } else { COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_LOW };
-            if let Err(error) = memory.SetMemoryUsageTargetLevel(level) { tracing::debug!(%error, "webview memory target unavailable"); }
-        }
+        // Use suspend/resume rather than mixing it with MemoryUsageTargetLevel,
+        // as recommended by WebView2's lifecycle contract.
         if let Ok(lifecycle) = webview.cast::<ICoreWebView2_3>() {
             if active {
                 if let Err(error) = lifecycle.Resume() { tracing::warn!(%error, "webview resume failed"); }
             } else if suspend {
-                let callback = TrySuspendCompletedHandler::create(Box::new(|result, success| {
+                let activity = activity.clone();
+                let lifecycle_on_completion = lifecycle.clone();
+                let callback = TrySuspendCompletedHandler::create(Box::new(move |result, success| {
                     if result.is_err() || !success { tracing::debug!(?result, success, "webview could not suspend"); }
+                    if success && !activity.current_hidden(generation) {
+                        // A delayed completion must not leave a restored window paused.
+                        let _ = lifecycle_on_completion.Resume();
+                    } else if success {
+                        activity.suspensions.fetch_add(1, Ordering::AcqRel);
+                    }
                     Ok(())
                 }));
                 if let Err(error) = lifecycle.TrySuspend(&callback) { tracing::debug!(%error, "webview suspend unavailable"); }

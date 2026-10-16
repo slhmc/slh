@@ -1,3 +1,6 @@
+import { ErrorText } from "../common/ErrorText";
+import { formatBytes } from "../../lib/formatters";
+import { useUiText } from "../../i18n/UiText";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, Check, FolderOpen, SpinnerGap, WarningCircle } from "../icons";
 import { Dialog } from "../common/Dialog";
@@ -21,6 +24,7 @@ export function InstanceVersionMigrationDialog({ instance, onClose, onCreated }:
   onClose: () => void;
   onCreated: (result: CreateInstanceVersionCopyResult) => void;
 }) {
+  const uiText = useUiText();
   const { tr } = useI18n();
   const refresh = useAppStore((state) => state.refresh);
   const pushToast = useAppStore((state) => state.pushToast);
@@ -103,8 +107,8 @@ export function InstanceVersionMigrationDialog({ instance, onClose, onCreated }:
   const contentByPath = useMemo(() => new Map(content.map((item) => [item.path.toLowerCase(), item])), [content]);
   const toggleUpdate = (path: string) => setUpdateSelections((current) => setMigrationRule(current, path, !migrationSelected(path, current)));
   const statusText = (item: VersionMigrationContent) => {
-    if (item.updateStatus === "available") return `${tr("Compatible update")}: ${item.candidateVersion ?? ""}`;
-    if (item.updateStatus === "current") return tr("Already compatible");
+    if (item.updateStatus === "available") return `${uiText("installation.texts.compatibleUpdate", "Compatible update")}: ${item.candidateVersion ?? ""}`;
+    if (item.updateStatus === "current") return uiText("installation.texts.alreadyCompatible", "Already compatible");
     const reason = item.updateStatus === "incompatible" ? "No version for selected Minecraft release"
       : item.updateStatus === "unknown" ? "Source unknown; compatibility not verified" : "Compatibility check failed";
     return `${tr(kindLabels[item.projectType])}: ${tr(reason)}`;
@@ -120,14 +124,14 @@ export function InstanceVersionMigrationDialog({ instance, onClose, onCreated }:
       && migrationContentSelected(candidate, selections) && migrationSelected(candidate.path, updateSelections) !== updating);
     return <div className={styles.treeGroup} key={entry.path}>
       <div data-content-provider className={`${styles.treeRow} ${checked ? styles.treeSelected : ""}`} style={{ paddingLeft: 10 + depth * 20 }}>
-        <button type="button" className={styles.expand} onClick={() => entry.isDirectory && void toggleExpand(entry.path)} disabled={!entry.isDirectory || creating} aria-label={`${expanded.includes(entry.path) ? tr("Collapse") : tr("Expand")} ${entry.name}`}>{entry.isDirectory ? (expanded.includes(entry.path) ? "▾" : "▸") : ""}</button>
-        <input type="checkbox" checked={checked} disabled={creating} onChange={() => setSelected(entry.path)} aria-label={`${tr("Copy")} ${entry.name}`} />
+        <button type="button" className={styles.expand} onClick={() => entry.isDirectory && void toggleExpand(entry.path)} disabled={!entry.isDirectory || creating} aria-label={`${expanded.includes(entry.path) ? uiText("installation.texts.collapse", "Collapse") : uiText("installation.texts.expand", "Expand")} ${entry.name}`}>{entry.isDirectory ? (expanded.includes(entry.path) ? "▾" : "▸") : ""}</button>
+        <input type="checkbox" checked={checked} disabled={creating} onChange={() => setSelected(entry.path)} aria-label={`${uiText("installation.texts.copy", "Copy")} ${entry.name}`} />
         {entry.isDirectory ? <FolderOpen className={styles.treeIcon} size={18} /> : <span className={styles.fileIcon}>▤</span>}
-        <span className={styles.treeDetails}><strong title={entry.name}>{entry.name}</strong><small>{item && updating ? statusText(item) : entry.isDirectory ? `${entry.fileCount} ${tr(entry.fileCount === 1 ? "file" : "files")}` : tr("Copy as-is")}</small></span>
+        <span className={styles.treeDetails}><strong title={entry.name}>{entry.name}</strong><small>{item && updating ? statusText(item) : entry.isDirectory ? `${entry.fileCount} ${tr(entry.fileCount === 1 ? uiText("installation.texts.file", "file") : uiText("installation.texts.files", "files"))}` : uiText("installation.texts.copyAsIs", "Copy as-is")}</small></span>
         <span className={styles.treeSize}>{formatBytes(entry.sizeBytes)}</span>
-        {supportsUpdates ? <button type="button" role="switch" aria-checked={updating} aria-label={`${tr("Updating")} ${entry.name}`} disabled={creating || !containsSelected} className={`${styles.updateSwitch} ${updating ? styles.updateSwitchOn : ""}`} onClick={() => toggleUpdate(entry.path)}><span>{tr("Updating")}{partialUpdates ? <small>{tr("Some files")}</small> : null}</span><span className={styles.switchTrack}><span /></span></button> : null}
+        {supportsUpdates ? <button type="button" role="switch" aria-checked={updating} aria-label={`${uiText("installation.texts.updating", "Updating")} ${entry.name}`} disabled={creating || !containsSelected} className={`${styles.updateSwitch} ${updating ? styles.updateSwitchOn : ""}`} onClick={() => toggleUpdate(entry.path)}><span>{uiText("installation.texts.updating", "Updating")}{partialUpdates ? <small>{uiText("installation.texts.someFiles", "Some files")}</small> : null}</span><span className={styles.switchTrack}><span /></span></button> : null}
       </div>
-      {entry.isDirectory && expanded.includes(entry.path) ? <div className={styles.treeChildren}>{loadingPaths.includes(entry.path) ? <div className={styles.childLoading}><SpinnerGap className={styles.spin} size={15} /> {tr("Reading files")}</div> : (children[entry.path] ?? []).map((child) => renderEntry(child, depth + 1))}</div> : null}
+      {entry.isDirectory && expanded.includes(entry.path) ? <div className={styles.treeChildren}>{loadingPaths.includes(entry.path) ? <div className={styles.childLoading}><SpinnerGap className={styles.spin} size={15} /> {uiText("installation.texts.readingFiles", "Reading files")}</div> : (children[entry.path] ?? []).map((child) => renderEntry(child, depth + 1))}</div> : null}
     </div>;
   };
   const createCopy = async () => {
@@ -145,52 +149,44 @@ export function InstanceVersionMigrationDialog({ instance, onClose, onCreated }:
       });
       await refresh();
       pushToast({ tone: result.issues.length || result.warnings.length ? "info" : "success",
-        title: result.issues.length || result.warnings.length ? tr("Copy created with warnings") : tr("Version copy created"),
-        message: result.issues.length ? `${result.issues.length} ${tr("files need attention")}` : result.warnings.slice(0, 2).join(" · ") || tr("Selected files were copied") });
+        title: result.issues.length || result.warnings.length ? uiText("installation.texts.copyCreatedWithWarnings", "Copy created with warnings") : uiText("installation.texts.versionCopyCreated", "Version copy created"),
+        message: result.issues.length ? `${result.issues.length} ${uiText("installation.texts.filesNeedAttention", "files need attention")}` : result.warnings.slice(0, 2).join(" · ") || uiText("installation.texts.selectedFilesWereCopied", "Selected files were copied") });
       onCreated(result);
     } catch (cause) { setError(String((cause as Error)?.message ?? cause)); }
     finally { setCreating(false); }
   };
-  return <Dialog open title={tr("Adapt build")} description={tr("Create a new copy of this build. The original and its worlds stay unchanged.")} onClose={() => { if (!creating) onClose(); }} width="xlarge">
+  return <Dialog open title={uiText("installation.texts.adaptBuild", "Adapt build")} description={uiText("installation.texts.createANewCopyOfThisBuildTheOriginal", "Create a new copy of this build. The original and its worlds stay unchanged.")} onClose={() => { if (!creating) onClose(); }} width="xlarge">
     <div className={styles.dialog}>
       <section className={styles.filesColumn}>
-      <div className={styles.listHeader}><div><h2>{tr("Build files")}</h2><p>{tr("Check files to copy. Expand folders to choose individual files. Updates are optional.")}</p></div><span>{entries.filter((entry) => selected(entry.path)).length} / {entries.length} {tr("root items selected")}</span></div>
-      {initialLoading ? <div className={styles.loading}><SpinnerGap className={styles.spin} size={20} /> {tr("Reading build folders")}</div> : <div className={styles.folderList}>{entries.map((entry) => renderEntry(entry))}{entries.length === 0 ? <div className={styles.empty}>{tr("No build files found")}</div> : null}</div>}
-      <div className={styles.note}><WarningCircle size={16} /><span>{tr("The checkbox selects what to transfer. The Updating switch controls version changes. When it is off, files are copied as-is and update warnings are hidden.")}</span></div>
+      <div className={styles.listHeader}><div><h2>{uiText("installation.texts.buildFiles", "Build files")}</h2><p>{uiText("installation.texts.checkFilesToCopyExpandFoldersToChooseIndividual", "Check files to copy. Expand folders to choose individual files. Updates are optional.")}</p></div><span>{entries.filter((entry) => selected(entry.path)).length} / {entries.length} {uiText("installation.texts.rootItemsSelected", "root items selected")}</span></div>
+      {initialLoading ? <div className={styles.loading}><SpinnerGap className={styles.spin} size={20} /> {uiText("installation.texts.readingBuildFolders", "Reading build folders")}</div> : <div className={styles.folderList}>{entries.map((entry) => renderEntry(entry))}{entries.length === 0 ? <div className={styles.empty}>{uiText("installation.texts.noBuildFilesFound", "No build files found")}</div> : null}</div>}
+      <div className={styles.note}><WarningCircle size={16} /><span>{uiText("installation.texts.theCheckboxSelectsWhatToTransferTheUpdatingSwitch", "The checkbox selects what to transfer. The Updating switch controls version changes. When it is off, files are copied as-is and update warnings are hidden.")}</span></div>
       </section>
       <aside className={styles.detailsColumn}>
-      <div className={styles.versionDock}><div className={styles.versionSide}><span>{tr("Current build")}</span><strong>{instance.minecraftVersion}</strong></div><span className={styles.versionArrow}><ArrowRight size={22} /></span><label className={styles.versionSide}><span>{tr("New Minecraft version")}</span><select className={`${common.select} ${!targetVersion ? styles.versionPlaceholder : ""}`} value={targetVersion} disabled={initialLoading || creating} onChange={(event) => setTargetVersion(event.target.value)}><option value="">{versions[0] ? `${tr("Latest release")}: ${versions[0].id}` : tr("Select a release")}</option>{versions.map((version) => <option key={version.id} value={version.id} disabled={version.id === instance.minecraftVersion}>{version.id}</option>)}</select></label></div>
-      {checking ? <div className={styles.inlineState}><SpinnerGap className={styles.spin} size={16} /> {tr("Checking compatible content")}</div> : null}
-      {!checking && loaderVersion ? <div className={styles.loaderInfo}>{tr("Compatible loader selected")}: {instance.loaderType} {loaderVersion}</div> : null}
+      <div className={styles.versionDock}><div className={styles.versionSide}><span>{uiText("installation.texts.currentBuild", "Current build")}</span><strong>{instance.minecraftVersion}</strong></div><span className={styles.versionArrow}><ArrowRight size={22} /></span><label className={styles.versionSide}><span>{uiText("installation.texts.newMinecraftVersion", "New Minecraft version")}</span><select className={`${common.select} ${!targetVersion ? styles.versionPlaceholder : ""}`} value={targetVersion} disabled={initialLoading || creating} onChange={(event) => setTargetVersion(event.target.value)}><option value="">{versions[0] ? `${uiText("installation.texts.latestRelease", "Latest release")}: ${versions[0].id}` : uiText("installation.texts.selectARelease", "Select a release")}</option>{versions.map((version) => <option key={version.id} value={version.id} disabled={version.id === instance.minecraftVersion}>{version.id}</option>)}</select></label></div>
+      {checking ? <div className={styles.inlineState}><SpinnerGap className={styles.spin} size={16} /> {uiText("installation.texts.checkingCompatibleContent", "Checking compatible content")}</div> : null}
+      {!checking && loaderVersion ? <div className={styles.loaderInfo}>{uiText("installation.texts.compatibleLoaderSelected", "Compatible loader selected")}: {instance.loaderType} {loaderVersion}</div> : null}
       {!checking && targetVersion && issues.length > 0 ? <div className={styles.warningPanel}>
-        <strong><WarningCircle size={17} /> {issues.length} {tr("files could not be updated")}</strong>
-        <p>{tr("Choose how to transfer files without a compatible update. You can override the choice for each file.")}</p>
-        <div className={styles.fallbackChoices} role="group" aria-label={tr("Files without a compatible update")}>
+        <strong><WarningCircle size={17} /> {issues.length} {uiText("installation.texts.filesCouldNotBeUpdated", "files could not be updated")}</strong>
+        <p>{uiText("installation.texts.chooseHowToTransferFilesWithoutACompatibleUpdate", "Choose how to transfer files without a compatible update. You can override the choice for each file.")}</p>
+        <div className={styles.fallbackChoices} role="group" aria-label={uiText("installation.texts.filesWithoutACompatibleUpdate", "Files without a compatible update")}>
           {(Object.keys(fallbackLabels) as VersionMigrationFallbackAction[]).map((action) => <label key={action}><input type="radio" name="migration-fallback" checked={fallbackAction === action} disabled={creating} onChange={() => setFallbackAction(action)} /><span>{tr(fallbackLabels[action])}</span></label>)}
         </div>
         <div className={styles.warningList}>{issues.map((item) => <div data-content-provider className={styles.warningItem} key={item.path}>
           <span className={styles.warningDetails}><b title={item.displayName}>{item.displayName}</b><small>{statusText(item)}</small></span>
-          <select value={fallbackOverrides[item.path] ?? ""} disabled={creating} aria-label={`${tr("Action for")} ${item.displayName}`} onChange={(event) => setFallbackOverrides((current) => {
+          <select value={fallbackOverrides[item.path] ?? ""} disabled={creating} aria-label={`${uiText("installation.texts.actionFor", "Action for")} ${item.displayName}`} onChange={(event) => setFallbackOverrides((current) => {
             const next = { ...current };
             if (event.target.value) next[item.path] = event.target.value as VersionMigrationFallbackAction;
             else delete next[item.path];
             return next;
-          })}><option value="">{tr("Use general choice")}</option>{(Object.keys(fallbackLabels) as VersionMigrationFallbackAction[]).map((action) => <option key={action} value={action}>{tr(fallbackLabels[action])}</option>)}</select>
+          })}><option value="">{uiText("installation.texts.useGeneralChoice", "Use general choice")}</option>{(Object.keys(fallbackLabels) as VersionMigrationFallbackAction[]).map((action) => <option key={action} value={action}>{tr(fallbackLabels[action])}</option>)}</select>
         </div>)}</div>
       </div> : null}
-      {relevantLookupWarnings.length > 0 ? <div className={styles.error}>{tr("Source lookup failed for some files")}: {relevantLookupWarnings.join(" · ")}</div> : null}
-      {[loaderError, error].filter(Boolean).map((message) => <div className={styles.error} key={message}><WarningCircle size={16} /> {message}</div>)}
+      {relevantLookupWarnings.length > 0 ? <div className={styles.error}>{uiText("installation.texts.sourceLookupFailedForSomeFiles", "Source lookup failed for some files")}: {relevantLookupWarnings.join(" · ")}</div> : null}
+      {[loaderError, error].filter(Boolean).map((message) => <div className={styles.error} key={message}><WarningCircle size={16} /> <ErrorText message={message!} /></div>)}
       </aside>
-      <div className={styles.footer}><span>{targetVersion ? `${updates.length} ${tr("compatible updates selected")}` : tr("Choose a release to check installed content.")}</span><div><button className={common.secondaryButton} type="button" disabled={creating} onClick={onClose}>{tr("Cancel")}</button><button className={common.button} type="button" disabled={!targetVersion || initialLoading || checking || creating || Boolean(loaderError)} onClick={() => void createCopy()}>{creating ? <SpinnerGap className={styles.spin} size={16} /> : <Check size={16} />}{creating ? tr("Creating copy") : tr("Create version copy")}</button></div></div>
+      <div className={styles.footer}><span>{targetVersion ? `${updates.length} ${uiText("installation.texts.compatibleUpdatesSelected", "compatible updates selected")}` : uiText("installation.texts.chooseAReleaseToCheckInstalledContent", "Choose a release to check installed content.")}</span><div><button className={common.secondaryButton} type="button" disabled={creating} onClick={onClose}>{uiText("common.cancel", "Cancel")}</button><button className={common.button} type="button" disabled={!targetVersion || initialLoading || checking || creating || Boolean(loaderError)} onClick={() => void createCopy()}>{creating ? <SpinnerGap className={styles.spin} size={16} /> : <Check size={16} />}{creating ? uiText("installation.texts.creatingCopy", "Creating copy") : uiText("installation.texts.createVersionCopy", "Create version copy")}</button></div></div>
     </div>
   </Dialog>;
 }
 
-function formatBytes(bytes: number) {
-  if (bytes < 1024) return `${bytes} B`;
-  const units = ["KB", "MB", "GB", "TB"];
-  let value = bytes / 1024;
-  let unit = 0;
-  while (value >= 1024 && unit < units.length - 1) { value /= 1024; unit += 1; }
-  return `${value.toFixed(value >= 100 ? 0 : value >= 10 ? 1 : 2)} ${units[unit]}`;
-}

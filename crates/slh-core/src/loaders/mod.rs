@@ -365,6 +365,7 @@ async fn install_processor_profile(
     );
     let mut installer_command = Command::new(&java.path);
     installer_command
+        .kill_on_drop(true)
         .arg("-jar")
         .arg(&installer)
         .arg("--installClient")

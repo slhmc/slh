@@ -33,7 +33,7 @@
 .heading span {
   margin-top: 3px;
   color: var(--color-text-muted);
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 .heading > svg {
@@ -81,7 +81,7 @@
 .accountText small {
   margin-top: 2px;
   color: var(--color-text-muted);
-  font-size: 11px;
+  font-size: 0.75rem;
 }
 
 .empty {
@@ -112,7 +112,7 @@
 .addActions button {
   flex: 1;
   padding-inline: 8px;
-  font-size: 11px;
+  font-size: 0.75rem;
 }
 
 .manage {

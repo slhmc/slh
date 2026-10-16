@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { engine } from "../i18n/engine";
 import { markStorageChanged } from "../lib/storageUsage";
 import { command } from "../lib/tauri";
 import type {
@@ -11,8 +12,10 @@ import type {
   ViewMode,
 } from "../lib/types";
 import { versionNotification } from "../lib/versionNotifications";
+import { receivePackProgress } from "./packJobs";
 
 interface ToastMessage {
+  brief?: boolean;
   id: string;
   tone: "info" | "success" | "error";
   title: string;
@@ -52,7 +55,7 @@ interface AppStore {
 function failure(error: unknown): CommandFailure {
   if (typeof error === "object" && error !== null && "message" in error) {
     const value = error as Partial<CommandFailure>;
-    return { code: value.code ?? "command_error", message: String(value.message) };
+    return { ...value, code: value.code ?? "command_error", message: String(value.message) };
   }
   return { code: "command_error", message: String(error) };
 }
@@ -140,6 +143,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
     instanceOperationIds: state.instanceOperationIds.filter((id) => id !== instanceId),
   })),
   receiveProgress: (event, silent = false) => {
+    if (event.stage === "memory-warning" && !silent) get().pushToast({ tone: "info", title: "progress.memory-warning", message: "" });
+    receivePackProgress(event);
     const previous = get().activities.find((item) => item.operationId === event.operationId);
     // Keep one live entry per operation. Backends emit a new stage as work
     // advances; retaining older stages makes completed downloads look stuck
@@ -147,7 +152,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
     const remaining = get().activities.filter((item) => item.operationId !== event.operationId
       && !(event.operation === "import" && item.operation === "modpack"));
     const reachedTotal = event.total !== null && event.total > 0 && event.completed >= event.total;
-    const terminal = event.stage === "complete" || event.stage === "failed"
+    const terminal = event.stage === "complete" || event.stage === "failed" || event.stage === "cancelled"
       || (event.operation === "content" && event.stage === "install" && reachedTotal);
     // Progress events are also the source of truth for background imports
     // started from Discover. Lock the associated instance immediately, even
@@ -174,7 +179,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
         void get().refresh();
       }, 120);
     }
-    if (silent) return;
+    if (silent || event.operationId === "java-disk-scan") return;
     if (event.operation === "java" && event.stage === "metadata") {
       get().pushToast({ tone: "info", title: "Java download started", message: "" });
     }
@@ -224,20 +229,23 @@ export const useAppStore = create<AppStore>((set, get) => ({
   },
   pushToast: (toast) => {
     const preferences = get().bootstrap?.settings.notifications;
-    if (preferences && (!preferences.enabled
+    if (toast.brief && preferences?.briefEnabled === false) return;
+    if (!toast.brief && preferences && (!preferences.enabled
       || (toast.tone === "info" && !preferences.showInfo)
       || (toast.tone === "success" && !preferences.showSuccess)
       || (toast.tone === "error" && !preferences.showErrors))) return;
+    if (toast.brief) set({ toasts: get().toasts.filter(item => !item.brief) });
     const isDuplicate = get().toasts.some((item) => item.tone === toast.tone
       && item.title === toast.title
       && item.message === toast.message
       && item.action?.label === toast.action?.label
       && item.action?.url === toast.action?.url);
     if (isDuplicate) return;
-    const item = { ...toast, id: crypto.randomUUID() };
+    const item = { ...toast, title: engine.keyOf(toast.title, toast.params), message: engine.keyOf(toast.message, toast.params),
+      action: toast.action ? { ...toast.action, label: engine.keyOf(toast.action.label, toast.params) } : undefined, id: crypto.randomUUID() };
     const maxVisible = Math.max(1, Math.min(8, preferences?.maxVisible ?? 3));
     set({ toasts: [...get().toasts, item].slice(-maxVisible) });
-    window.setTimeout(() => get().dismissToast(item.id), preferences?.durationMs ?? 5000);
+    window.setTimeout(() => get().dismissToast(item.id), toast.brief ? 2000 : preferences?.durationMs ?? 5000);
   },
   dismissToast: (id) => set({ toasts: get().toasts.filter((toast) => toast.id !== id) }),
 }));

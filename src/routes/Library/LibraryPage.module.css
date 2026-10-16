@@ -54,6 +54,7 @@
 
 .pageHeader {
   display: flex;
+  flex-wrap: wrap;
   min-height: 124px;
   align-items: flex-end;
   justify-content: space-between;
@@ -62,11 +63,16 @@
   border-bottom: 1px solid var(--color-border);
 }
 
+.pageHeader > div:first-child {
+  flex: 1 1 360px;
+  min-width: 0;
+}
+
 .eyebrow {
   margin: 0 0 7px;
   color: var(--color-accent-hover);
-  font-size: 11px;
-  font-weight: 750;
+  font-size: 0.75rem;
+  font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -74,7 +80,8 @@
 .pageHeader h1 {
   margin: 0;
   font-size: clamp(22px, 2vw, 29px);
-  font-weight: 720;
+  font-weight: 700;
+  overflow-wrap: anywhere;
   letter-spacing: -0.035em;
 }
 
@@ -82,12 +89,15 @@
   display: block;
   margin-top: 7px;
   color: var(--color-text-muted);
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 .toolbar {
   position: relative;
   display: flex;
+  flex-wrap: wrap;
+  min-width: 0;
+  max-width: 100%;
   align-items: center;
   gap: 8px;
 }
@@ -113,7 +123,7 @@
 
 .groupMenu form label {
   color: var(--color-text-muted);
-  font-size: 11px;
+  font-size: 0.75rem;
 }
 
 .groupMenu form button { justify-content: center; }
@@ -142,6 +152,11 @@
   color: var(--color-text);
   background: var(--color-surface-2);
 }
+
+.viewSwitch button.active { box-shadow: inset 0 -2px 0 var(--color-accent); }
+.iconsGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 112px), 1fr)); align-items: start; gap: 12px; margin-top: 8px; }
+.iconsGrid > * { max-width: 140px; width: 100%; }
+.iconsGrid > .emptyGroup { grid-column: 1 / -1; max-width: none; }
 
 .scrollArea {
   min-height: 0;
@@ -201,13 +216,13 @@
 
 .groupHeader h2 {
   margin: 0;
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 700;
 }
 
 .groupHeader span {
   color: var(--color-text-subtle);
-  font-size: 11px;
+  font-size: 0.75rem;
 }
 
 .dragPreview {
@@ -230,7 +245,7 @@
 
 .dragPreview span {
   overflow: hidden;
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -238,7 +253,7 @@
 
 .dragPreview small {
   color: var(--color-text-muted);
-  font-size: 10px;
+  font-size: 0.75rem;
 }
 
 .groupDragPreview {
@@ -253,7 +268,7 @@
   color: var(--color-text);
   background: color-mix(in srgb, var(--color-surface) 92%, var(--color-accent));
   box-shadow: var(--shadow-dialog);
-  font-size: 11px;
+  font-size: 0.75rem;
   font-weight: 700;
   pointer-events: none;
   text-overflow: ellipsis;
@@ -315,7 +330,7 @@
 .contextTitle:active { cursor: grabbing; }
 
 .contextTitle > svg { color: var(--color-accent); }
-.contextTitle strong { font-size: 12px; }
+.contextTitle strong { font-size: 0.75rem; }
 
 .contextAction > svg {
   flex: 0 0 16px;
@@ -336,7 +351,7 @@
   padding: 0 9px;
   border-radius: var(--radius-xs);
   color: var(--color-text);
-  font-size: 11px;
+  font-size: 0.75rem;
   cursor: pointer;
 }
 
@@ -375,7 +390,7 @@
   margin: 0;
   padding: 15px 8px 2px 30px;
   color: var(--color-text-subtle);
-  font-size: 11px;
+  font-size: 0.75rem;
 }
 
 .grid {
@@ -397,8 +412,8 @@
   gap: 12px;
   padding: 0 42px 0 8px;
   color: var(--color-text-subtle);
-  font-size: 10px;
-  font-weight: 650;
+  font-size: 0.75rem;
+  font-weight: 700;
 }
 
 .empty {
@@ -420,7 +435,7 @@
 
 .empty h2 {
   margin: 0;
-  font-size: 21px;
+  font-size: 1.3125rem;
 }
 
 .empty p {

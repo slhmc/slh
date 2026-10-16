@@ -11,7 +11,7 @@ vi.mock("skinview3d", () => ({ SkinViewer: class {
   playerObject = { skin: { modelType: "default" }, traverse: vi.fn() }; playerWrapper = { rotation: { y: 0 } };
   controls = { update: vi.fn().mockReturnValue(false), change: null as null | (() => void),
     addEventListener: (_event: string, callback: () => void) => { this.controls.change = callback; }, removeEventListener: vi.fn() };
-  composer = { dispose: vi.fn() }; render = vi.fn(); setSize = vi.fn(); loadSkin = vi.fn(); loadCape = vi.fn();
+  composer = { passes: [{ dispose: vi.fn() }], dispose: vi.fn() }; render = vi.fn(); setSize = vi.fn(); loadSkin = vi.fn(); loadCape = vi.fn();
   disposed = false; dispose = vi.fn(() => { this.disposed = true; });
   constructor(public options: unknown) { mocks.viewers.push(this); }
 } }));
@@ -53,6 +53,7 @@ it("draws static previews once, drains camera damping, pauses and resumes withou
   view.unmount();
   expect(viewer.dispose).toHaveBeenCalledOnce();
   expect(viewer.composer.dispose).toHaveBeenCalledOnce();
+  expect(viewer.composer.passes[0].dispose).toHaveBeenCalledOnce();
 });
 
 it("never creates textures from a skin that finishes loading after unmount", async () => {

@@ -1,3 +1,5 @@
+import { ErrorText } from "./ErrorText";
+import { useUiText } from "../../i18n/UiText";
 import { useEffect, useRef, useState } from "react";
 import { CheckCircle, Info, WarningCircle, X } from "../icons";
 import { openUrl } from "@tauri-apps/plugin-opener";
@@ -8,6 +10,7 @@ import common from "./Common.module.css";
 import styles from "./ToastCenter.module.css";
 
 export function ToastCenter() {
+  const uiText = useUiText();
   const toasts = useAppStore((state) => state.toasts);
   const dismiss = useAppStore((state) => state.dismissToast);
   const pushToast = useAppStore((state) => state.pushToast);
@@ -18,15 +21,15 @@ export function ToastCenter() {
   const [fallbackIds, setFallbackIds] = useState<Set<string>>(() => new Set());
   const errorMessage = (message: string) => {
     if (isLocalized(message)) return tr(message);
-    if (/developer mode|режим разработчика/i.test(message)) return tr("Enable Windows Developer Mode in Settings, then retry the Bedrock installation.");
-    if (/conflict(?:ing)?.*package|0x80073cf3|higher version of this package/i.test(message)) return tr("Windows found a conflicting Minecraft Store package. Use the Store version or resolve the package conflict before retrying.");
-    return tr("Try again. If it continues, check the app log.");
+    if (/developer mode|режим разработчика/i.test(message)) return uiText("common.texts.enableWindowsDeveloperModeInSettingsThenRetryThe", "Enable Windows Developer Mode in Settings, then retry the Bedrock installation.");
+    if (/conflict(?:ing)?.*package|0x80073cf3|higher version of this package/i.test(message)) return uiText("common.texts.windowsFoundAConflictingMinecraftStorePackageUseThe", "Windows found a conflicting Minecraft Store package. Use the Store version or resolve the package conflict before retrying.");
+    return uiText("common.texts.tryAgainIfItContinuesCheckTheAppLog", "Try again. If it continues, check the app log.");
   };
 
   useEffect(() => {
     if (destination !== "windows") return;
     for (const toast of toasts) {
-      if (attempted.current.has(toast.id)) continue;
+      if (toast.brief || attempted.current.has(toast.id)) continue;
       attempted.current.add(toast.id);
       const message = toast.message.trim();
       const body = toast.tone === "success"
@@ -41,7 +44,7 @@ export function ToastCenter() {
   }, [destination, dismiss, isLocalized, toasts, tr]);
 
   const visibleToasts = destination === "windows"
-    ? toasts.filter((toast) => fallbackIds.has(toast.id))
+    ? toasts.filter((toast) => toast.brief || fallbackIds.has(toast.id))
     : toasts;
   if (visibleToasts.length === 0) return null;
   return (
@@ -55,11 +58,11 @@ export function ToastCenter() {
             ? errorMessage(message)
             : isLocalized(message) ? tr(message, toast.params) : "";
         return (
-          <div className={`${styles.toast} ${styles[toast.tone]}`} key={toast.id}>
-            <Icon size={20} weight="fill" />
+          <div className={`${styles.toast} ${styles[toast.tone]} ${toast.brief ? styles.brief : ""}`} key={toast.id}>
+            <Icon size={toast.brief ? 16 : 20} weight="fill" />
             <div>
               <strong>{tr(toast.title, toast.params)}</strong>
-              {visibleMessage ? <p>{visibleMessage}</p> : null}
+              {toast.tone === "error" && message ? <ErrorText message={message} /> : visibleMessage ? <p>{visibleMessage}</p> : null}
               {toast.action ? <button className={styles.action} type="button" onClick={() => {
                 if (toast.action?.message) {
                   pushToast({
@@ -73,7 +76,7 @@ export function ToastCenter() {
                 dismiss(toast.id);
               }}>{tr(toast.action.label)}</button> : null}
             </div>
-            <button className={common.iconButton} type="button" onClick={() => dismiss(toast.id)} aria-label={tr("Dismiss notification")}>
+            <button className={common.iconButton} type="button" onClick={() => dismiss(toast.id)} aria-label={uiText("common.texts.dismissNotification", "Dismiss notification")}>
               <X size={16} weight="bold" />
             </button>
           </div>

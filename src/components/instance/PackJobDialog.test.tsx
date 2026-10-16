@@ -1,0 +1,32 @@
+// @vitest-environment jsdom
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, expect, it, vi } from 'vitest';
+import type { ReactNode } from 'react';
+import { PackJobDialog } from './PackJobDialog';
+import { usePackJobs } from '../../stores/packJobs';
+const mocks = vi.hoisted(() => ({ command: vi.fn(), select: vi.fn(), toast: vi.fn(), refresh: vi.fn().mockResolvedValue(undefined) }));
+vi.mock('../../lib/tauri', () => ({ command: mocks.command }));
+vi.mock('../../stores/appStore', () => ({ useAppStore: { getState: () => ({ refresh: mocks.refresh, selectInstance: mocks.select, pushToast: mocks.toast }) } }));
+vi.mock('../../i18n/I18nProvider', () => ({ useI18n: () => ({ tr: (s: string) => s }) }));
+vi.mock('../common/Dialog', () => ({ Dialog: ({ open, children, footer }: { open: boolean; children: ReactNode; footer?: ReactNode }) => open ? <div role="dialog">{children}{footer}</div> : null }));
+vi.mock('@tauri-apps/plugin-dialog', () => ({ open: vi.fn() }));
+vi.mock('@tauri-apps/plugin-opener', () => ({ openUrl: vi.fn() }));
+afterEach(() => { cleanup(); vi.useRealTimers(); usePackJobs.setState({ jobs: [], activeKey: null }); });
+it('continues watching Downloads and resumes a waiting installation after its dialog is closed', async () => {
+  vi.useFakeTimers();
+  let signatures: string[] = [];
+  mocks.command.mockImplementation(async (name: string) => name === 'scan_curseforge_downloads' ? signatures : { id: 'done', name: 'Horror' });
+  const imported = vi.fn().mockResolvedValue(undefined);
+  usePackJobs.setState({ activeKey: 'fixture', jobs: [{ key: 'fixture', name: 'Horror', minecraftVersion: '1.19.2', loaderType: 'forge', commandName: 'install_curseforge_modpack', args: { versionId: '123' }, phase: 'waiting', startedAt: new Date().toISOString(), onSuccess: imported, error: 'curseforge-manual:\n- [Required](https://www.curseforge.com/minecraft/mc-mods/required/download/123) — `background.jar`' }] });
+  render(<PackJobDialog />);
+  await act(async () => { await Promise.resolve(); });
+  fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+  expect(screen.queryByRole('dialog')).toBeNull();
+  expect(usePackJobs.getState().jobs).toHaveLength(1);
+  signatures = ['background.jar\0background.jar:100:time'];
+  await act(async () => { await vi.advanceTimersByTimeAsync(3000); });
+  expect(mocks.command).toHaveBeenCalledWith('run_pack_install', { key: 'fixture', commandName: 'install_curseforge_modpack', args: { versionId: '123' } });
+  expect(usePackJobs.getState().jobs).toHaveLength(0);
+  expect(mocks.select).toHaveBeenCalledWith('done');
+  expect(imported).toHaveBeenCalledExactlyOnceWith({ id: 'done', name: 'Horror' });
+});

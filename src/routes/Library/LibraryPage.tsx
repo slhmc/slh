@@ -1,10 +1,11 @@
+import { useUiText } from "../../i18n/UiText";
 import {
   ArrowRight,
   Check,
+  Cube,
   Export,
   FileText,
   FolderOpen,
-  Funnel,
   Image,
   Info,
   ListBullets,
@@ -21,7 +22,9 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { Instance, InstanceGroup } from "../../lib/types";
 import { command, revealInstancePath } from "../../lib/tauri";
+import { orderedInstances, moveInstanceOrder } from "../../lib/instanceOrder";
 import { useAppStore } from "../../stores/appStore";
+import { usePackJobs, cancelPackInstall, packJobInstance, packJobProgress } from "../../stores/packJobs";
 import { versionNotification } from "../../lib/versionNotifications";
 import common from "../../components/common/Common.module.css";
 import { InstanceCard } from "../../components/instance/InstanceCard";
@@ -64,6 +67,7 @@ type ContextMenuInput =
   | { kind: "instance" };
 
 export function LibraryPage() {
+  const uiText = useUiText();
   const { t, tr } = useI18n();
   const bootstrap = useAppStore((state) => state.bootstrap);
   const selectedId = useAppStore((state) => state.selectedInstanceId);
@@ -75,13 +79,17 @@ export function LibraryPage() {
   const pushToast = useAppStore((state) => state.pushToast);
   const refresh = useAppStore((state) => state.refresh);
   const activities = useAppStore((state) => state.activities);
+  const packJobs = usePackJobs((state) => state.jobs);
+  const showPackJob = usePackJobs((state) => state.show);
   const navigate = useNavigate();
   const [groupName, setGroupName] = useState("");
   const [creatingGroup, setCreatingGroup] = useState(false);
   const [draggedInstanceId, setDraggedInstanceId] = useState<string | null>(null);
   const draggedInstanceRef = useRef<string | null>(null);
-  const pointerDragRef = useRef<{ instanceId: string; startX: number; startY: number; dragging: boolean } | null>(null);
+  const pointerDragRef = useRef<{ instanceId: string; pointerId: number; element: HTMLElement; startX: number; startY: number; dragging: boolean } | null>(null);
+  const suppressSelectionUntil = useRef(0);
   const [dropGroupId, setDropGroupId] = useState<string | null | undefined>(undefined);
+  const [instanceReorderTarget, setInstanceReorderTarget] = useState<{ id: string; after: boolean } | null>(null);
   const [dragPreview, setDragPreview] = useState<{ instance: Instance; x: number; y: number } | null>(null);
   const [draggedGroupId, setDraggedGroupId] = useState<string | null>(null);
   const [groupReorderTarget, setGroupReorderTarget] = useState<{ id: string; after: boolean } | null>(null);
@@ -182,43 +190,16 @@ export function LibraryPage() {
   const filtered = useMemo(() => {
     if (!bootstrap) return [];
     const term = search.trim().toLocaleLowerCase();
-    return bootstrap.instances.filter((instance) => {
+    return orderedInstances(bootstrap.instances, bootstrap.settings.general.instanceOrder).filter((instance) => {
+      if (packJobs.some((job) => job.progress?.instanceId === instance.id)) return false;
       if (!term) return true;
       return [instance.name, instance.minecraftVersion, instance.loaderType]
         .some((value) => value.toLocaleLowerCase().includes(term));
-    }).sort((left, right) => left.name.localeCompare(right.name, undefined, { sensitivity: "base", numeric: true }));
-  }, [bootstrap, search]);
-  const pendingModpack = activities.find((activity) => activity.operation === "modpack" && activity.stage === "download");
-  const pendingInstance = useMemo<Instance | null>(() => {
-    if (!pendingModpack) return null;
-    const name = pendingModpack.message
-      .replace(/^(Downloading|Загрузка)\s+/i, "")
-      .trim() || tr("Minecraft pack");
-    return {
-      id: `pending-${pendingModpack.operationId}`,
-      name,
-      groupId: null,
-      iconPath: null,
-      folderName: "",
-      iconKey: "cube",
-      iconBackground: "#3f493c",
-      iconForeground: "#f0f4ed",
-      minecraftVersion: tr("Unknown"),
-      loaderType: "vanilla",
-      loaderVersion: null,
-      status: "installing",
-      createdAt: new Date().toISOString(),
-      lastPlayedAt: null,
-      lastLaunchedAt: null,
-      playtimeSeconds: 0,
-      javaPath: null,
-      memoryMinMb: 512,
-      memoryMaxMb: 4096,
-      gameDir: "",
-      configSchemaVersion: 1,
-      bedrockProfileMode: "shared",
-    };
-  }, [pendingModpack, tr]);
+    });
+  }, [bootstrap, search, packJobs]);
+  const pendingInstances = useMemo(() => packJobs
+    .filter((job) => !search.trim() || job.name.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()))
+    .map(packJobInstance), [packJobs, search, bootstrap]);
 
   if (!bootstrap) return null;
 
@@ -238,7 +219,7 @@ export function LibraryPage() {
     } catch (error) {
       pushToast({
         tone: "error",
-        title: tr("Instance was not deleted"),
+        title: uiText("instance.texts.instanceWasNotDeleted", "Instance was not deleted"),
         message: String((error as { message?: string }).message ?? error),
       });
     } finally {
@@ -254,9 +235,9 @@ export function LibraryPage() {
       await command("create_group", { request: { name } });
       setGroupName("");
       await refresh();
-      pushToast({ tone: "success", title: tr("Group created"), message: `${name} ${tr("is ready for your instances.")}` });
+      pushToast({ tone: "success", title: uiText("library.texts.groupCreated", "Group created"), message: `${name} ${uiText("library.texts.isReadyForYourInstances", "is ready for your instances.")}` });
     } catch (error) {
-      pushToast({ tone: "error", title: tr("Group was not created"), message: String((error as { message?: string }).message ?? error) });
+      pushToast({ tone: "error", title: uiText("library.texts.groupWasNotCreated", "Group was not created"), message: String((error as { message?: string }).message ?? error) });
     } finally {
       setCreatingGroup(false);
     }
@@ -280,7 +261,7 @@ export function LibraryPage() {
       setRenamingGroup(null);
       await refresh();
     } catch (error) {
-      pushToast({ tone: "error", title: tr("Group was not renamed"), message: String((error as { message?: string }).message ?? error) });
+      pushToast({ tone: "error", title: uiText("library.texts.groupWasNotRenamed", "Group was not renamed"), message: String((error as { message?: string }).message ?? error) });
     }
   };
   const deleteGroup = async (group: InstanceGroup) => {
@@ -288,9 +269,9 @@ export function LibraryPage() {
       await command("delete_group", { request: { groupId: group.id } });
       setContextMenu(null);
       await refresh();
-      pushToast({ tone: "success", title: tr("Group deleted"), message: `${group.name}: ${tr("instances moved to Ungrouped.")}` });
+      pushToast({ tone: "success", title: uiText("library.texts.groupDeleted", "Group deleted"), message: `${group.name}: ${uiText("library.texts.instancesMovedToUngrouped", "instances moved to Ungrouped.")}` });
     } catch (error) {
-      pushToast({ tone: "error", title: tr("Group was not deleted"), message: String((error as { message?: string }).message ?? error) });
+      pushToast({ tone: "error", title: uiText("library.texts.groupWasNotDeleted", "Group was not deleted"), message: String((error as { message?: string }).message ?? error) });
     }
   };
   const rawPanelOptions = bootstrap?.settings.general.instancePanel ?? { showArtwork: true, showMetadata: true, hiddenActions: [], actionOrder: panelActionLabels.map(([id]) => id) };
@@ -310,7 +291,7 @@ export function LibraryPage() {
       await command("update_setting", { key: "general", value: general });
       await refresh();
     } catch (error) {
-      pushToast({ tone: "error", title: tr("Panel preferences were not saved"), message: String((error as { message?: string }).message ?? error) });
+      pushToast({ tone: "error", title: uiText("library.texts.panelPreferencesWereNotSaved", "Panel preferences were not saved"), message: String((error as { message?: string }).message ?? error) });
     }
   };
   const setUngroupedVisible = async (visible: boolean) => {
@@ -322,7 +303,7 @@ export function LibraryPage() {
       setContextMenu(null);
     } catch (error) {
       setUngroupedHidden(previous);
-      pushToast({ tone: "error", title: tr("Library view was not saved"), message: String((error as { message?: string }).message ?? error) });
+      pushToast({ tone: "error", title: uiText("library.texts.libraryViewWasNotSaved", "Library view was not saved"), message: String((error as { message?: string }).message ?? error) });
     }
   };
   const setUngroupedCollapsedState = async (collapsed: boolean) => {
@@ -333,7 +314,7 @@ export function LibraryPage() {
       await refresh();
     } catch (error) {
       setUngroupedCollapsed(previous);
-      pushToast({ tone: "error", title: tr("Ungrouped view was not saved"), message: String((error as { message?: string }).message ?? error) });
+      pushToast({ tone: "error", title: uiText("library.texts.ungroupedViewWasNotSaved", "Ungrouped view was not saved"), message: String((error as { message?: string }).message ?? error) });
     }
   };
   const effectiveUngroupedPosition = Math.max(0, Math.min(bootstrap.groups.length, Number.isInteger(ungroupedPosition) ? ungroupedPosition as number : bootstrap.groups.length));
@@ -366,7 +347,7 @@ export function LibraryPage() {
     if (operations.length > 0) {
       Promise.all(operations).then(() => refresh()).catch((error) => {
         setUngroupedPosition(previousPosition);
-        pushToast({ tone: "error", title: tr("Library sections were not reordered"), message: String((error as { message?: string }).message ?? error) });
+        pushToast({ tone: "error", title: uiText("library.texts.librarySectionsWereNotReordered", "Library sections were not reordered"), message: String((error as { message?: string }).message ?? error) });
       });
     }
   };
@@ -383,7 +364,7 @@ export function LibraryPage() {
     const order = bootstrap.groups.map((group) => group.id).filter((id) => id !== sourceId);
     const target = order.indexOf(groupId);
     order.splice(target < 0 ? order.length : target + (after ? 1 : 0), 0, sourceId);
-    void command("reorder_groups", { request: { groupIds: order } }).then(() => refresh()).catch((error) => pushToast({ tone: "error", title: tr("Groups were not reordered"), message: String((error as { message?: string }).message ?? error) })).finally(() => { setDraggedGroupId(null); setGroupReorderTarget(null); });
+    void command("reorder_groups", { request: { groupIds: order } }).then(() => refresh()).catch((error) => pushToast({ tone: "error", title: uiText("library.texts.groupsWereNotReordered", "Groups were not reordered"), message: String((error as { message?: string }).message ?? error) })).finally(() => { setDraggedGroupId(null); setGroupReorderTarget(null); });
   };
 
   const toggleGroup = async (groupId: string, collapsed: boolean) => {
@@ -391,7 +372,7 @@ export function LibraryPage() {
       await command("set_group_collapsed", { request: { groupId, collapsed } });
       await refresh();
     } catch (error) {
-      pushToast({ tone: "error", title: tr("Group view was not saved"), message: String((error as { message?: string }).message ?? error) });
+      pushToast({ tone: "error", title: uiText("library.texts.groupViewWasNotSaved", "Group view was not saved"), message: String((error as { message?: string }).message ?? error) });
     }
   };
   const assignGroup = async (instanceId: string, groupId: string | null) => {
@@ -401,10 +382,22 @@ export function LibraryPage() {
       await command("assign_instance_group", { request: { instanceId: instance.id, groupId } });
       await refresh();
     } catch (error) {
-      pushToast({ tone: "error", title: tr("Group was not updated"), message: String((error as { message?: string }).message ?? error) });
+      pushToast({ tone: "error", title: uiText("installation.texts.groupWasNotUpdated", "Group was not updated"), message: String((error as { message?: string }).message ?? error) });
     } finally {
       setDraggedInstanceId(null);
       setDropGroupId(undefined);
+    }
+  };
+
+  const reorderInstance = async (id: string, targetId: string, after: boolean) => {
+    const current = useAppStore.getState().bootstrap;
+    if (!current) return;
+    const instanceOrder = moveInstanceOrder(current.instances, current.settings.general.instanceOrder, id, targetId, after);
+    try {
+      await command("update_setting", { key: "general", value: { ...current.settings.general, instanceOrder } });
+      await refresh();
+    } catch (error) {
+      pushToast({ tone: "error", title: uiText("library.orderNotSaved", "Instance order was not saved"), message: String((error as { message?: string }).message ?? error) });
     }
   };
 
@@ -416,6 +409,15 @@ export function LibraryPage() {
       const target = document.elementFromPoint(clientX, clientY)?.closest<HTMLElement>("[data-slh-group-drop]");
       if (!target) return undefined;
       return target.dataset.slhGroupDrop === "ungrouped" ? null : target.dataset.slhGroupDrop ?? undefined;
+    };
+    const findOrderTarget = (event: PointerEvent, instanceId: string) => {
+      const element = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>("[data-slh-instance]");
+      const id = element?.dataset.slhInstance;
+      const source = bootstrap.instances.find(instance => instance.id === instanceId);
+      const target = bootstrap.instances.find(instance => instance.id === id);
+      if (!element || !target || target.id === instanceId || target.groupId !== source?.groupId) return null;
+      const rect = element.getBoundingClientRect();
+      return { id: target.id, after: viewMode === "list" ? event.clientY > rect.top + rect.height / 2 : event.clientX > rect.left + rect.width / 2 };
     };
     const onPointerMove = (event: PointerEvent) => {
       const groupDrag = groupPointerDragRef.current;
@@ -457,6 +459,7 @@ export function LibraryPage() {
       }
       const drag = pointerDragRef.current;
       if (!drag) return;
+      if (event.pointerId !== drag.pointerId) return;
       if (!drag.dragging && Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) >= 8) {
         drag.dragging = true;
         draggedInstanceRef.current = drag.instanceId;
@@ -465,8 +468,10 @@ export function LibraryPage() {
         if (instance) setDragPreview({ instance, x: event.clientX, y: event.clientY });
       }
       if (drag.dragging) {
+        event.preventDefault();
         const targetGroup = findDropGroup(event.clientX, event.clientY);
         const sourceGroup = bootstrap.instances.find((item) => item.id === drag.instanceId)?.groupId;
+        setInstanceReorderTarget(findOrderTarget(event, drag.instanceId));
         setDropGroupId(targetGroup !== undefined && targetGroup !== sourceGroup ? targetGroup : undefined);
         setDragPreview((current) => current ? { ...current, x: event.clientX, y: event.clientY } : current);
       }
@@ -500,16 +505,31 @@ export function LibraryPage() {
         return;
       }
       const drag = pointerDragRef.current;
+      if (drag && event.pointerId !== drag.pointerId) return;
       pointerDragRef.current = null;
+      if (drag?.element.hasPointerCapture(drag.pointerId)) drag.element.releasePointerCapture(drag.pointerId);
       if (!drag?.dragging) return;
+      suppressSelectionUntil.current = performance.now() + 300;
       const groupId = findDropGroup(event.clientX, event.clientY);
       draggedInstanceRef.current = null;
       setDraggedInstanceId(null);
       setDropGroupId(undefined);
       setDragPreview(null);
-      if (groupId !== undefined) void assignGroup(drag.instanceId, groupId);
+      setInstanceReorderTarget(null);
+      const source = bootstrap.instances.find(instance => instance.id === drag.instanceId);
+      if (source && groupId === source.groupId) {
+        const hoveredId = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>("[data-slh-instance]")?.dataset.slhInstance;
+        if (hoveredId === drag.instanceId) return;
+        const target = findOrderTarget(event, drag.instanceId);
+        const last = orderedInstances(bootstrap.instances, bootstrap.settings.general.instanceOrder).filter(instance => instance.groupId === groupId && instance.id !== drag.instanceId).slice(-1)[0];
+        if (target) void reorderInstance(drag.instanceId, target.id, target.after);
+        else if (last) void reorderInstance(drag.instanceId, last.id, true);
+      } else if (groupId !== undefined) void assignGroup(drag.instanceId, groupId);
     };
     const cancelPointerDrag = () => {
+      const drag = pointerDragRef.current;
+      if (drag?.dragging) suppressSelectionUntil.current = performance.now() + 300;
+      if (drag?.element.hasPointerCapture(drag.pointerId)) drag.element.releasePointerCapture(drag.pointerId);
       groupPointerDragRef.current = null;
       panelActionPointerDragRef.current = null;
       setDraggedGroupId(null);
@@ -522,18 +542,21 @@ export function LibraryPage() {
       setDraggedInstanceId(null);
       setDropGroupId(undefined);
       setDragPreview(null);
+      setInstanceReorderTarget(null);
     };
     window.addEventListener("pointermove", onPointerMove);
     window.addEventListener("pointerup", finishPointerDrag);
     window.addEventListener("pointercancel", cancelPointerDrag);
     window.addEventListener("slh-ui-cancel", cancelPointerDrag);
+    window.addEventListener("blur", cancelPointerDrag);
     return () => {
       window.removeEventListener("pointermove", onPointerMove);
       window.removeEventListener("pointerup", finishPointerDrag);
       window.removeEventListener("pointercancel", cancelPointerDrag);
       window.removeEventListener("slh-ui-cancel", cancelPointerDrag);
+      window.removeEventListener("blur", cancelPointerDrag);
     };
-  }, [bootstrap, refresh]);
+  }, [bootstrap, refresh, viewMode]);
   const dropHandlers = (groupId: string | null) => ({
     onDragEnter: (event: React.DragEvent<HTMLElement>) => {
       event.preventDefault();
@@ -571,20 +594,31 @@ export function LibraryPage() {
       selected={instance.id === selectedId}
       view={viewMode}
       groupName={groupName}
-      onSelect={() => { if (!pending) select(instance.id); }}
-      onOpenFolder={() => { if (!pending) void revealInstancePath(instance.id, instance.gameDir).catch((error) => pushToast({ tone: "error", title: tr("Folder could not be opened"), message: String((error as { message?: string }).message ?? error) })); }}
+      insertPosition={instanceReorderTarget?.id === instance.id ? instanceReorderTarget.after ? "after" : "before" : undefined}
+      onSelect={() => { if (performance.now() < suppressSelectionUntil.current) return; if (pending) showPackJob(instance.id.slice("pack-job:".length)); else select(instance.id); }}
+      onOpenFolder={() => { if (!pending) void revealInstancePath(instance.id, instance.gameDir).catch((error) => pushToast({ tone: "error", title: uiText("installation.texts.folderCouldNotBeOpened", "Folder could not be opened"), message: String((error as { message?: string }).message ?? error) })); }}
       onSettings={() => { if (!pending) navigate(`/instance/${instance.id}?tab=settings`); }}
       onDelete={() => { if (!pending) void deleteInstance(instance); }}
       onPointerDown={(event) => {
         if (pending || event.button !== 0) return;
         if ((event.target as HTMLElement).closest("button, input, select, summary, a")) return;
+        suppressSelectionUntil.current = 0;
         // Browser text selection competes with a pointer drag in WebView2.
         event.preventDefault();
-        pointerDragRef.current = { instanceId: instance.id, startX: event.clientX, startY: event.clientY, dragging: false };
+        event.currentTarget.setPointerCapture(event.pointerId);
+        pointerDragRef.current = { instanceId: instance.id, pointerId: event.pointerId, element: event.currentTarget, startX: event.clientX, startY: event.clientY, dragging: false };
       }}
+      onCancel={pending && packJobs.some((job) => `pack-job:${job.key}` === instance.id && job.phase === "running" && job.commandName !== "import_slh_archive") ? () => {
+        void cancelPackInstall(instance.id.slice("pack-job:".length)).catch((error) => pushToast({ tone: "error", title: "Could not cancel installation", message: String(error) }));
+      } : undefined}
       progress={(() => {
+        if (pending) {
+          const job = packJobs.find((item) => `pack-job:${item.key}` === instance.id);
+          const progress = packJobProgress(job);
+          return { percentage: job?.phase === "running" ? progress.percentage : null, message: tr(progress.message) + (progress.counter ? ` · ${progress.counter}` : "") };
+        }
         if (instance.status === "error" || instance.status === "installed") return null;
-        const progress = pending ? pendingModpack : activities.find((activity) => activity.instanceId === instance.id);
+        const progress = activities.find((activity) => activity.instanceId === instance.id);
         if (progress?.stage === "complete") return null;
         if (!progress) return null;
         const percentage = progress.downloadedBytes !== null && progress.totalBytes && progress.totalBytes > 0
@@ -604,7 +638,7 @@ export function LibraryPage() {
           <div>
             <p className={styles.eyebrow}>{t("library.eyebrow", "Instance library")}</p>
             <h1>{t("library.heading", "Your Minecraft worlds, separated and ready")}</h1>
-            <span>{t("library.instanceCount", "{count} instance(s) in this library").replace("{count}", String(bootstrap.instances.length)).replace("(s)", bootstrap.instances.length === 1 ? "" : "s")}</span>
+            <span>{uiText("library.instanceCount", "{count} instances in this library", { count: bootstrap.instances.filter((instance) => !packJobs.some((job) => job.progress?.instanceId === instance.id)).length + pendingInstances.length })}</span>
           </div>
           <div className={styles.toolbar}>
             <details name="slh-action-menu" data-action-menu className={styles.groupMenu}>
@@ -616,17 +650,16 @@ export function LibraryPage() {
               </form>
             </details>
             {hideUngrouped ? <button className={common.ghostButton} type="button" onClick={() => void setUngroupedVisible(true)}>{t("library.showUngrouped", "Show ungrouped")}</button> : null}
-            <button className={common.ghostButton} type="button" onClick={() => pushToast({ tone: "info", title: tr("Filters"), message: tr("Search already matches names, versions, and loaders. Advanced filters are being added.") })}>
-              <Funnel size={17} /> {t("library.filter", "Filter")}
-            </button>
+
             <div className={styles.viewSwitch} aria-label={t("library.libraryView", "Library view")}>
-              <button className={viewMode === "grid" ? styles.active : ""} type="button" onClick={() => void setViewMode("grid")} aria-label={t("library.gridView", "Grid view")}><SquaresFour size={17} weight="bold" /></button>
-              <button className={viewMode === "list" ? styles.active : ""} type="button" onClick={() => void setViewMode("list")} aria-label={t("library.listView", "List view")}><ListBullets size={18} weight="bold" /></button>
+              <button className={viewMode === "grid" ? styles.active : ""} type="button" onClick={() => void setViewMode("grid")} aria-pressed={viewMode === "grid"} aria-label={t("library.gridView", "Grid view")} title={t("library.gridView", "Grid view")}><SquaresFour size={17} weight="bold" /></button>
+              <button className={viewMode === "icons" ? styles.active : ""} type="button" onClick={() => void setViewMode("icons")} aria-pressed={viewMode === "icons"} aria-label={uiText("library.iconView", "Grouped icons")} title={uiText("library.iconView", "Grouped icons")}><Cube size={18} weight="bold" /></button>
+              <button className={viewMode === "list" ? styles.active : ""} type="button" onClick={() => void setViewMode("list")} aria-pressed={viewMode === "list"} aria-label={t("library.listView", "List view")} title={t("library.listView", "List view")}><ListBullets size={18} weight="bold" /></button>
             </div>
           </div>
         </div>
 
-        {filtered.length === 0 && bootstrap.groups.length === 0 && !pendingInstance ? (
+        {filtered.length === 0 && bootstrap.groups.length === 0 && pendingInstances.length === 0 ? (
           <div className={styles.empty}>
             <BrandLogo variant="icon" />
             <h2>{bootstrap.instances.length === 0 ? t("library.emptyTitle", "No instances yet") : t("library.noMatching", "No matching instances")}</h2>
@@ -646,27 +679,27 @@ export function LibraryPage() {
             {orderedSections.map((section) => section.kind === "group" ? (
               <section className={`${styles.group} ${dropGroupId === section.group.id ? styles.dropTarget : ""}`} key={section.group.id} data-slh-group-drop={section.group.id} {...dropHandlers(section.group.id)}>
                 <div className={`${styles.groupHeader} ${groupReorderTarget?.id === section.group.id ? (groupReorderTarget.after ? styles.groupInsertAfter : styles.groupInsertBefore) : ""}`} data-slh-group-drop={section.group.id} data-slh-group-order={section.group.id} {...dropHandlers(section.group.id)} onPointerDown={(event) => { if (event.button !== 0 || (event.target as HTMLElement).closest("button, input")) return; event.preventDefault(); groupPointerDragRef.current = { groupId: section.group.id, label: section.group.name, startX: event.clientX, startY: event.clientY, dragging: false }; }} data-slh-context-menu="true" onContextMenu={(event) => openContextMenu(event, { kind: "group", group: section.group })}>
-                  <button type="button" onClick={() => void toggleGroup(section.group.id, !section.group.collapsed)} aria-expanded={!section.group.collapsed} aria-label={`${section.group.collapsed ? "Expand" : "Collapse"} ${section.group.name}`}>
+                  <button type="button" onClick={() => void toggleGroup(section.group.id, !section.group.collapsed)} aria-expanded={!section.group.collapsed} aria-label={`${section.group.collapsed ? uiText("installation.texts.expand", "Expand") : uiText("installation.texts.collapse", "Collapse")} ${section.group.name}`}>
                     <ArrowRight className={section.group.collapsed ? styles.collapsedArrow : styles.expandedArrow} size={15} weight="bold" />
                   </button>
-                  <h2>{section.group.name}</h2>
+                  <h2 data-minimal-title>{section.group.name}</h2>
                   <span>{section.instances.length}</span>
                 </div>
-                {!section.group.collapsed ? <div className={viewMode === "grid" ? styles.grid : styles.list}>
+                {!section.group.collapsed ? <div className={viewMode === "icons" ? styles.iconsGrid : viewMode === "grid" ? styles.grid : styles.list}>
                   {section.instances.length > 0 ? section.instances.map((instance) => renderInstance(instance, section.group.name)) : <p className={styles.emptyGroup}>{t("library.emptyGroup", "Drop or create an instance in this group.")}</p>}
                 </div> : null}
               </section>
             ) : (
               <section className={`${styles.group} ${dropGroupId === null ? styles.dropTarget : ""}`} key="ungrouped" data-slh-group-drop="ungrouped" {...dropHandlers(null)}>
                 <div className={`${styles.groupHeader} ${groupReorderTarget?.id === "ungrouped" ? (groupReorderTarget.after ? styles.groupInsertAfter : styles.groupInsertBefore) : ""}`} data-slh-group-drop="ungrouped" data-slh-group-order="ungrouped" {...dropHandlers(null)} onPointerDown={(event) => { if (event.button !== 0 || (event.target as HTMLElement).closest("button, input")) return; event.preventDefault(); groupPointerDragRef.current = { groupId: "ungrouped", label: t("library.ungrouped", "Ungrouped"), startX: event.clientX, startY: event.clientY, dragging: false }; }} data-slh-context-menu="true" onContextMenu={(event) => openContextMenu(event, { kind: "ungrouped" })}>
-                  <button type="button" onClick={() => void setUngroupedCollapsedState(!ungroupedCollapsed)} aria-expanded={!ungroupedCollapsed} aria-label={`${ungroupedCollapsed ? "Expand" : "Collapse"} ${t("library.ungrouped", "Ungrouped")}`}>
+                  <button type="button" onClick={() => void setUngroupedCollapsedState(!ungroupedCollapsed)} aria-expanded={!ungroupedCollapsed} aria-label={`${ungroupedCollapsed ? uiText("installation.texts.expand", "Expand") : uiText("installation.texts.collapse", "Collapse")} ${t("library.ungrouped", "Ungrouped")}`}>
                     <ArrowRight className={ungroupedCollapsed ? styles.collapsedArrow : styles.expandedArrow} size={15} weight="bold" />
                   </button>
-                  <h2>{t("library.ungrouped", "Ungrouped")}</h2>
-                  <span>{ungrouped.length + (pendingInstance ? 1 : 0)}</span>
+                  <h2 data-minimal-title>{t("library.ungrouped", "Ungrouped")}</h2>
+                  <span>{ungrouped.length + pendingInstances.length}</span>
                 </div>
-                {!ungroupedCollapsed ? <div className={viewMode === "grid" ? styles.grid : styles.list} {...dropHandlers(null)}>
-                  {pendingInstance ? renderInstance(pendingInstance, undefined, true) : null}
+                {!ungroupedCollapsed ? <div className={viewMode === "icons" ? styles.iconsGrid : viewMode === "grid" ? styles.grid : styles.list} {...dropHandlers(null)}>
+                  {pendingInstances.map((instance) => renderInstance(instance, undefined, true))}
                   {ungrouped.length > 0 ? ungrouped.map((instance) => renderInstance(instance)) : <p className={styles.emptyGroup}>{t("library.emptyGroup", "Drop or create an instance in this group.")}</p>}
                 </div> : null}
               </section>
@@ -678,7 +711,7 @@ export function LibraryPage() {
       {dragPreview ? (
         <div className={styles.dragPreview} style={{ left: dragPreview.x, top: dragPreview.y }} aria-hidden="true">
           <span>{dragPreview.instance.name}</span>
-          <small>Minecraft {dragPreview.instance.minecraftVersion}</small>
+          <small>{uiText("settings.minecraft", "Minecraft")}{" "}{dragPreview.instance.minecraftVersion}</small>
         </div>
       ) : null}
       {groupDragPreview ? <div className={styles.groupDragPreview} style={{ left: groupDragPreview.x, top: groupDragPreview.y }} aria-hidden="true">{groupDragPreview.label}</div> : null}
@@ -686,29 +719,29 @@ export function LibraryPage() {
       {contextMenu ? (
         <div ref={contextMenuRef} className={`${styles.contextMenu} slh-context-menu`} style={{ left: contextMenu.x, top: contextMenu.y }} onPointerDown={(event) => { event.stopPropagation(); if (event.button === 2) beginContextMenuMove(event); }} onMouseDown={(event) => { if (event.button === 2) beginContextMenuMove(event); }} data-slh-context-menu="true" onContextMenu={(event) => { event.preventDefault(); event.stopPropagation(); }}>
           {contextMenu.kind === "ungrouped" ? <>
-            <header className={styles.contextTitle} onPointerDown={beginContextMenuMove} onMouseDown={(event) => { if (event.button === 2) beginContextMenuMove(event); }}><FolderOpen size={17} /><strong>{tr("Ungrouped")}</strong></header>
+            <header className={styles.contextTitle} onPointerDown={beginContextMenuMove} onMouseDown={(event) => { if (event.button === 2) beginContextMenuMove(event); }}><FolderOpen size={17} /><strong>{uiText("library.ungrouped", "Ungrouped")}</strong></header>
             <div>
               <button className={menuStyles.itemToggle} type="button" onClick={() => { setContextMenu(null); void setUngroupedCollapsedState(!ungroupedCollapsed); }}>
                 <span className={menuStyles.check} aria-hidden="true" />
                 <ArrowRight className={ungroupedCollapsed ? styles.contextArrowCollapsed : styles.contextArrowExpanded} size={16} />
-                <span>{tr(ungroupedCollapsed ? "Expand group" : "Collapse group")}</span>
+                <span>{tr(ungroupedCollapsed ? uiText("library.texts.expandGroup", "Expand group") : uiText("library.texts.collapseGroup", "Collapse group"))}</span>
               </button>
-              <button className={menuStyles.itemToggle} type="button" onClick={() => void setUngroupedVisible(false)}><span className={menuStyles.check} aria-hidden="true" /><X size={16} /><span>{tr("Hide ungrouped")}</span></button>
+              <button className={menuStyles.itemToggle} type="button" onClick={() => void setUngroupedVisible(false)}><span className={menuStyles.check} aria-hidden="true" /><X size={16} /><span>{uiText("library.texts.hideUngrouped", "Hide ungrouped")}</span></button>
             </div>
           </> : contextMenu.kind === "group" ? <>
             <header className={styles.contextTitle} onPointerDown={beginContextMenuMove} onMouseDown={(event) => { if (event.button === 2) beginContextMenuMove(event); }}><Stack size={17} /><strong>{contextMenu.group.name}</strong></header>
             <div>
-              <button className={menuStyles.itemToggle} type="button" onClick={() => { setRenameValue(contextMenu.group.name); setRenamingGroup(contextMenu.group); setContextMenu(null); }}><span className={menuStyles.check} aria-hidden="true" /><Wrench size={16} /><span>{tr("Rename group")}</span></button>
-              <button className={`${menuStyles.itemToggle} ${styles.contextDanger}`} type="button" onClick={() => void deleteGroup(contextMenu.group)}><span className={menuStyles.check} aria-hidden="true" /><Trash size={16} /><span>{tr("Delete group")}</span></button>
+              <button className={menuStyles.itemToggle} type="button" onClick={() => { setRenameValue(contextMenu.group.name); setRenamingGroup(contextMenu.group); setContextMenu(null); }}><span className={menuStyles.check} aria-hidden="true" /><Wrench size={16} /><span>{uiText("library.texts.renameGroup", "Rename group")}</span></button>
+              <button className={`${menuStyles.itemToggle} ${styles.contextDanger}`} type="button" onClick={() => void deleteGroup(contextMenu.group)}><span className={menuStyles.check} aria-hidden="true" /><Trash size={16} /><span>{uiText("library.texts.deleteGroup", "Delete group")}</span></button>
             </div>
           </> : <>
-            <header className={styles.contextTitle} onPointerDown={beginContextMenuMove} onMouseDown={(event) => { if (event.button === 2) beginContextMenuMove(event); }}><Stack size={17} /><strong>{tr("Instance panel")}</strong></header>
+            <header className={styles.contextTitle} onPointerDown={beginContextMenuMove} onMouseDown={(event) => { if (event.button === 2) beginContextMenuMove(event); }}><Stack size={17} /><strong>{uiText("library.texts.instancePanel", "Instance panel")}</strong></header>
             <div>
-              <label className={`${menuStyles.itemToggle} ${styles.panelMenuItem}`}><input className={styles.contextCheckbox} type="checkbox" checked={panelOptions.showArtwork} onChange={(event) => void savePanelOptions({ ...panelOptions, showArtwork: event.target.checked })} /><span className={menuStyles.check}>{panelOptions.showArtwork ? <Check size={16} /> : null}</span><span className={styles.contextIcon}><Image size={16} /></span><span>{tr("Icon / artwork")}</span></label>
-              <label className={`${menuStyles.itemToggle} ${styles.panelMenuItem}`}><input className={styles.contextCheckbox} type="checkbox" checked={panelOptions.showMetadata} onChange={(event) => void savePanelOptions({ ...panelOptions, showMetadata: event.target.checked })} /><span className={menuStyles.check}>{panelOptions.showMetadata ? <Check size={16} /> : null}</span><span className={styles.contextIcon}><Info size={16} /></span><span>{tr("Information")}</span></label>
+              <label className={`${menuStyles.itemToggle} ${styles.panelMenuItem}`}><input className={styles.contextCheckbox} type="checkbox" checked={panelOptions.showArtwork} onChange={(event) => void savePanelOptions({ ...panelOptions, showArtwork: event.target.checked })} /><span className={menuStyles.check}>{panelOptions.showArtwork ? <Check size={16} /> : null}</span><span className={styles.contextIcon}><Image size={16} /></span><span>{uiText("library.texts.iconArtwork", "Icon / artwork")}</span></label>
+              <label className={`${menuStyles.itemToggle} ${styles.panelMenuItem}`}><input className={styles.contextCheckbox} type="checkbox" checked={panelOptions.showMetadata} onChange={(event) => void savePanelOptions({ ...panelOptions, showMetadata: event.target.checked })} /><span className={menuStyles.check}>{panelOptions.showMetadata ? <Check size={16} /> : null}</span><span className={styles.contextIcon}><Info size={16} /></span><span>{uiText("library.texts.information", "Information")}</span></label>
               <div className={menuStyles.separator} />
               {(panelOptions.actionOrder?.length ? panelOptions.actionOrder : panelActionLabels.map(([id]) => id)).filter((id) => selectedBedrock ? id !== "screenshots" : id !== "resourcepacks").map((id) => {
-                const label = tr(selectedBedrock && id === "mods" ? "Add-ons" : panelActionLabels.find(([value]) => value === id)?.[1] ?? id);
+                const label = tr(selectedBedrock && id === "mods" ? uiText("installation.texts.addOns", "Add-ons") : panelActionLabels.find(([value]) => value === id)?.[1] ?? id);
                 const enabled = !panelOptions.hiddenActions.includes(id);
                 return <div className={`${styles.contextRow} ${panelActionReorderTarget?.id === id ? (panelActionReorderTarget.after ? styles.contextInsertAfter : styles.contextInsertBefore) : ""}`} key={id} data-slh-panel-action={id} onPointerDown={(event) => { if (event.button === 0 && !(event.target as HTMLElement).closest("input")) panelActionPointerDragRef.current = { actionId: id, label, startX: event.clientX, startY: event.clientY, dragging: false }; }}>
                   <label className={`${menuStyles.itemToggle} ${styles.panelMenuItem}`}><input className={styles.contextCheckbox} type="checkbox" checked={enabled} onChange={(event) => void savePanelOptions({ ...panelOptions, hiddenActions: event.target.checked ? panelOptions.hiddenActions.filter((value) => value !== id) : [...panelOptions.hiddenActions, id] })} /><span className={menuStyles.check}>{enabled ? <Check size={16} /> : null}</span><span className={styles.contextIcon}>{panelActionIcon(id)}</span><span>{label}</span></label>
@@ -718,10 +751,10 @@ export function LibraryPage() {
           </>}
         </div>
       ) : null}
-      <Dialog open={renamingGroup !== null} title={tr("Rename group")} description={tr("Instances stay in the same group.")} onClose={() => setRenamingGroup(null)} width="small">
+      <Dialog open={renamingGroup !== null} title={uiText("library.texts.renameGroup", "Rename group")} description={uiText("library.texts.instancesStayInTheSameGroup", "Instances stay in the same group.")} onClose={() => setRenamingGroup(null)} width="small">
         <form className={styles.renameForm} onSubmit={(event) => { event.preventDefault(); void renameGroup(); }}>
           <input className={common.input} value={renameValue} onChange={(event) => setRenameValue(event.target.value)} maxLength={80} autoFocus />
-          <button className={common.button} type="submit" disabled={!renameValue.trim()}>{tr("Save")}</button>
+          <button className={common.button} type="submit" disabled={!renameValue.trim()}>{uiText("common.save", "Save")}</button>
         </form>
       </Dialog>
     </div>

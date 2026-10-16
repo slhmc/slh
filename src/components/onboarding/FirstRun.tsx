@@ -1,3 +1,4 @@
+import { useUiText } from "../../i18n/UiText";
 import { useState } from "react";
 import { ArrowRight, ShieldCheck, SignIn, WarningCircle } from "../icons";
 import { command } from "../../lib/tauri";
@@ -11,6 +12,7 @@ type View = "choice" | "warning" | "offline" | "elyby";
 type SecondaryProvider = "offline" | "elyby";
 
 export function FirstRun() {
+  const uiText = useUiText();
   const bootstrap = useAppStore((state) => state.bootstrap);
   const refresh = useAppStore((state) => state.refresh);
   const pushToast = useAppStore((state) => state.pushToast);
@@ -59,7 +61,7 @@ export function FirstRun() {
       await command("update_setting", { key: "general", value: { ...bootstrap.settings.general, language } });
       await refresh();
     } catch (error) {
-      pushToast({ tone: "error", title: tr("Language could not be changed"), message: String((error as { message?: string }).message ?? error) });
+      pushToast({ tone: "error", title: uiText("common.texts.languageCouldNotBeChanged", "Language could not be changed"), message: String((error as { message?: string }).message ?? error) });
     } finally { setChangingLanguage(false); }
   };
   const addOffline = async () => {
@@ -68,7 +70,7 @@ export function FirstRun() {
       await command("create_offline_account", { request: { username, allowInvalidUsername } });
       await finish();
     } catch (error) {
-      pushToast({ tone: "error", title: tr("Account could not be added"), message: String((error as { message?: string }).message ?? error) });
+      pushToast({ tone: "error", title: uiText("common.texts.accountCouldNotBeAdded", "Account could not be added"), message: String((error as { message?: string }).message ?? error) });
     } finally { setBusy(false); }
   };
   const loginElyBy = async () => {
@@ -80,32 +82,32 @@ export function FirstRun() {
       const failure = error as { code?: string; message?: string };
       if (failure.code === "two_factor_required") {
         setElyNeedsTotp(true);
-        pushToast({ tone: "info", title: tr("Two-factor code required"), message: tr("Enter the current code, then try again.") });
+        pushToast({ tone: "info", title: uiText("common.texts.twoFactorCodeRequired", "Two-factor code required"), message: uiText("common.texts.enterTheCurrentCodeThenTryAgain", "Enter the current code, then try again.") });
       } else {
-        pushToast({ tone: "error", title: tr("Ely.by sign-in failed"), message: String(failure.message ?? error) });
+        pushToast({ tone: "error", title: uiText("common.texts.elyBySignInFailed", "Ely.by sign-in failed"), message: String(failure.message ?? error) });
       }
     } finally { setBusy(false); }
   };
   const loginMicrosoft = async () => {
     setBusy(true);
-    pushToast({ tone: "info", title: tr("Continue in your browser"), message: tr("Finish signing in in your browser.") });
+    pushToast({ tone: "info", title: uiText("common.texts.continueInYourBrowser", "Continue in your browser"), message: uiText("common.texts.finishSigningInInYourBrowser", "Finish signing in in your browser.") });
     try {
       await command("login_microsoft");
       await finish();
     } catch (error) {
-      pushToast({ tone: "error", title: tr("Microsoft sign-in failed"), message: String((error as { message?: string }).message ?? error) });
+      pushToast({ tone: "error", title: uiText("common.texts.microsoftSignInFailed", "Microsoft sign-in failed"), message: String((error as { message?: string }).message ?? error) });
     } finally { setBusy(false); }
   };
 
   return <div className={styles.backdrop}>
-    <section className={styles.panel} aria-label={tr("Welcome to Smile LauncHer")}>
-      <div className={styles.artwork}><BrandLogo variant="icon" /><BrandLogo variant="wordmark" /><span>{tr("Minecraft, on your terms.")}</span></div>
+    <section className={styles.panel} aria-label={uiText("common.texts.welcomeToSmileLauncher", "Welcome to Smile LauncHer")}>
+      <div className={styles.artwork}><BrandLogo variant="icon" /><BrandLogo variant="wordmark" /><span>{uiText("common.texts.minecraftOnYourTerms", "Minecraft, on your terms.")}</span></div>
       <div className={styles.content}>
-        <div className={styles.security}><ShieldCheck size={19} weight="duotone" /><span>{tr("No telemetry, no ads, no cloud account requirement.")}</span></div>
-        <h1>{tr("Welcome to Smile LauncHer")}</h1>
-        <p>{tr("Build isolated Minecraft instances and keep every launcher-owned file in one place.")}</p>
+        <div className={styles.security}><ShieldCheck size={19} weight="duotone" /><span>{uiText("common.texts.noTelemetryNoAdsNoCloudAccountRequirement", "No telemetry, no ads, no cloud account requirement.")}</span></div>
+        <h1>{uiText("common.texts.welcomeToSmileLauncher", "Welcome to Smile LauncHer")}</h1>
+        <p>{uiText("common.texts.buildIsolatedMinecraftInstancesAndKeepEveryLauncherOwned", "Build isolated Minecraft instances and keep every launcher-owned file in one place.")}</p>
         {view === "choice" || view === "warning" ? <div className={styles.actions}>
-          <button className={`${common.button} ${styles.microsoftAction}`} type="button" onClick={() => void loginMicrosoft()} disabled={busy || !microsoft?.available} title={microsoft?.available ? undefined : tr("Microsoft client ID is not configured")}>
+          <button className={`${common.button} ${styles.microsoftAction}`} type="button" onClick={() => void loginMicrosoft()} disabled={busy || !microsoft?.available} title={microsoft?.available ? undefined : uiText("common.texts.microsoftClientIdIsNotConfigured", "Microsoft client ID is not configured")}>
             <SignIn size={20} weight="bold" /><span><strong>{t("onboarding.continueMicrosoft", "Continue with Microsoft")}</strong><small>{t("onboarding.microsoftRecommendation", "Recommended for Minecraft: Java Edition")}</small></span><ArrowRight size={18} />
           </button>
           <div className={styles.secondaryActions}>
@@ -116,16 +118,16 @@ export function FirstRun() {
         </div> : null}
         {view === "offline" ? <form onSubmit={(event) => { event.preventDefault(); void addOffline(); }} className={styles.offlineForm}>
           <h2>{t("onboarding.createOffline", "Create Offline account")}</h2>
-          <label className={common.field}><span className={common.label}>{tr("Offline username")}</span><input className={common.input} value={username} onChange={(event) => setUsername(event.target.value)} autoFocus placeholder={tr("Player name")} /><span className={common.hint}>{tr(allowInvalidUsername ? "Any nickname is accepted locally. Online-mode servers may reject this identity." : "3 to 16 letters, numbers, or underscores. Online-mode servers will reject this identity.")}</span></label>
-          <label className={common.checkLabel}><input type="checkbox" checked={allowInvalidUsername} onChange={(event) => setAllowInvalidUsername(event.target.checked)} /> {tr("Allow invalid usernames")}</label>
-          <div className={styles.formActions}><button className={common.ghostButton} type="button" onClick={backToChoice}>{tr("Back")}</button><button className={common.button} type="submit" disabled={busy || (allowInvalidUsername ? !username.trim() : username.trim().length < 3)}>{tr("Add and continue")} <ArrowRight size={16} /></button></div>
+          <label className={common.field}><span className={common.label}>{uiText("common.texts.offlineUsername", "Offline username")}</span><input className={common.input} value={username} onChange={(event) => setUsername(event.target.value)} autoFocus placeholder={uiText("common.texts.playerName", "Player name")} /><span className={common.hint}>{tr(allowInvalidUsername ? uiText("common.texts.anyNicknameIsAcceptedLocallyOnlineModeServersMay", "Any nickname is accepted locally. Online-mode servers may reject this identity.") : uiText("common.texts.3To16LettersNumbersOrUnderscoresOnlineMode", "3 to 16 letters, numbers, or underscores. Online-mode servers will reject this identity."))}</span></label>
+          <label className={common.checkLabel}><input type="checkbox" checked={allowInvalidUsername} onChange={(event) => setAllowInvalidUsername(event.target.checked)} /> {uiText("common.texts.allowInvalidUsernames", "Allow invalid usernames")}</label>
+          <div className={styles.formActions}><button className={common.ghostButton} type="button" onClick={backToChoice}>{uiText("common.texts.back", "Back")}</button><button className={common.button} type="submit" disabled={busy || (allowInvalidUsername ? !username.trim() : username.trim().length < 3)}>{uiText("common.texts.addAndContinue", "Add and continue")} <ArrowRight size={16} /></button></div>
         </form> : null}
         {view === "elyby" ? <form onSubmit={(event) => { event.preventDefault(); void loginElyBy(); }} className={styles.offlineForm}>
           <h2>{t("onboarding.addElyBy", "Add Ely.by account")}</h2>
-          <label className={common.field}><span className={common.label}>{tr("Username")}</span><input className={common.input} value={elyUsername} onChange={(event) => setElyUsername(event.target.value)} autoFocus autoComplete="username" /></label>
-          <label className={common.field}><span className={common.label}>{tr("Password")}</span><input className={common.input} value={elyPassword} onChange={(event) => setElyPassword(event.target.value)} type="password" autoComplete="current-password" /></label>
-          {elyNeedsTotp ? <label className={common.field}><span className={common.label}>{tr("Two-factor code")}</span><input className={common.input} value={elyTotp} onChange={(event) => setElyTotp(event.target.value)} inputMode="numeric" autoComplete="one-time-code" /></label> : null}
-          <div className={styles.formActions}><button className={common.ghostButton} type="button" onClick={backToChoice}>{tr("Back")}</button><button className={common.button} type="submit" disabled={busy || !elyUsername.trim() || !elyPassword}>{tr("Add and continue")} <ArrowRight size={16} /></button></div>
+          <label className={common.field}><span className={common.label}>{uiText("common.texts.username", "Username")}</span><input className={common.input} value={elyUsername} onChange={(event) => setElyUsername(event.target.value)} autoFocus autoComplete="username" /></label>
+          <label className={common.field}><span className={common.label}>{uiText("common.texts.password", "Password")}</span><input className={common.input} value={elyPassword} onChange={(event) => setElyPassword(event.target.value)} type="password" autoComplete="current-password" /></label>
+          {elyNeedsTotp ? <label className={common.field}><span className={common.label}>{uiText("common.texts.twoFactorCode", "Two-factor code")}</span><input className={common.input} value={elyTotp} onChange={(event) => setElyTotp(event.target.value)} inputMode="numeric" autoComplete="one-time-code" /></label> : null}
+          <div className={styles.formActions}><button className={common.ghostButton} type="button" onClick={backToChoice}>{uiText("common.texts.back", "Back")}</button><button className={common.button} type="submit" disabled={busy || !elyUsername.trim() || !elyPassword}>{uiText("common.texts.addAndContinue", "Add and continue")} <ArrowRight size={16} /></button></div>
         </form> : null}
       </div>
     </section>
@@ -134,7 +136,7 @@ export function FirstRun() {
         <div className={styles.warningHeading}><WarningCircle size={25} weight="fill" /><h2 id="microsoft-warning-title">{t("onboarding.microsoftRecommended", "Microsoft account recommended")}</h2></div>
         <p>{t("onboarding.warning", "Please sign in to Microsoft before adding an Offline or Ely.by account.")}</p>
         <label className={styles.commitment}><input type="checkbox" checked={acceptedMicrosoftLater} onChange={(event) => setAcceptedMicrosoftLater(event.target.checked)} /><span>{t("onboarding.commitment", "I commit to sign in to a Microsoft account later.")}</span></label>
-        <div className={styles.formActions}><button className={common.ghostButton} type="button" onClick={backToChoice}>{tr("Back")}</button><button className={common.button} type="button" disabled={!acceptedMicrosoftLater} onClick={continueToSecondaryProvider}>{t("onboarding.continue", "Continue")} <ArrowRight size={16} /></button></div>
+        <div className={styles.formActions}><button className={common.ghostButton} type="button" onClick={backToChoice}>{uiText("common.texts.back", "Back")}</button><button className={common.button} type="button" disabled={!acceptedMicrosoftLater} onClick={continueToSecondaryProvider}>{t("onboarding.continue", "Continue")} <ArrowRight size={16} /></button></div>
       </section>
     </div> : null}
   </div>;

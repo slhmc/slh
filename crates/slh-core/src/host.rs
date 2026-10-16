@@ -34,6 +34,7 @@ pub struct SyncError {
 }
 #[derive(Clone, Copy, Debug)]
 pub enum WindowAction {
+    Quit,
     Hide,
     Show,
     Focus,
@@ -49,7 +50,15 @@ pub enum CoreEvent {
 impl CoreEvent {
     pub fn wire(&self) -> AppResult<Option<(&'static str, serde_json::Value)>> {
         Ok(Some(match self {
-            Self::Progress(v) => ("slh-operation-progress", serde_json::to_value(v)?),
+            Self::Progress(v) => {
+                let mut payload = serde_json::to_value(v)?;
+                static SOURCES: std::sync::OnceLock<std::collections::BTreeMap<String, String>> = std::sync::OnceLock::new();
+                let sources = SOURCES.get_or_init(|| serde_json::from_str(include_str!("../../../src/i18n/sources.json")).expect("checked source catalog"));
+                if let Some(key) = sources.get(&v.message) { payload["messageKey"] = serde_json::json!(key); }
+                else { payload["messageKey"] = serde_json::json!(format!("progress.{}", v.stage)); }
+                payload["params"] = serde_json::json!({ "completed": v.completed, "total": v.total.unwrap_or(0) });
+                ("slh-operation-progress", payload)
+            },
             Self::Launch(v) => ("slh-launch-state", serde_json::to_value(v)?),
             Self::Console(v) => ("slh-console-line", serde_json::to_value(v)?),
             Self::SyncError(v) => ("slh-sync-error", serde_json::to_value(v)?),
@@ -111,6 +120,7 @@ impl Host {
 }
 pub struct HostWindow(Host);
 impl HostWindow {
+    pub fn quit(&self) -> AppResult<()> { (self.0.0)(CoreEvent::Window(WindowAction::Quit)) }
     pub fn hide(&self) -> AppResult<()> {
         (self.0.0)(CoreEvent::Window(WindowAction::Hide))
     }

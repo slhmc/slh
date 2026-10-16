@@ -1,3 +1,4 @@
+import { useUiText } from "../../i18n/UiText";
 import { useEffect, useState } from "react";
 import noAccountAvatar from "../../assets/NoAcc.png";
 import type { Account } from "../../lib/types";
@@ -5,6 +6,7 @@ import { command } from "../../lib/tauri";
 import styles from "./AccountAvatar.module.css";
 
 export function AccountAvatar({ account, className = "" }: { account: Account | null; className?: string }) {
+  const uiText = useUiText();
   const [skin, setSkin] = useState<string | null>(null);
 
   useEffect(() => {
@@ -46,7 +48,7 @@ export function AccountAvatar({ account, className = "" }: { account: Account | 
   }, [account?.id, account?.provider]);
 
   return (
-    <span className={`${styles.avatar} ${className}`} role="img" aria-label={account ? `${account.username} skin` : "No account selected"}>
+    <span className={`${styles.avatar} ${className}`} role="img" aria-label={account ? `${account.username} skin` : uiText("accounts.texts.noAccountSelected", "No account selected")}>
       {!account || account.provider === "offline" ? (
         <img className={styles.offlineFallback} src={noAccountAvatar} alt="" aria-hidden="true" />
       ) : skin ? (

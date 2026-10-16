@@ -31,7 +31,7 @@
 }
 
 .xlarge {
-  width: min(1320px, calc(100vw - 40px));
+  width: min(1660px, calc(100vw - 32px));
 }
 
 .header {
@@ -46,7 +46,9 @@
 
 .title {
   margin: 0;
-  font-size: 19px;
+  font-size: var(--text-heading);
+  line-height: 1.3;
+  overflow-wrap: anywhere;
   font-weight: 700;
   letter-spacing: -0.02em;
 }
@@ -54,19 +56,22 @@
 .header p {
   margin: 5px 0 0;
   color: var(--color-text-muted);
-  font-size: 13px;
+  font-size: 0.8125rem;
   line-height: 1.45;
 }
 
 .body {
-  max-height: calc(100vh - 140px);
+  max-height: calc(100vh - 240px);
   overflow: auto;
   overscroll-behavior: contain;
   /* Every dialog content gets a real inner gutter. Forms and buttons must
      never touch the modal border, even when their own component has no
      wrapper padding. */
-  padding: 18px 20px 20px;
+  padding: var(--panel-padding);
 }
+
+.footer { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-2); padding: var(--space-4) var(--panel-padding); border-top: 1px solid var(--color-border); }
+@media (max-width: 600px) { .dialog { max-width: calc(100vw - 16px); } .header { gap: 8px; padding: 12px; } .body { padding: 12px; max-height: calc(100vh - 200px); } .footer { padding: 12px; } }
 
 /* The version picker is an in-app menu. Unlike a native select it always
    opens downward, so the compact install dialog must not clip it. */
@@ -79,8 +84,6 @@
   overflow: visible;
 }
 
-.footer { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; padding: 16px; border-top: 1px solid var(--color-border); }
-
 .withFooter[open] { display: flex; flex-direction: column; }
-.withFooter .header, .withFooter .footer { flex-shrink: 0; }
-.withFooter .body { flex: 1; min-height: 0; }
+.withFooter > .header, .withFooter > .footer { flex-shrink: 0; }
+.withFooter > .body { min-height: 0; flex: 1 1 auto; }

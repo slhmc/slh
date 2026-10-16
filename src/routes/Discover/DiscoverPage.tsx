@@ -1,8 +1,9 @@
+import { ErrorText } from "../../components/common/ErrorText";
+import { formatBytes } from "../../lib/formatters";
+import { AutoFitTitle } from "../../components/common/AutoFitTitle";
+import { useUiText } from "../../i18n/UiText";
+import { MarkdownRenderer } from "../../components/common/ProjectDescription";
 import { useEffect, useRef, useState } from "react";
-import ReactMarkdown from "react-markdown";
-import rehypeRaw from "rehype-raw";
-import rehypeSanitize from "rehype-sanitize";
-import remarkGfm from "remark-gfm";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, ArrowRight, CloudSlash, DownloadSimple, Funnel, MagnifyingGlass, SpinnerGap, Stack, Star, X } from "../../components/icons";
 import { command } from "../../lib/tauri";
@@ -11,16 +12,21 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import type { ContentInstallPlan, ContentInstallResult, InstalledContentRecord, Instance, MinecraftVersionSummary, ModpackVersionOption, ModrinthProject, ModrinthProjectDetails, ModrinthSearchResult, ProjectGalleryImage, ProviderAvailability } from "../../lib/types";
 import common from "../../components/common/Common.module.css";
 import { useI18n } from "../../i18n/I18nProvider";
+import { PackInstallError } from "../../components/common/PackInstallError";
 import { Dialog } from "../../components/common/Dialog";
 import { useAppStore } from "../../stores/appStore";
+import { runPackInstall } from "../../stores/packJobs";
 import modrinthIcon from "../../assets/provider-icons/modrinth.png";
 import curseforgeIcon from "../../assets/provider-icons/curseforge.png";
 import page from "../shared/Page.module.css";
 import styles from "./DiscoverPage.module.css";
 
-const discoverCache = new RequestCache<ModrinthSearchResult>(60_000);
+const discoverCache = new RequestCache<ModrinthSearchResult>(60_000, 12);
 const providerCache = new RequestCache<ProviderAvailability[]>(60_000);
 const minecraftCache = new RequestCache<MinecraftVersionSummary[]>(60_000);
+const projectDetailsCache = new RequestCache<ModrinthProjectDetails>(60_000, 8);
+const loadProjectDetails = (provider: "modrinth" | "curseforge", projectId: string) =>
+  projectDetailsCache.load(`${provider}:${projectId}`, () => command<ModrinthProjectDetails>(provider === "modrinth" ? "get_modrinth_project_details" : "get_curseforge_project_details", { projectId }));
 type DiscoverFilters = { source: "modrinth" | "curseforge"; query: string; gameVersion: string; loader: string; sort: string };
 const rememberedFilters = new Map<string, DiscoverFilters>();
 const searchKey = (source: string, args: Record<string, unknown>) => JSON.stringify([source, args]);
@@ -91,10 +97,6 @@ function projectPageUrl(provider: "modrinth" | "curseforge", project: ModrinthPr
     : `https://www.curseforge.com/minecraft/modpacks/${project.slug}`;
 }
 
-interface MarkdownRendererProps {
-  markdown: string;
-  onImage: (image: ProjectGalleryImage) => void;
-}
 
 interface VersionPickerProps {
   label: string;
@@ -123,7 +125,7 @@ function VersionPicker({ label, value, options, onChange }: VersionPickerProps) 
 
   return <div className={styles.versionPicker} ref={ref}>
     <span>{label}</span>
-    <button className={styles.versionPickerTrigger} type="button" aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen((current) => !current)}><strong>{selected?.label ?? "---"}</strong><span aria-hidden="true">⌄</span></button>
+    <button className={styles.versionPickerTrigger} type="button" aria-label={label} aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen((current) => !current)}><strong>{selected?.label ?? "---"}</strong><span aria-hidden="true">⌄</span></button>
     {open ? <div className={styles.versionPickerMenu} role="listbox" aria-label={label}>
       <button type="button" role="option" aria-selected={!value} className={!value ? styles.versionPickerSelected : ""} onClick={() => choose("")}>---</button>
       {options.map((option) => <button type="button" role="option" aria-selected={value === option.value} className={value === option.value ? styles.versionPickerSelected : ""} onClick={() => choose(option.value)} key={option.value}>{option.label}</button>)}
@@ -131,22 +133,6 @@ function VersionPicker({ label, value, options, onChange }: VersionPickerProps) 
   </div>;
 }
 
-function MarkdownRenderer({ markdown, onImage }: MarkdownRendererProps) {
-  return <div className={styles.markdown}><ReactMarkdown
-    remarkPlugins={[remarkGfm]}
-    rehypePlugins={[rehypeRaw, rehypeSanitize]}
-    components={{
-      a: ({ href, children }) => href && safeExternalUrl(href)
-        ? <a className={styles.markdownLink} href={href} onClick={(event) => { event.preventDefault(); void openUrl(href); }}>{children}</a>
-        : <span>{children}</span>,
-      img: ({ src, alt }) => src && safeExternalUrl(src)
-        ? <img className={styles.markdownImage} src={src} alt={alt ?? ""} loading="lazy" onClick={(event) => { event.preventDefault(); event.stopPropagation(); onImage({ url: src, thumbnailUrl: null, title: alt || null, description: null }); }} />
-        : null,
-      details: ({ children }) => <details className={styles.markdownDetails}>{children}</details>,
-      summary: ({ children }) => <summary>{children}</summary>,
-    }}
-  >{markdown}</ReactMarkdown></div>;
-}
 
 function ProjectArtwork({ iconUrl }: { iconUrl: string | null }) {
   const [failed, setFailed] = useState(false);
@@ -194,6 +180,7 @@ const sortOptions = [
 ];
 
 export function DiscoverPage({ embeddedInstanceId, initialType, initialSource, onClose, onInstalled, hideProviderTabs = false }: DiscoverPageProps = {}) {
+  const uiText = useUiText();
   const { tr } = useI18n();
   const location = useLocation();
   const parameters = new URLSearchParams(location.search);
@@ -201,10 +188,16 @@ export function DiscoverPage({ embeddedInstanceId, initialType, initialSource, o
   const requestedInstance = embeddedInstanceId ?? parameters.get("instance");
   const filterKey = `${requestedInstance ?? "global"}:${requestedType ?? "modpack"}:${initialSource ?? "any"}`;
   const remembered = rememberedFilters.get(filterKey);
-  const [source, setSource] = useState<"modrinth" | "curseforge">(initialSource ?? remembered?.source ?? "modrinth");
+  const requestedSource = parameters.get("source");
+  const [source, setSource] = useState<"modrinth" | "curseforge">(initialSource ?? (requestedSource === "modrinth" || requestedSource === "curseforge" ? requestedSource : remembered?.source ?? "modrinth"));
   const [providers, setProviders] = useState<ProviderAvailability[]>(() => providerCache.peek("providers") ?? []);
-  const [query, setQuery] = useState(remembered?.query ?? "");
+  const [categorySelection, setCategorySelection] = useState<{ id:string; source:string; projectType:string } | null>(null);
+  const [categories, setCategories] = useState<Array<{id: string; name: string}>>([]);
+  const [categoryError, setCategoryError] = useState(false);
+  const [query, setQuery] = useState(parameters.get("query") ?? remembered?.query ?? "");
   const [projectType, setProjectType] = useState(types.some((type) => type.id === requestedType) ? requestedType! : "modpack");
+  const category = categorySelection?.source === source && categorySelection.projectType === projectType ? categorySelection.id : "";
+  const setCategory = (id: string) => setCategorySelection({ id, source, projectType });
   const [gameVersion, setGameVersion] = useState(remembered?.gameVersion ?? "");
   const [loader, setLoader] = useState(remembered?.loader ?? "");
   const [sort, setSort] = useState(remembered?.sort ?? "relevance");
@@ -213,7 +206,7 @@ export function DiscoverPage({ embeddedInstanceId, initialType, initialSource, o
   const [installedContent, setInstalledContent] = useState<InstalledContentRecord[]>([]);
   const [installedStatuses, setInstalledStatuses] = useState<Record<string, InstalledProjectStatus>>({});
   const [installedRevision, setInstalledRevision] = useState(0);
-  const initialSearch = { query, projectType, gameVersion: gameVersion || null, loader: matchesLoaderFilter(projectType) ? loader || null : null, sort, offset: 0, limit: 24 };
+  const initialSearch = { query, category: category || null, projectType, gameVersion: gameVersion || null, loader: matchesLoaderFilter(projectType) ? loader || null : null, sort, offset: 0, limit: 24 };
   const [result, setResult] = useState<ModrinthSearchResult | null>(() => discoverCache.peek(searchKey(source, initialSearch), true) ?? null);
   const [loading, setLoading] = useState(!result);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -232,6 +225,7 @@ export function DiscoverPage({ embeddedInstanceId, initialType, initialSource, o
   const [modpackVersionId, setModpackVersionId] = useState("");
   const [modpackVersions, setModpackVersions] = useState<ModpackVersionOption[]>([]);
   const [modpackVersionsLoading, setModpackVersionsLoading] = useState(false);
+  const [versionReload, setVersionReload] = useState(0);
   const [plan, setPlan] = useState<ContentInstallPlan | null>(null);
   const [planError, setPlanError] = useState<string | null>(null);
   const [planning, setPlanning] = useState(false);
@@ -252,7 +246,18 @@ export function DiscoverPage({ embeddedInstanceId, initialType, initialSource, o
     rememberedFilters.set(filterKey, { source, query, gameVersion, loader, sort });
   }, [filterKey, source, query, gameVersion, loader, sort]);
 
+  useEffect(() => {
+    let alive=true; setCategory(""); setCategories([]); setCategoryError(false);
+    void command<Array<{id: string;name: string}>>("list_content_categories", {provider: source,projectType}).then(items => { if(alive) setCategories(items); }).catch(() => {if(alive) setCategoryError(true);});
+    return () => {alive=false;};
+  }, [source, projectType]);
   useEffect(() => { if (initialSource) setSource(initialSource); }, [initialSource]);
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.has("query")) setQuery(params.get("query") ?? "");
+    const provider = params.get("source");
+    if (!initialSource && (provider === "modrinth" || provider === "curseforge")) setSource(provider);
+  }, [location.search, initialSource]);
 
   useEffect(() => {
     minecraftCache.load("versions", () => command<MinecraftVersionSummary[]>("list_minecraft_versions"))
@@ -317,7 +322,7 @@ export function DiscoverPage({ embeddedInstanceId, initialType, initialSource, o
       .then(setProviders)
       .catch(() => setProviders([
         { provider: "modrinth", available: true, message: null },
-        { provider: "curseforge", available: true, message: tr("SLH relay configured; the first request verifies availability.") },
+        { provider: "curseforge", available: true, message: uiText("discover.texts.slhRelayConfiguredTheFirstRequestVerifiesAvailability", "SLH relay configured; the first request verifies availability.") },
       ]));
   }, [tr]);
 
@@ -327,7 +332,7 @@ export function DiscoverPage({ embeddedInstanceId, initialType, initialSource, o
 
   useEffect(() => {
     let active = true;
-    const args = { query, projectType, gameVersion: gameVersion || null,
+    const args = { query, category: category || null, projectType, gameVersion: gameVersion || null,
       loader: matchesLoaderFilter(projectType) ? loader || null : null, sort, offset: 0, limit: 24 };
     const key = searchKey(source, args);
     const cached = discoverCache.peek(key);
@@ -345,7 +350,7 @@ export function DiscoverPage({ embeddedInstanceId, initialType, initialSource, o
       setError(null);
       const availability = providers.find((provider) => provider.provider === source);
       if (availability && !availability.available) {
-        setError(availability.message ?? `${source} ${tr("is unavailable")}`);
+        setError(availability.message ?? `${source} ${uiText("discover.texts.isUnavailable", "is unavailable")}`);
         setLoading(false);
         return;
       }
@@ -370,14 +375,14 @@ export function DiscoverPage({ embeddedInstanceId, initialType, initialSource, o
       active = false;
       window.clearTimeout(timer);
     };
-  }, [gameVersion, loader, projectType, providers, query, sort, source]);
+  }, [gameVersion, loader, projectType, providers, query, category, sort, source]);
 
   const loadMore = async () => {
     if (!result || loading || loadingMore || !hasMore) return;
     setLoadingMore(true);
     try {
       const next = await searchDiscover(source, {
-        query,
+        query, category: category || null,
         projectType,
         gameVersion: gameVersion || null,
         loader: matchesLoaderFilter(projectType) ? loader || null : null,
@@ -408,15 +413,15 @@ export function DiscoverPage({ embeddedInstanceId, initialType, initialSource, o
     ));
   };
 
-  const selectTarget = (project: ModrinthProject) => {
+  const selectTarget = (project: ModrinthProject, provider = source) => {
     if (installing || batchInstalling || installStartRef.current) {
-      pushToast({ tone: "info", title: tr("Installation in progress"), message: tr("Wait for the current installation to finish.") });
+      pushToast({ tone: "info", title: uiText("discover.texts.installationInProgress", "Installation in progress"), message: uiText("discover.texts.waitForTheCurrentInstallationToFinish", "Wait for the current installation to finish.") });
       return;
     }
     const targets = compatibleInstances(project);
     selectedProjectRef.current = project;
     setSelectedProject(project);
-    setSelectedProvider(source);
+    setSelectedProvider(provider);
     setTargetInstance(targets.find((instance) => instance.id === requestedInstance)?.id ?? targets[0]?.id ?? "");
     setModpackName(safeInstanceName(project.title));
     setModpackGameVersion(gameVersion || "");
@@ -436,7 +441,7 @@ export function DiscoverPage({ embeddedInstanceId, initialType, initialSource, o
     if (!detailsProject) return;
     let active = true;
     setDetailsLoading(true);
-    command<ModrinthProjectDetails>(detailsProvider === "modrinth" ? "get_modrinth_project_details" : "get_curseforge_project_details", { projectId: detailsProject.projectId })
+    loadProjectDetails(detailsProvider, detailsProject.projectId)
       .then((value) => { if (active) setDetails(value); })
       .catch(() => { if (active) setDetails(null); })
       .finally(() => { if (active) setDetailsLoading(false); });
@@ -449,7 +454,7 @@ export function DiscoverPage({ embeddedInstanceId, initialType, initialSource, o
     const provider = detailsProvider;
     setDetailsProject(null);
     if (provider !== source) setSource(provider);
-    selectTarget(project);
+    selectTarget(project, provider);
   };
 
   const closeInstallDialog = () => {
@@ -475,10 +480,10 @@ export function DiscoverPage({ embeddedInstanceId, initialType, initialSource, o
   }, [selectedProject, selectedProvider, targetInstance]);
 
   useEffect(() => {
-    if (!selectedProject || selectedProject.projectType !== "modpack" || selectedProvider !== "modrinth") return;
+    if (!selectedProject || selectedProject.projectType !== "modpack") return;
     let active = true;
     setModpackVersionsLoading(true);
-    command<ModrinthProjectDetails>("get_modrinth_project_details", { projectId: selectedProject.projectId })
+    loadProjectDetails(selectedProvider, selectedProject.projectId)
       .then((value) => {
         if (!active) return;
         const versions = value.modpackVersions.filter((version) => version.gameVersions.length > 0);
@@ -491,10 +496,10 @@ export function DiscoverPage({ embeddedInstanceId, initialType, initialSource, o
           }
         }
       })
-      .catch(() => { if (active) setModpackVersions([]); })
+      .catch((reason) => { if (active) { setModpackVersions([]); setPlanError(String((reason as { message?: string }).message ?? reason)); } })
       .finally(() => { if (active) setModpackVersionsLoading(false); });
     return () => { active = false; };
-  }, [gameVersion, loader, selectedProject, selectedProvider]);
+  }, [gameVersion, loader, selectedProject, selectedProvider, versionReload]);
 
   const install = async () => {
     if (!selectedProject || installStartRef.current) return;
@@ -502,28 +507,35 @@ export function DiscoverPage({ embeddedInstanceId, initialType, initialSource, o
     const provider = selectedProvider;
     const instanceId = targetInstance;
     const instanceName = modpackName.trim();
-    if (project.projectType === "modpack" && selectedProvider === "modrinth" && (!modpackGameVersion || !modpackVersionId)) {
-      pushToast({ tone: "info", title: tr("Choose a version"), message: tr("Select a Minecraft and modpack version before downloading this modpack.") });
+    if (project.projectType === "modpack" && (!modpackGameVersion || !modpackVersionId)) {
+      pushToast({ tone: "info", title: uiText("discover.texts.chooseAVersion", "Choose a version"), message: uiText("discover.texts.selectAMinecraftAndModpackVersionBeforeDownloadingThis", "Select a Minecraft and modpack version before downloading this modpack.") });
       return;
     }
     installStartRef.current = true;
     setInstalling(true);
+    setPlanError(null);
     try {
       if (project.projectType === "modpack") {
         if (!instanceName) return;
-        const created = await command<Instance>(provider === "modrinth" ? "install_modrinth_modpack" : "install_curseforge_modpack", {
+        closeInstallDialog();
+        const created = await runPackInstall({
+          key: `${provider}:${project.projectId}:${modpackVersionId}`, name: instanceName,
+          minecraftVersion: modpackGameVersion,
+          loaderType: (modpackVersions.find((version) => version.id === modpackVersionId)?.loaders.find((value) => ["fabric", "forge", "neoforge", "quilt"].includes(value)) ?? "vanilla") as Instance["loaderType"],
+          showDialog: true,
+          onSuccess: async (instance) => {
+            navigate(`/instance/${instance.id}`);
+            onInstalled?.();
+          },
+          commandName: provider === "modrinth" ? "install_modrinth_modpack" : "install_curseforge_modpack", args: {
           projectId: project.projectId,
           name: instanceName,
           minecraftVersion: provider === "modrinth" ? modpackGameVersion || null : null,
           loader: provider === "modrinth" ? loader || null : null,
-          versionId: provider === "modrinth" ? modpackVersionId || null : null,
-        });
+          versionId: modpackVersionId || null,
+        } });
         await refresh();
-        pushToast({ tone: "success", title: tr("{name} installed", { name: created.name }), message: "" });
-        if (selectedProjectRef.current?.projectId === project.projectId) {
-          closeInstallDialog();
-          navigate(`/instance/${created.id}`);
-        }
+        pushToast({ tone: "success", title: uiText("discover.texts.installed", "{name} installed", { name: created.name }), message: "" });
         return;
       }
       if (!instanceId || !plan) return;
@@ -531,14 +543,17 @@ export function DiscoverPage({ embeddedInstanceId, initialType, initialSource, o
       await refresh();
       onInstalled?.();
       setInstalledRevision((value) => value + 1);
-      pushToast({ tone: "success", title: tr("{name} installed", { name: project.title }), message: "" });
+      pushToast({ tone: "success", title: uiText("discover.texts.installed", "{name} installed", { name: project.title }), message: "" });
       if (selectedProjectRef.current?.projectId === project.projectId) {
         closeInstallDialog();
         const targetTab = project.projectType === "resourcepack" ? "resourcepacks" : project.projectType === "shader" ? "shaders" : project.projectType === "world" ? "worlds" : "mods";
         if (!embeddedInstanceId) navigate(`/instance/${instanceId}?tab=${targetTab}`);
       }
     } catch (reason) {
-      pushToast({ tone: "error", title: tr("Content installation failed"), message: String((reason as { message?: string }).message ?? reason) });
+      if (project.projectType === "modpack") return; // The recoverable library job shows the exact failure.
+      const message = String((reason as { message?: string }).message ?? reason);
+      if (selectedProjectRef.current?.projectId === project.projectId) setPlanError(message);
+      pushToast({ tone: "error", title: uiText("discover.texts.contentInstallationFailed", "Content installation failed"), message });
     } finally {
       setInstalling(false);
       installStartRef.current = false;
@@ -583,9 +598,9 @@ export function DiscoverPage({ embeddedInstanceId, initialType, initialSource, o
     setQueuedInstalls({});
     setBatchInstalling(false);
     if (failures.length) {
-      pushToast({ tone: "error", title: tr("Some installs failed"), message: `${failures.length} ${tr("projects could not be installed")}: ${failures.join(", ")}` });
+      pushToast({ tone: "error", title: uiText("discover.texts.someInstallsFailed", "Some installs failed"), message: `${failures.length} ${uiText("discover.texts.projectsCouldNotBeInstalled", "projects could not be installed")}: ${failures.join(", ")}` });
     } else {
-      pushToast({ tone: "success", title: tr("Content installed"), message: `${installedFiles} ${tr("files installed")}; ${unchangedFiles} ${tr("already current")}.` });
+      pushToast({ tone: "success", title: uiText("discover.texts.contentInstalled", "Content installed"), message: `${installedFiles} ${uiText("discover.texts.filesInstalled", "files installed")}; ${unchangedFiles} ${uiText("discover.texts.alreadyCurrent", "already current")}.` });
     }
   };
 
@@ -613,49 +628,50 @@ export function DiscoverPage({ embeddedInstanceId, initialType, initialSource, o
     <div className={`${page.page} ${embeddedInstanceId ? styles.embedded : ""}`}>
       <header className={page.header}>
         <div>
-          <h1>{scopedInstance ? `${tr("Content for")} ${scopedInstance.name}` : tr("Discover something worth playing")}</h1>
-          <p>{scopedInstance ? `${tr("Only content compatible with")} Minecraft ${scopedInstance.minecraftVersion}${["vanilla", "bedrock"].includes(scopedInstance.loaderType) ? "" : ` · ${scopedInstance.loaderType}`} ${tr("is shown.")}` : tr("Browse current projects with compatibility metadata, required dependencies, and installation decisions kept explicit.")}</p>
+          <h1>{scopedInstance ? `${uiText("installation.texts.contentFor", "Content for")} ${scopedInstance.name}` : uiText("discover.texts.discoverSomethingWorthPlaying", "Discover something worth playing")}</h1>
+          <p>{scopedInstance ? `${uiText("discover.texts.onlyContentCompatibleWith", "Only content compatible with")} Minecraft ${scopedInstance.minecraftVersion}${["vanilla", "bedrock"].includes(scopedInstance.loaderType) ? "" : ` · ${scopedInstance.loaderType}`} ${uiText("discover.texts.isShown", "is shown.")}` : uiText("discover.texts.browseCurrentProjectsWithCompatibilityMetadataRequiredDependenciesAnd", "Browse current projects with compatibility metadata, required dependencies, and installation decisions kept explicit.")}</p>
         </div>
         <div className={styles.headerActions}>
-        {!hideProviderTabs ? <div className={styles.sourceStatus} aria-label={tr("Content provider")}>
+        {!hideProviderTabs ? <div className={styles.sourceStatus} aria-label={uiText("discover.texts.contentProvider", "Content provider")}>
           {(["modrinth", "curseforge"] as const).map((providerName) => {
             const availability = providers.find((provider) => provider.provider === providerName);
             const available = availability?.available ?? providerName === "modrinth";
             const supportsType = !(projectType === "world" && providerName === "modrinth");
-            return <button type="button" key={providerName} disabled={!supportsType} title={supportsType ? (availability?.message ? tr(availability.message) : undefined) : tr("World downloads are provided by CurseForge")} className={`${source === providerName ? styles.sourceActive : ""} ${available ? styles.sourceAvailable : styles.sourceUnavailable}`} onClick={() => { if (supportsType) { setSource(providerName); setSelectedProject(null); } }}><img className={styles.providerIcon} src={providerName === "modrinth" ? modrinthIcon : curseforgeIcon} alt="" /><span />{providerName === "modrinth" ? "Modrinth" : "CurseForge"}{available ? "" : ` (${tr("key required")})`}</button>;
+            return <button type="button" key={providerName} disabled={!supportsType} title={supportsType ? (availability?.message ? tr(availability.message) : undefined) : uiText("discover.texts.worldDownloadsAreProvidedByCurseforge", "World downloads are provided by CurseForge")} className={`${source === providerName ? styles.sourceActive : ""} ${available ? styles.sourceAvailable : styles.sourceUnavailable}`} onClick={() => { if (supportsType) { setSource(providerName); setSelectedProject(null); } }}><img className={styles.providerIcon} src={providerName === "modrinth" ? modrinthIcon : curseforgeIcon} alt="" /><span />{providerName === "modrinth" ? "Modrinth" : "CurseForge"}{available ? "" : ` (${uiText("discover.texts.keyRequired", "key required")})`}</button>;
           })}
         </div> : null}
-        {onClose ? <button className={common.secondaryButton} type="button" onClick={onClose}><X size={16} /> {tr("Back to files")}</button> : null}
+        {onClose ? <button className={common.secondaryButton} type="button" onClick={onClose}><X size={16} /> {uiText("installation.texts.backToFiles", "Back to files")}</button> : null}
         </div>
       </header>
       <div className={styles.searchRow}>
         <label className={styles.searchBox}>
           <MagnifyingGlass size={19} weight="bold" />
-          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={`${tr("Search")} ${tr(types.find((type) => type.id === projectType)?.label.toLowerCase() ?? "")}`} />
+          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={`${uiText("installation.texts.search", "Search")} ${tr(types.find((type) => type.id === projectType)?.label.toLowerCase() ?? "")}`} />
         </label>
         <div className={styles.types}>
           {scoped ? types.filter((type) => type.id !== "modpack").map((type) => <button type="button" className={projectType === type.id ? styles.active : ""} key={type.id} onClick={() => setProjectType(type.id)}>{tr(type.label)}</button>) : null}
         </div>
       </div>
       <div className={styles.filters}>
-        <span className={styles.filterLabel}><Funnel size={16} /> {tr("Filters")}</span>
-        <label><span>{tr("Minecraft version")}</span><select value={gameVersion} disabled={scoped} onChange={(event) => setGameVersion(event.target.value)}><option value="">{tr("All versions")}</option>{visibleMinecraftVersions.map((version) => <option key={version.id} value={version.id}>{version.id}</option>)}</select></label>
-        <label><span>{tr("Loader")}</span><select value={loader} disabled={scoped || !matchesLoaderFilter(projectType)} onChange={(event) => setLoader(event.target.value)}><option value="">{tr("All loaders")}</option><option value="fabric">Fabric</option><option value="forge">Forge</option><option value="neoforge">NeoForge</option><option value="quilt">Quilt</option></select></label>
-        <label><span>{tr("Sort by")}</span><select value={sort} onChange={(event) => setSort(event.target.value)}>{sortOptions.map((option) => <option key={option.id} value={option.id}>{tr(option.label)}</option>)}</select></label>
-        <label className={styles.snapshotToggle}><input type="checkbox" checked={includeSnapshots} disabled={scoped} onChange={(event) => { setIncludeSnapshots(event.target.checked); if (!event.target.checked && minecraftVersions.some((version) => version.id === gameVersion && version.versionType === "snapshot")) setGameVersion(""); }} /><span>{tr("Snapshots")}</span></label>
+        <label><span>{uiText("discover.categories", "Category")}</span><select aria-label={uiText("discover.categories", "Category")} value={category} onChange={event => setCategory(event.target.value)} disabled={categoryError}><option value="">{categoryError ? uiText("discover.categoriesUnavailable", "Categories unavailable") : uiText("discover.allCategories", "All categories")}</option>{categories.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+        <span className={styles.filterLabel}><Funnel size={16} /> {uiText("installation.texts.filters", "Filters")}</span>
+        <label><span>{uiText("discover.texts.minecraftVersion", "Minecraft version")}</span><select value={gameVersion} disabled={scoped} onChange={(event) => setGameVersion(event.target.value)}><option value="">{uiText("installation.texts.allVersions", "All versions")}</option>{visibleMinecraftVersions.map((version) => <option key={version.id} value={version.id}>{version.id}</option>)}</select></label>
+        <label><span>{uiText("library.loader", "Loader")}</span><select value={loader} disabled={scoped || !matchesLoaderFilter(projectType)} onChange={(event) => setLoader(event.target.value)}><option value="">{uiText("discover.texts.allLoaders", "All loaders")}</option><option value="fabric">{uiText("discover.texts.fabric", "Fabric")}</option><option value="forge">{uiText("discover.texts.forge", "Forge")}</option><option value="neoforge">{uiText("discover.texts.neoforge", "NeoForge")}</option><option value="quilt">{uiText("discover.texts.quilt", "Quilt")}</option></select></label>
+        <label><span>{uiText("installation.texts.sortBy", "Sort by")}</span><select value={sort} onChange={(event) => setSort(event.target.value)}>{sortOptions.map((option) => <option key={option.id} value={option.id}>{tr(option.label)}</option>)}</select></label>
+        <label className={styles.snapshotToggle}><input type="checkbox" checked={includeSnapshots} disabled={scoped} onChange={(event) => { setIncludeSnapshots(event.target.checked); if (!event.target.checked && minecraftVersions.some((version) => version.id === gameVersion && version.versionType === "snapshot")) setGameVersion(""); }} /><span>{uiText("discover.texts.snapshots", "Snapshots")}</span></label>
       </div>
-      {scopedInstance && ["vanilla", "bedrock"].includes(scopedInstance.loaderType) && projectType === "mod" ? <div className={styles.scopedNotice}>{tr("Mods require Fabric, Forge, NeoForge, or Quilt. Change this instance loader in Settings first.")}</div> : null}
-      {!scoped && source === "curseforge" ? <div className={styles.curseforgeWip}>W.I.P.</div> : null}
+      {scopedInstance && ["vanilla", "bedrock"].includes(scopedInstance.loaderType) && projectType === "mod" ? <div className={styles.scopedNotice}>{uiText("discover.texts.modsRequireFabricForgeNeoforgeOrQuiltChangeThis", "Mods require Fabric, Forge, NeoForge, or Quilt. Change this instance loader in Settings first.")}</div> : null}
+      {!scoped && source === "curseforge" ? <div className={styles.curseforgeWip}>{uiText("discover.texts.wIP", "W.I.P.")}</div> : null}
       {scopedInstance && ["vanilla", "bedrock"].includes(scopedInstance.loaderType) && projectType === "mod" ? null : loading ? (
-        <div className={styles.loading}><SpinnerGap size={25} className={styles.spin} /> {tr("Loading projects from")} {source === "modrinth" ? "Modrinth" : "CurseForge"}</div>
+        <div className={styles.loading}><SpinnerGap size={25} className={styles.spin} /> {uiText("installation.texts.loadingProjectsFrom", "Loading projects from")} {source === "modrinth" ? "Modrinth" : "CurseForge"}</div>
       ) : error ? (
-        <div className={page.emptyState}><div><CloudSlash size={35} /><h2>{tr("Discover is offline")}</h2><p>{error}</p></div></div>
+        <div className={page.emptyState}><div><CloudSlash size={35} /><h2>{uiText("discover.texts.discoverIsOffline", "Discover is offline")}</h2><p><ErrorText message={error} /></p></div></div>
       ) : result ? (
         <>
-          <div className={styles.resultSummary}>{result.totalHits.toLocaleString()} {tr("matching projects")}</div>
+          <div className={styles.resultSummary}>{result.totalHits.toLocaleString()} {uiText("installation.texts.matchingProjects", "matching projects")}</div>
           {scoped && queuedItems.length ? <div className={styles.batchInstallBar}>
-            <span><strong>{batchInstalling ? `${batchProgress.current} / ${batchProgress.total}` : queuedItems.length}</strong><small>{batchInstalling ? tr("Installing selected content") : tr("content items selected")}</small></span>
-            <div><button className={common.secondaryButton} type="button" disabled={batchInstalling} onClick={() => setQueuedInstalls({})}>{tr("Clear selection")}</button><button className={common.button} type="button" disabled={batchInstalling} onClick={() => void installQueued()}>{batchInstalling ? <SpinnerGap className={styles.spin} size={16} /> : <DownloadSimple size={16} />} {tr("Install selected")}</button></div>
+            <span><strong>{batchInstalling ? `${batchProgress.current} / ${batchProgress.total}` : queuedItems.length}</strong><small>{batchInstalling ? uiText("discover.texts.installingSelectedContent", "Installing selected content") : uiText("discover.texts.contentItemsSelected", "content items selected")}</small></span>
+            <div><button className={common.secondaryButton} type="button" disabled={batchInstalling} onClick={() => setQueuedInstalls({})}>{uiText("discover.texts.clearSelection", "Clear selection")}</button><button className={common.button} type="button" disabled={batchInstalling} onClick={() => void installQueued()}>{batchInstalling ? <SpinnerGap className={styles.spin} size={16} /> : <DownloadSimple size={16} />} {uiText("discover.texts.installSelected", "Install selected")}</button></div>
           </div> : null}
           <div className={styles.projectGrid}>
             {result.hits.map((project) => {
@@ -671,19 +687,19 @@ export function DiscoverPage({ embeddedInstanceId, initialType, initialSource, o
                   <ProjectArtwork iconUrl={project.iconUrl} />
                 </div>
                 <div className={styles.projectBody} data-content-provider="true">
-                  <div className={styles.projectTitle}><div><h2>{project.title}</h2><span>{tr("by")} {project.author}</span></div><span className={common.badge}>{tr(contentTypeLabels[project.projectType] ?? project.projectType)}</span></div>
+                  <div className={styles.projectTitle}><div><AutoFitTitle text={project.title} enabled={bootstrap?.settings.appearance.fitProjectTitles === true} /><span>{uiText("installation.texts.by", "by")} {project.author}</span></div><span className={common.badge}>{tr(contentTypeLabels[project.projectType] ?? project.projectType)}</span></div>
                   <p>{project.description}</p>
-                  <div className={styles.projectMeta}><span><DownloadSimple size={14} /> {compact(project.downloads)}</span><span><Star size={14} /> {compact(project.follows)}</span><span>{project.versions[0] ?? tr("Multiple versions")}</span></div>
+                  <div className={styles.projectMeta}><span><DownloadSimple size={14} /> {compact(project.downloads)}</span><span><Star size={14} /> {compact(project.follows)}</span><span>{project.versions[0] ?? uiText("installation.texts.multipleVersions", "Multiple versions")}</span></div>
                   {(() => {
                     const hasTarget = project.projectType === "modpack" || compatibleInstances(project).length > 0;
-                    const label = installedStatus === "checking" ? tr("Checking") : installedStatus === "current" ? tr("Installed") : installedStatus === "update" ? tr("Update") : installedStatus === "error" ? tr("Could not check") : scoped && project.projectType !== "modpack" ? tr("Install") : project.projectType === "modpack" ? tr("Install") : tr("Choose target instance");
+                    const label = installedStatus === "checking" ? uiText("discover.texts.checking", "Checking") : installedStatus === "current" ? uiText("discover.texts.installedf8b32f", "Installed") : installedStatus === "update" ? uiText("discover.texts.update", "Update") : installedStatus === "error" ? uiText("discover.texts.couldNotCheck", "Could not check") : scoped && project.projectType !== "modpack" ? uiText("installation.texts.install", "Install") : project.projectType === "modpack" ? uiText("installation.texts.install", "Install") : uiText("discover.texts.chooseTargetInstance", "Choose target instance");
                     const actionable = !installed || updateAvailable;
                     const title = hasTarget
                         ? label
-                        : tr("No installed compatible instance is available");
+                        : uiText("discover.texts.noInstalledCompatibleInstanceIsAvailable", "No installed compatible instance is available");
                     return <div className={styles.cardActions}>
-                      {canInstallIntoScoped && actionable ? <label className={styles.queueToggle} title={tr("Select for batch installation")} onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}><input type="checkbox" checked={queued} disabled={batchInstalling} onChange={() => toggleQueuedInstall(project)} /><span>{tr("Select")}</span></label> : null}
-                      <button className={`${common.secondaryButton} ${alreadyCurrent ? styles.installedButton : updateAvailable ? styles.updateButton : ""}`} type="button" disabled={!hasTarget || batchInstalling || !actionable} title={updateAvailable ? tr("Update this content") : title} onClick={(event) => { event.stopPropagation(); selectTarget(project); }}>{label}</button>
+                      {canInstallIntoScoped && actionable ? <label className={styles.queueToggle} title={uiText("discover.texts.selectForBatchInstallation", "Select for batch installation")} onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}><input type="checkbox" checked={queued} disabled={batchInstalling} onChange={() => toggleQueuedInstall(project)} /><span>{uiText("discover.texts.select", "Select")}</span></label> : null}
+                      <button className={`${common.secondaryButton} ${alreadyCurrent ? styles.installedButton : updateAvailable ? styles.updateButton : ""}`} type="button" disabled={!hasTarget || batchInstalling || !actionable} title={updateAvailable ? uiText("discover.texts.updateThisContent", "Update this content") : title} onClick={(event) => { event.stopPropagation(); selectTarget(project); }}>{label}</button>
                     </div>;
                   })()}
                 </div>
@@ -694,59 +710,58 @@ export function DiscoverPage({ embeddedInstanceId, initialType, initialSource, o
             <div className={styles.loadMore}>
               <button className={common.secondaryButton} type="button" disabled={loadingMore} onClick={() => void loadMore()}>
                 {loadingMore ? <SpinnerGap className={styles.spin} size={16} /> : null}
-                {tr(loadingMore ? "Loading" : "Load more")}
+                {tr(loadingMore ? uiText("common.texts.loading", "Loading") : uiText("installation.texts.loadMore", "Load more"))}
               </button>
             </div>
           ) : null}
         </>
       ) : null}
-      <Dialog open={Boolean(selectedProject)} title={selectedProject ? `${tr("Install")} ${selectedProject.title}` : `${tr("Install from")} ${selectedProvider === "modrinth" ? "Modrinth" : "CurseForge"}`} description={selectedProject?.projectType === "modpack" ? `${selectedProvider === "modrinth" ? "Modrinth" : "CurseForge"}: ${tr("the archive defines Minecraft, its loader, files, and overrides for a new isolated instance.")}` : tr("SLH resolves a compatible version, required dependencies, distribution permission, and conflicts before downloading.")} onClose={closeInstallDialog}>
+      <Dialog open={Boolean(selectedProject)} title={selectedProject ? uiText("installation.installNamed", "Install {name}", { name: selectedProject.title }) : `${uiText("discover.texts.installFrom", "Install from")} ${selectedProvider === "modrinth" ? "Modrinth" : "CurseForge"}`} description={selectedProject?.projectType === "modpack" ? `${selectedProvider === "modrinth" ? "Modrinth" : "CurseForge"}: ${uiText("discover.texts.theArchiveDefinesMinecraftItsLoaderFilesAndOverrides", "the archive defines Minecraft, its loader, files, and overrides for a new isolated instance.")}` : uiText("discover.texts.slhResolvesACompatibleVersionRequiredDependenciesDistributionPermission", "SLH resolves a compatible version, required dependencies, distribution permission, and conflicts before downloading.")} onClose={closeInstallDialog}>
         {selectedProject ? <div className={styles.installDialog} data-install-dialog>
           {selectedProject.projectType === "modpack" ? <>
-            <div className={styles.modpackNotice}><Stack size={28} /><span><strong>{tr("New isolated instance")}</strong><small>{tr("The verified archive remains in downloads for repair or re-import.")}</small></span></div>
-            <label className={common.field}><span className={common.label}>{tr("Instance name")}</span><input className={common.input} maxLength={80} value={modpackName} onChange={(event) => setModpackName(event.target.value)} /></label>
-            {selectedProvider === "modrinth" ? <div className={styles.modpackVersionSelectors}>
-              {modpackVersionsLoading ? <div className={styles.detailsLoading}><SpinnerGap className={styles.spin} size={17} /> {tr("Loading versions")}</div> : <>
-                <VersionPicker label={tr("Minecraft version")} value={modpackGameVersion} options={selectableModpackMinecraftVersions.map((version) => ({ value: version, label: version }))} onChange={chooseModpackMinecraftVersion} />
-                <VersionPicker label={tr("Modpack version")} value={modpackVersionId} options={selectableModpackVersions.map((version) => ({ value: version.id, label: version.versionNumber }))} onChange={(value) => { const version = modpackVersions.find((item) => item.id === value); if (version) chooseModpackVersion(version); else setModpackVersionId(""); }} />
+            <div className={styles.modpackNotice}><Stack size={28} /><span><strong>{uiText("discover.texts.newIsolatedInstance", "New isolated instance")}</strong><small>{uiText("discover.texts.theVerifiedArchiveRemainsInDownloadsForRepairOr", "The verified archive remains in downloads for repair or re-import.")}</small></span></div>
+            <label className={common.field}><span className={common.label}>{uiText("installation.texts.instanceName", "Instance name")}</span><input className={common.input} maxLength={80} value={modpackName} onChange={(event) => setModpackName(event.target.value)} /></label>
+            <div className={styles.modpackVersionSelectors}>
+              {modpackVersionsLoading ? <div className={styles.detailsLoading}><SpinnerGap className={styles.spin} size={17} /> {uiText("discover.texts.loadingVersions", "Loading versions")}</div> : <>
+                <VersionPicker label={uiText("discover.texts.minecraftVersion", "Minecraft version")} value={modpackGameVersion} options={selectableModpackMinecraftVersions.map((version) => ({ value: version, label: version }))} onChange={chooseModpackMinecraftVersion} />
+                <VersionPicker label={uiText("discover.texts.modpackVersion", "Modpack version")} value={modpackVersionId} options={selectableModpackVersions.map((version) => ({ value: version.id, label: version.versionNumber }))} onChange={(value) => { const version = modpackVersions.find((item) => item.id === value); if (version) chooseModpackVersion(version); else setModpackVersionId(""); }} />
               </>}
-              {!modpackGameVersion || !modpackVersionId ? <small className={styles.versionHint}>{tr("Choose a Minecraft version to continue")}</small> : null}
-            </div> : null}
+              {!modpackGameVersion || !modpackVersionId ? <small className={styles.versionHint}>{uiText("discover.texts.chooseAMinecraftVersionToContinue", "Choose a Minecraft version to continue")}</small> : null}
+            </div>
           </> : <>
-            {scopedInstance ? <div className={styles.fixedTarget}><strong>{tr("Target instance")}</strong><span>{scopedInstance.name} · Minecraft {scopedInstance.minecraftVersion} · {scopedInstance.loaderType}</span></div> : <label className={common.field}><span className={common.label}>{tr("Target instance")}</span><select className={common.select} value={targetInstance} onChange={(event) => setTargetInstance(event.target.value)}>{compatibleInstances(selectedProject).map((instance) => <option value={instance.id} key={instance.id}>{instance.name} / {instance.minecraftVersion} / {instance.loaderType}</option>)}</select></label>}
-            {planning ? <div className={styles.planState}><SpinnerGap className={styles.spin} size={21} /> {tr("Checking compatibility and dependencies")}</div> : planError ? <div className={styles.planError}>{planError}</div> : plan ? <>
-              <div className={styles.planSummary}><span><strong>{plan.items.length}</strong><small>{tr("files including dependencies")}</small></span><span><strong>{formatBytes(plan.totalBytes)}</strong><small>{tr("verified download")}</small></span><span><strong>{plan.conflicts.length}</strong><small>{tr("conflicts")}</small></span></div>
-              <div className={styles.planItems} data-content-provider="true">{plan.items.map((item) => <div key={item.versionId}><span><strong>{item.displayName}</strong><small>{item.fileName} / {item.versionNumber}</small></span><span className={item.action === "unchanged" ? common.successBadge : item.action === "update" ? common.warningBadge : common.badge}>{tr(item.action === "unchanged" ? "Unchanged" : item.action === "update" ? "Update" : "Install")}</span></div>)}</div>
+            {scopedInstance ? <div className={styles.fixedTarget}><strong>{uiText("discover.texts.targetInstance", "Target instance")}</strong><span>{scopedInstance.name}{" "}{uiText("discover.texts.minecraft", "· Minecraft")}{" "}{scopedInstance.minecraftVersion} · {scopedInstance.loaderType}</span></div> : <label className={common.field}><span className={common.label}>{uiText("discover.texts.targetInstance", "Target instance")}</span><select className={common.select} value={targetInstance} onChange={(event) => setTargetInstance(event.target.value)}>{compatibleInstances(selectedProject).map((instance) => <option value={instance.id} key={instance.id}>{instance.name} / {instance.minecraftVersion} / {instance.loaderType}</option>)}</select></label>}
+            {planning ? <div className={styles.planState}><SpinnerGap className={styles.spin} size={21} /> {uiText("discover.texts.checkingCompatibilityAndDependencies", "Checking compatibility and dependencies")}</div> : planError ? <div className={styles.planError}><ErrorText message={planError} /></div> : plan ? <>
+              <div className={styles.planSummary}><span><strong>{plan.items.length}</strong><small>{uiText("discover.texts.filesIncludingDependencies", "files including dependencies")}</small></span><span><strong>{formatBytes(plan.totalBytes)}</strong><small>{uiText("discover.texts.verifiedDownload", "verified download")}</small></span><span><strong>{plan.conflicts.length}</strong><small>{uiText("discover.texts.conflicts", "conflicts")}</small></span></div>
+              <div className={styles.planItems} data-content-provider="true">{plan.items.map((item) => <div key={item.versionId}><span><strong>{item.displayName}</strong><small>{item.fileName} / {item.versionNumber}</small></span><span className={item.action === "unchanged" ? common.successBadge : item.action === "update" ? common.warningBadge : common.badge}>{tr(item.action === "unchanged" ? uiText("discover.texts.unchanged", "Unchanged") : item.action === "update" ? uiText("discover.texts.update", "Update") : uiText("installation.texts.install", "Install"))}</span></div>)}</div>
               {plan.conflicts.length ? <div className={styles.planError}>{plan.conflicts.join("; ")}</div> : null}
             </> : null}
           </>}
-          {installing ? <div className={styles.backgroundInstall}><SpinnerGap className={styles.spin} size={20} /><span><strong>{tr("Installation is running")}</strong><small>{tr("You can close this window. SLH will notify you when it finishes.")}</small></span></div> : null}
-          <div className={styles.installActions}><button className={common.secondaryButton} type="button" onClick={closeInstallDialog}>{installing ? tr("Close") : tr("Cancel")}</button><button className={`${common.button} ${styles.installPrimary}`} type="button" disabled={installing || (selectedProject.projectType === "modpack" ? !modpackName.trim() || (selectedProvider === "modrinth" && (!modpackGameVersion || !modpackVersionId)) : !plan || plan.conflicts.length > 0)} onClick={() => void install()}>{installing ? <><SpinnerGap className={styles.spin} size={16} /> {tr("Installing")}</> : selectedProject.projectType === "modpack" ? tr("Download and install") : tr("Install verified files")}</button></div>
+          {selectedProject.projectType === "modpack" && planError ? <PackInstallError message={planError} busy={installing || modpackVersionsLoading} showRetry onRetry={async () => {
+            if (!modpackVersionId) { setPlanError(null); setVersionReload((value) => value + 1); }
+            else await install();
+          }} onError={setPlanError} /> : null}
+          {installing ? <div className={styles.backgroundInstall}><SpinnerGap className={styles.spin} size={20} /><span><strong>{uiText("discover.texts.installationIsRunning", "Installation is running")}</strong><small>{uiText("discover.texts.youCanCloseThisWindowSlhWillNotifyYou", "You can close this window. SLH will notify you when it finishes.")}</small></span></div> : null}
+          <div className={styles.installActions}><button className={common.secondaryButton} type="button" onClick={closeInstallDialog}>{installing ? uiText("common.close", "Close") : uiText("common.cancel", "Cancel")}</button><button className={`${common.button} ${styles.installPrimary}`} type="button" disabled={installing || (selectedProject.projectType === "modpack" ? !modpackName.trim() || (!modpackGameVersion || !modpackVersionId) : !plan || plan.conflicts.length > 0)} onClick={() => void install()}>{installing ? <><SpinnerGap className={styles.spin} size={16} /> {uiText("installation.texts.installing", "Installing")}</> : selectedProject.projectType === "modpack" ? uiText("discover.texts.downloadAndInstall", "Download and install") : uiText("discover.texts.installVerifiedFiles", "Install verified files")}</button></div>
         </div> : null}
       </Dialog>
-      <Dialog open={Boolean(detailsProject)} title={detailsProject ? <button className={styles.dialogProjectTitle} type="button" onClick={() => void openUrl(projectPageUrl(detailsProvider, detailsProject))}>{detailsProject.title}</button> : tr("Project")} description={detailsProject ? `${detailsProvider === "modrinth" ? "Modrinth" : "CurseForge"} · ${detailsProject.projectType}` : ""} onClose={() => setDetailsProject(null)} width="large">
+      <Dialog open={Boolean(detailsProject)} title={detailsProject ? <button className={styles.dialogProjectTitle} type="button" onClick={() => void openUrl(projectPageUrl(detailsProvider, detailsProject))}>{detailsProject.title}</button> : uiText("discover.texts.project", "Project")} description={detailsProject ? `${detailsProvider === "modrinth" ? "Modrinth" : "CurseForge"} · ${detailsProject.projectType}` : ""} onClose={() => setDetailsProject(null)} width="large">
         {detailsProject ? <div className={styles.detailsDialog}>
           <div className={styles.detailsHero}>
             <div className={styles.detailsArtwork}><ProjectArtwork iconUrl={detailsProject.iconUrl} /></div>
-            <div><h2>{detailsProject.title}</h2><span>{tr("by")} {detailsProject.author}</span><div className={styles.detailsStats}><span><DownloadSimple size={16} /> {compact(detailsProject.downloads)} {tr("downloads")}</span><span><Star size={16} /> {compact(detailsProject.follows)} {tr("followers")}</span></div><div className={styles.detailTags}>{detailsProject.categories.slice(0, 8).map((category) => <span key={category}>{category}</span>)}</div></div>
+            <div><h2>{detailsProject.title}</h2><span>{uiText("installation.texts.by", "by")} {detailsProject.author}</span><div className={styles.detailsStats}><span><DownloadSimple size={16} /> {compact(detailsProject.downloads)} {uiText("discover.texts.downloads", "downloads")}</span><span><Star size={16} /> {compact(detailsProject.follows)} {uiText("discover.texts.followers", "followers")}</span></div><div className={styles.detailTags}>{detailsProject.categories.slice(0, 8).map((category) => <span key={category}>{category}</span>)}</div></div>
           </div>
-          <section><h3>{tr("Description")}</h3>{detailsLoading ? <div className={styles.detailsLoading}><SpinnerGap className={styles.spin} size={18} /> {tr("Loading")}</div> : <MarkdownRenderer markdown={details?.body || detailsProject.description} onImage={(image) => showMediaPreview([image], 0)} />}</section>
-          {details?.gallery.length ? <section><h3>{tr("Gallery")}</h3><div className={styles.gallery}>{details.gallery.map((image, index) => <button type="button" className={styles.galleryItem} onClick={() => showMediaPreview(details.gallery, index)} title={image.title ?? tr("Open image")} key={image.url}><img src={image.thumbnailUrl ?? image.url} alt={image.title ?? ""} loading="lazy" /></button>)}</div></section> : null}
-          <section><h3>{tr("Versions")}</h3><div className={styles.detailTags}>{[...detailsProject.versions].sort(compareMinecraftVersions).slice(0, 12).map((version) => <span key={version}>{version}</span>)}</div></section>
-          <div className={styles.detailsActions}><button className={common.secondaryButton} type="button" onClick={() => setDetailsProject(null)}>{tr("Close")}</button><button className={common.button} type="button" onClick={installFromDetails}><DownloadSimple size={17} /> {tr("Install")}</button></div>
+          <section><h3>{uiText("discover.texts.description", "Description")}</h3>{detailsLoading ? <div className={styles.detailsLoading}><SpinnerGap className={styles.spin} size={18} /> {uiText("common.texts.loading", "Loading")}</div> : <MarkdownRenderer markdown={details?.body || detailsProject.description} onImage={(image) => showMediaPreview([image], 0)} />}</section>
+          {details?.gallery.length ? <section><h3>{uiText("discover.texts.gallery", "Gallery")}</h3><div className={styles.gallery}>{details.gallery.map((image, index) => <button type="button" className={styles.galleryItem} onClick={() => showMediaPreview(details.gallery, index)} title={image.title ?? uiText("discover.texts.openImage", "Open image")} key={image.url}><img src={image.thumbnailUrl ?? image.url} alt={image.title ?? ""} loading="lazy" /></button>)}</div></section> : null}
+          <section><h3>{uiText("discover.texts.versions", "Versions")}</h3><div className={styles.detailTags}>{[...detailsProject.versions].sort(compareMinecraftVersions).slice(0, 12).map((version) => <span key={version}>{version}</span>)}</div></section>
+          <div className={styles.detailsActions}><button className={common.secondaryButton} type="button" onClick={() => setDetailsProject(null)}>{uiText("common.close", "Close")}</button><button className={common.button} type="button" onClick={installFromDetails}><DownloadSimple size={17} /> {uiText("installation.texts.install", "Install")}</button></div>
         </div> : null}
       </Dialog>
-      <Dialog open={Boolean(mediaPreview)} title={mediaPreview?.images[mediaPreview.index]?.title ?? tr("Image preview")} onClose={() => setMediaPreview(null)} width="xlarge">
+      <Dialog open={Boolean(mediaPreview)} title={mediaPreview?.images[mediaPreview.index]?.title ?? uiText("discover.texts.imagePreview", "Image preview")} onClose={() => setMediaPreview(null)} width="xlarge">
         {mediaPreview ? <div className={styles.lightbox}>
           <img src={mediaPreview.images[mediaPreview.index].url} alt={mediaPreview.images[mediaPreview.index].title ?? ""} />
-          {mediaPreview.images.length > 1 ? <div className={styles.lightboxControls}><button className={common.iconButton} type="button" aria-label={tr("Previous image")} disabled={mediaPreview.index === 0} onClick={() => setMediaPreview((current) => current ? { ...current, index: current.index - 1 } : current)}><ArrowLeft size={19} /></button><span>{mediaPreview.index + 1} / {mediaPreview.images.length}</span><button className={common.iconButton} type="button" aria-label={tr("Next image")} disabled={mediaPreview.index === mediaPreview.images.length - 1} onClick={() => setMediaPreview((current) => current ? { ...current, index: current.index + 1 } : current)}><ArrowRight size={19} /></button></div> : null}
+          {mediaPreview.images.length > 1 ? <div className={styles.lightboxControls}><button className={common.iconButton} type="button" aria-label={uiText("discover.texts.previousImage", "Previous image")} disabled={mediaPreview.index === 0} onClick={() => setMediaPreview((current) => current ? { ...current, index: current.index - 1 } : current)}><ArrowLeft size={19} /></button><span>{mediaPreview.index + 1} / {mediaPreview.images.length}</span><button className={common.iconButton} type="button" aria-label={uiText("discover.texts.nextImage", "Next image")} disabled={mediaPreview.index === mediaPreview.images.length - 1} onClick={() => setMediaPreview((current) => current ? { ...current, index: current.index + 1 } : current)}><ArrowRight size={19} /></button></div> : null}
         </div> : null}
       </Dialog>
     </div>
   );
-}
-
-function formatBytes(bytes: number) {
-  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }

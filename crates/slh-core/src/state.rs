@@ -101,7 +101,9 @@ pub struct AppState {
     pub kill_requested: Arc<RwLock<HashSet<String>>>,
     pub curseforge_api_key: Arc<RwLock<Option<String>>>,
     pub curseforge_key_source: Arc<RwLock<String>>,
+    pub curseforge_http: Arc<crate::content::curseforge_http::CurseForgeHttp>,
     pub java_scan_cancelled: Arc<AtomicBool>,
+    pub java_scan_lock: Arc<Mutex<()>>,
     /// A Bedrock process owns the user's registered LocalState. Keep this
     /// lock for the complete launch lifetime so two profiles can never swap
     /// the same Windows package data concurrently.
@@ -185,7 +187,9 @@ impl AppState {
             kill_requested: Arc::new(RwLock::new(HashSet::new())),
             curseforge_api_key: Arc::new(RwLock::new(curseforge_api_key)),
             curseforge_key_source: Arc::new(RwLock::new(curseforge_key_source)),
+            curseforge_http: Arc::new(crate::content::curseforge_http::CurseForgeHttp::default()),
             java_scan_cancelled: Arc::new(AtomicBool::new(false)),
+            java_scan_lock: Arc::new(Mutex::new(())),
             bedrock_profile_lock: Arc::new(Mutex::new(())),
             _log_guard: log_guard,
         };

@@ -6,6 +6,7 @@ import {
   Bell,
   Box,
   Brush,
+  Pencil as PixelPencil,
   Castle,
   Check as PixelCheck,
   CheckboxOn,
@@ -131,3 +132,5 @@ export const Worlds = pixelIcon(Castle);
 export const X = pixelIcon(Close);
 export const BrushIcon = pixelIcon(Brush);
 export const EarthIcon = pixelIcon(Earth);
+
+export const Pencil = pixelIcon(PixelPencil);

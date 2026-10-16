@@ -115,6 +115,25 @@ pub async fn install_instance(
                 .into()
         }));
     }
+    // A failed archive import must resume its mod files as well as Minecraft,
+    // including after the launcher has restarted and lost its in-memory jobs.
+    if matches!(current.status.as_str(), "created" | "error") {
+        let pending: Option<String> = sqlx::query_scalar(
+            "SELECT value_json FROM settings WHERE key LIKE 'curseforge-import:%' \
+             AND json_extract(value_json, '$.instanceId') = ? \
+             AND json_extract(value_json, '$.pending') = 1 LIMIT 1",
+        ).bind(instance_id).fetch_optional(&state.database).await?;
+        if let Some(pending) = pending {
+            let value: serde_json::Value = serde_json::from_str(&pending)?;
+            if let Some(path) = value.get("archivePath").and_then(serde_json::Value::as_str) {
+                return Box::pin(crate::archives::import_curseforge_pack(
+                    app, state, crate::models::ImportSlhRequest {
+                        archive_path: path.to_owned(), name: None,
+                    },
+                )).await;
+            }
+        }
+    }
     // Claim the instance atomically. Two clicks (or a stale Install button in
     // another view) can otherwise both observe `created` and start duplicate
     // downloads before either one updates the status.
@@ -287,16 +306,45 @@ async fn install_vanilla(
         max_bytes: None,
     });
     let mut target = crate::platform::RuntimeTarget::host();
-    let java = if let Some(path) = &instance.java_path {
-        Some(super::java::inspect(Path::new(path)).await?)
+    let minecraft_settings = database::setting(&state.database, "minecraft").await?;
+    let configured_java = instance
+        .java_path
+        .as_deref()
+        .filter(|path| !path.trim().is_empty())
+        .or_else(|| {
+            minecraft_settings
+                .get("javaPath")
+                .and_then(serde_json::Value::as_str)
+                .filter(|path| {
+                    !path.trim().is_empty()
+                        && minecraft_settings["javaMode"].as_str() == Some("custom")
+                })
+        });
+    let java = if let Some(path) = configured_java {
+        let inspected = super::java::inspect(Path::new(path)).await?;
+        let preferences = database::setting(&state.database, "java").await?;
+        if preferences["skipCompatibilityCheck"].as_bool() != Some(true)
+            && details
+                .java_version
+                .as_ref()
+                .is_some_and(|required| inspected.major_version < required.major_version)
+        {
+            return Err(AppError::JavaCompatibility {
+                required: details.java_version.as_ref().unwrap().major_version,
+                actual: inspected.major_version,
+                path: path.into(),
+            });
+        }
+        Some(inspected)
     } else {
-        super::java::discover_fast(
-            state,
-            details.java_version.as_ref().map(|v| v.major_version),
+        Some(
+            super::java::resolve_automatic(
+                app,
+                state,
+                details.java_version.as_ref().map(|v| v.major_version),
+            )
+            .await?,
         )
-        .await?
-        .into_iter()
-        .find(|v| v.compatible)
     };
     if let Some(java) = java {
         target.java_arch = crate::platform::Architecture::from_java(&java.architecture)?;

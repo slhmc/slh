@@ -1,0 +1,17 @@
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.status { display: grid; gap: var(--space-3); padding: var(--space-4); border: 1px solid var(--status-color); border-radius: var(--radius-md); background: color-mix(in srgb, var(--status-color) 12%, var(--color-surface)); color: var(--color-text); overflow-wrap: anywhere; }
+.info { --status-color: var(--color-info); }
+.warning { --status-color: var(--color-warning); }
+.error { --status-color: var(--color-error); }
+.success { --status-color: var(--color-success); }
+.progress { display: grid; gap: var(--space-3); padding-block: var(--space-2); }
+.progress > div { display: flex; justify-content: space-between; gap: var(--space-3); flex-wrap: wrap; }
+.counter { color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
+.busyIndicator { flex: none; }
+.progressLabel { display: inline-flex; align-items: center; gap: var(--space-2); }
+@media (prefers-reduced-motion: no-preference) {
+  .busyIndicator { animation: busyRotation 1s linear infinite; }
+}
+@keyframes busyRotation { to { transform: rotate(360deg); } }
+
+.status > h3 { margin: 0; font: inherit; font-weight: 700; }

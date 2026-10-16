@@ -1,4 +1,4 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashSet};
 use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::Ordering;
@@ -47,6 +47,10 @@ pub async fn discover(
     state: &AppState,
     required_major: Option<u32>,
 ) -> AppResult<Vec<JavaInstallation>> {
+    let _scan = state
+        .java_scan_lock
+        .try_lock()
+        .map_err(|_| AppError::Conflict("Java disk search is already running".into()))?;
     let managed_roots = managed_roots(state).await?;
     state.java_scan_cancelled.store(false, Ordering::Relaxed);
     let mut installations = discover_in_roots(&managed_roots, required_major).await?;
@@ -73,25 +77,35 @@ pub async fn discover(
             );
         }
         let candidates = scan_drive_for_java(&root, state.java_scan_cancelled.clone()).await;
-        for candidate in candidates {
-            if state.java_scan_cancelled.load(Ordering::Relaxed) {
-                break;
-            }
-            if let Ok(mut java) = inspect(&candidate).await {
-                java.source = "disk scan".into();
-                java.compatible =
-                    required_major.is_none_or(|required| java.major_version >= required);
-                installations.push(java);
-            }
-        }
+        let seen: HashSet<_> = installations
+            .iter()
+            .map(|java| runtime_key(&java.path))
+            .collect();
+        let verified = futures_util::stream::iter(candidates)
+            .map(|candidate| {
+                let cancelled = &state.java_scan_cancelled;
+                let seen = &seen;
+                async move {
+                    if cancelled.load(Ordering::Relaxed) {
+                        return None;
+                    }
+                    let canonical = candidate.canonicalize().unwrap_or(candidate.clone());
+                    if seen.contains(&runtime_key(&canonical.to_string_lossy())) {
+                        return None;
+                    }
+                    let mut java = inspect(&candidate).await.ok()?;
+                    java.source = "disk scan".into();
+                    java.compatible = automatic_major_matches(required_major, java.major_version);
+                    Some(java)
+                }
+            })
+            .buffer_unordered(4)
+            .filter_map(|runtime| async { runtime })
+            .collect::<Vec<_>>()
+            .await;
+        installations.extend(verified);
     }
-    installations.sort_by(|left, right| {
-        right
-            .compatible
-            .cmp(&left.compatible)
-            .then(right.major_version.cmp(&left.major_version))
-    });
-    installations.dedup_by(|left, right| left.path.eq_ignore_ascii_case(&right.path));
+    normalize_installations(&mut installations);
     if let Some(best) = installations.iter().find(|candidate| candidate.compatible) {
         remember_detected_path(state, best).await?;
     }
@@ -102,7 +116,12 @@ pub async fn discover(
                 operation_id: "java-disk-scan".into(),
                 instance_id: None,
                 operation: "java".into(),
-                stage: "complete".into(),
+                stage: if state.java_scan_cancelled.load(Ordering::Relaxed) {
+                    "cancelled"
+                } else {
+                    "complete"
+                }
+                .into(),
                 message: "Java disk scan complete".into(),
                 completed: scan_total,
                 total: Some(scan_total),
@@ -126,7 +145,21 @@ pub async fn discover_fast(
     if let Some(cached) = cached_installation(state, required_major).await? {
         return Ok(vec![cached]);
     }
-    let installations = discover_in_roots(&managed_roots(state).await?, required_major).await?;
+    discover_available(state, required_major).await
+}
+
+/// Settings needs the complete quick list, rather than the launch cache's
+/// single preferred runtime. Neither path traverses entire drives.
+pub async fn discover_available(
+    state: &AppState,
+    required_major: Option<u32>,
+) -> AppResult<Vec<JavaInstallation>> {
+    let mut installations = discover_in_roots(&managed_roots(state).await?, required_major).await?;
+    for installation in &mut installations {
+        installation.compatible =
+            automatic_major_matches(required_major, installation.major_version);
+    }
+    normalize_installations(&mut installations);
     if let Some(best) = installations.iter().find(|candidate| candidate.compatible) {
         remember_detected_path(state, best).await?;
     }
@@ -155,8 +188,7 @@ async fn cached_installation(
         Ok(installation) => installation,
         Err(_) => return Ok(None),
     };
-    installation.compatible =
-        required_major.is_none_or(|required| installation.major_version >= required);
+    installation.compatible = automatic_major_matches(required_major, installation.major_version);
     if !installation.compatible {
         return Ok(None);
     }
@@ -200,6 +232,7 @@ async fn scan_drive_for_java(
             "system volume information",
             "$recycle.bin",
             "recovery",
+            "node_modules", ".git", "target", "assets", "libraries",
         ];
         walkdir::WalkDir::new(root)
             .follow_links(false)
@@ -209,6 +242,8 @@ async fn scan_drive_for_java(
                     return false;
                 }
                 !entry.file_type().is_symlink()
+                    // Isolated test copies are not installed user runtimes.
+                    && !(entry.file_type().is_dir() && entry.path().join("native-prototype.json").is_file())
                     && !entry
                         .file_name()
                         .to_string_lossy()
@@ -270,45 +305,115 @@ async fn discover_in_roots(
             candidates.insert(managed);
         }
     }
+    for root in system_java_roots() {
+        candidates.extend(managed_candidates(&root));
+    }
     let mut where_java = Command::new(if cfg!(windows) { "where.exe" } else { "which" });
+    let mut path_candidates = BTreeSet::new();
     where_java.arg(crate::platform::OperatingSystem::current().java_executable());
     hide_console_window(&mut where_java);
-    if let Ok(output) = where_java.output().await {
+    where_java.kill_on_drop(true);
+    if let Ok(Ok(output)) =
+        tokio::time::timeout(std::time::Duration::from_secs(3), where_java.output()).await
+    {
         if output.status.success() {
             for line in String::from_utf8_lossy(&output.stdout).lines() {
-                candidates.insert(PathBuf::from(line.trim()));
+                let path = PathBuf::from(line.trim());
+                path_candidates.insert(path.clone());
+                candidates.insert(path);
             }
         }
     }
 
-    let mut installations = Vec::new();
-    for candidate in candidates {
-        if !candidate.is_file() {
-            continue;
-        }
-        if let Ok(mut java) = inspect(&candidate).await {
-            java.source = if managed_roots.iter().any(|root| candidate.starts_with(root)) {
-                "managed".into()
-            } else if std::env::var_os("JAVA_HOME")
-                .map(PathBuf::from)
-                .is_some_and(|home| candidate.starts_with(home))
-            {
-                "JAVA_HOME".into()
-            } else {
-                "PATH".into()
-            };
-            java.compatible = required_major.is_none_or(|required| java.major_version >= required);
-            installations.push(java);
-        }
+    let mut installations = futures_util::stream::iter(candidates)
+        .map(|candidate| {
+            let path_candidates = &path_candidates;
+            async move {
+                if !candidate.is_file() {
+                    return None;
+                }
+                if let Ok(mut java) = inspect(&candidate).await {
+                    java.source = if managed_roots.iter().any(|root| candidate.starts_with(root)) {
+                        "managed".into()
+                    } else if std::env::var_os("JAVA_HOME")
+                        .map(PathBuf::from)
+                        .is_some_and(|home| candidate.starts_with(home))
+                    {
+                        "JAVA_HOME".into()
+                    } else if path_candidates.contains(&candidate) {
+                        "PATH".into()
+                    } else {
+                        "system".into()
+                    };
+                    java.compatible = automatic_major_matches(required_major, java.major_version);
+                    return Some(java);
+                }
+                None
+            }
+        })
+        .buffer_unordered(4)
+        .filter_map(|runtime| async { runtime })
+        .collect::<Vec<_>>()
+        .await;
+    normalize_installations(&mut installations);
+    Ok(installations)
+}
+
+fn system_java_roots() -> Vec<PathBuf> {
+    #[cfg(windows)]
+    {
+        ["ProgramFiles", "ProgramFiles(x86)"]
+            .into_iter()
+            .filter_map(std::env::var_os)
+            .map(PathBuf::from)
+            .flat_map(|root| {
+                [
+                    root.join("Java"),
+                    root.join("Eclipse Adoptium"),
+                    root.join("Microsoft"),
+                    root.join("Amazon Corretto"),
+                    root.join("Zulu"),
+                ]
+            })
+            .collect()
     }
+    #[cfg(not(windows))]
+    {
+        vec![
+            PathBuf::from("/usr/lib/jvm"),
+            PathBuf::from("/Library/Java/JavaVirtualMachines"),
+        ]
+    }
+}
+
+fn runtime_key(path: &str) -> String {
+    if cfg!(windows) {
+        path.replace('/', "\\")
+            .trim_start_matches("\\\\?\\")
+            .to_lowercase()
+    } else {
+        path.to_owned()
+    }
+}
+
+fn normalize_installations(installations: &mut Vec<JavaInstallation>) {
+    // Prefer meaningful provenance when a runtime was found through several
+    // sources. Deduplication must not depend on equal paths being adjacent.
+    installations.sort_by_key(|java| match java.source.as_str() {
+        "managed" => 0,
+        "JAVA_HOME" => 1,
+        "PATH" => 2,
+        _ => 3,
+    });
+    let mut seen = HashSet::new();
+    installations.retain(|java| seen.insert(runtime_key(&java.path)));
     installations.sort_by(|left, right| {
         right
             .compatible
             .cmp(&left.compatible)
             .then(right.major_version.cmp(&left.major_version))
+            .then(left.path.cmp(&right.path))
     });
-    installations.dedup_by(|left, right| left.path.eq_ignore_ascii_case(&right.path));
-    Ok(installations)
 }
 
 /// The configured directory is the preferred destination for future downloads.
@@ -347,12 +452,50 @@ pub fn compatible_managed_major(required_major: Option<u32>) -> AppResult<u32> {
         })
 }
 
+/// A newer JVM is not necessarily compatible with a game's loader and mixins.
+/// Automatic launch uses the version requested by Minecraft (or the closest
+/// managed version, e.g. 17 for a Java 16 requirement), never the newest JVM.
+fn automatic_major_matches(required_major: Option<u32>, actual_major: u32) -> bool {
+    required_major.is_none_or(|required| {
+        actual_major == required
+            || compatible_managed_major(Some(required)).is_ok_and(|managed| actual_major == managed)
+    })
+}
+
 pub async fn install_compatible_managed(
     app: &Host,
     state: &AppState,
     required_major: Option<u32>,
 ) -> AppResult<JavaInstallation> {
     install_managed(app, state, compatible_managed_major(required_major)?).await
+}
+
+/// Shared by installation and launch: prepare the game's requested Java before
+/// selecting native libraries, and download it when automatic mode permits.
+pub async fn resolve_automatic(
+    app: &Host,
+    state: &AppState,
+    required_major: Option<u32>,
+) -> AppResult<JavaInstallation> {
+    // Older Minecraft metadata omits javaVersion; its runtime line is Java 8.
+    let required_major = Some(required_major.unwrap_or(8));
+    let settings = database::setting(&state.database, "java").await?;
+    if settings["autoDetect"].as_bool() == Some(false) {
+        return Err(AppError::Unavailable(
+            "Choose a Java executable or enable automatic Java detection".into(),
+        ));
+    }
+    if let Some(java) = discover_fast(state, required_major)
+        .await?
+        .into_iter()
+        .find(|java| java.compatible)
+    {
+        return Ok(java);
+    }
+    if settings["autoDownload"].as_bool() == Some(false) {
+        return Err(AppError::Unavailable("No compatible Java runtime was found; enable automatic Java download or install Java in Settings".into()));
+    }
+    install_compatible_managed(app, state, required_major).await
 }
 
 fn managed_candidates(root: &Path) -> Vec<PathBuf> {
@@ -408,9 +551,26 @@ pub async fn inspect(path: &Path) -> AppResult<JavaInstallation> {
         .unwrap_or(std::env::consts::ARCH)
         .trim()
         .to_owned();
+    // Oracle PATH shims and java/javaw aliases report the real runtime home.
+    // Use it as identity instead of listing each shim as another installation.
+    let executable = text
+        .lines()
+        .find_map(|line| line.trim().strip_prefix("java.home = "))
+        .map(|home| {
+            PathBuf::from(home.trim())
+                .join("bin")
+                .join(crate::platform::OperatingSystem::current().java_executable())
+        })
+        .filter(|executable| executable.is_file())
+        .unwrap_or_else(|| path.to_path_buf());
+    let executable = executable.canonicalize().unwrap_or(executable);
+    let canonical_path = executable.to_string_lossy();
     Ok(JavaInstallation {
         architecture,
-        path: path.to_string_lossy().into_owned(),
+        path: canonical_path
+            .strip_prefix("\\\\?\\")
+            .unwrap_or(&canonical_path)
+            .to_owned(),
         version,
         major_version,
         source: "custom".into(),
@@ -458,7 +618,7 @@ async fn install_managed_inner(
     let managed_root = managed_root(state).await?;
     emit_java_progress(
         app,
-        &operation_id,
+        operation_id,
         "metadata",
         format!("Java {major_version} is downloading"),
         0,
@@ -501,7 +661,7 @@ async fn install_managed_inner(
     download_sha256(
         app,
         state,
-        &operation_id,
+        operation_id,
         &asset.binary.package.link,
         &asset.binary.package.checksum,
         asset.binary.package.size,
@@ -511,7 +671,7 @@ async fn install_managed_inner(
     .await?;
     emit_java_progress(
         app,
-        &operation_id,
+        operation_id,
         "extract",
         format!("Installing Temurin {}", asset.version.semver),
         0,
@@ -571,6 +731,14 @@ async fn install_managed_inner(
             let mut java = inspect(&existing).await?;
             java.source = "managed".into();
             remember_detected_path(state, &java).await?;
+            emit_java_progress(
+                app,
+                operation_id,
+                "complete",
+                format!("Temurin Java {} is ready", java.version),
+                1,
+                Some(1),
+            );
             return Ok(java);
         }
         return Err(AppError::Conflict(format!(
@@ -797,6 +965,81 @@ mod tests {
         }
     }
 
+
+
+    #[test]
+    fn merges_non_adjacent_duplicates_and_keeps_managed_provenance() {
+        let runtime = |path: &str, source: &str| JavaInstallation {
+            path: path.into(),
+            source: source.into(),
+            version: "17.0.20".into(),
+            major_version: 17,
+            architecture: "amd64".into(),
+            compatible: true,
+        };
+        let mut list = vec![
+            runtime("/java/a", "disk scan"),
+            runtime("/java/b", "PATH"),
+            runtime("/java/a", "managed"),
+        ];
+        normalize_installations(&mut list);
+        assert_eq!(list.len(), 2);
+        assert_eq!(
+            list.iter()
+                .find(|java| java.path == "/java/a")
+                .unwrap()
+                .source,
+            "managed"
+        );
+    }
+
+    #[test]
+    fn preserves_distinct_installations_of_same_major() {
+        let mut list = vec![
+            JavaInstallation {
+                path: "/java/17-a".into(),
+                version: "17.0.18".into(),
+                major_version: 17,
+                architecture: "amd64".into(),
+                source: "PATH".into(),
+                compatible: true,
+            },
+            JavaInstallation {
+                path: "/java/17-b".into(),
+                version: "17.0.20".into(),
+                major_version: 17,
+                architecture: "amd64".into(),
+                source: "managed".into(),
+                compatible: true,
+            },
+        ];
+        normalize_installations(&mut list);
+        assert_eq!(list.len(), 2);
+    }
+
+    #[tokio::test]
+    #[ignore = "Read-only host diagnostic; run explicitly to measure quick discovery"]
+    async fn quick_discovery_host_diagnostic() {
+        let started = std::time::Instant::now();
+        let installations = discover_in_roots(&[], None).await.unwrap();
+        let keys: HashSet<_> = installations
+            .iter()
+            .map(|java| runtime_key(&java.path))
+            .collect();
+        assert_eq!(keys.len(), installations.len());
+        eprintln!(
+            "Quick discovery: {} installations in {:.3}s",
+            installations.len(),
+            started.elapsed().as_secs_f64()
+        );
+        for java in installations {
+            eprintln!(
+                "{} {} {} {}",
+                java.version, java.architecture, java.source, java.path
+            );
+        }
+    }
+
     #[test]
     fn parses_legacy_and_modern_java_versions() {
         assert_eq!(parse_major("1.8.0_402").unwrap(), 8);
@@ -811,6 +1054,22 @@ mod tests {
         assert_eq!(compatible_managed_major(Some(16)).unwrap(), 17);
         assert_eq!(compatible_managed_major(Some(21)).unwrap(), 21);
         assert!(compatible_managed_major(Some(26)).is_err());
+    }
+
+    #[test]
+    fn automatic_selection_keeps_the_game_runtime_instead_of_newest_java() {
+        assert!(automatic_major_matches(Some(17), 17));
+        assert!(!automatic_major_matches(Some(17), 25));
+        assert!(!automatic_major_matches(Some(17), 21));
+        assert!(automatic_major_matches(Some(21), 21));
+        assert!(!automatic_major_matches(Some(21), 25));
+        assert!(automatic_major_matches(Some(25), 25));
+        assert!(automatic_major_matches(Some(8), 8));
+        assert!(!automatic_major_matches(Some(8), 17));
+        assert!(automatic_major_matches(Some(16), 16));
+        assert!(automatic_major_matches(Some(16), 17));
+        assert!(!automatic_major_matches(Some(16), 25));
+        assert!(automatic_major_matches(None, 25));
     }
 }
 

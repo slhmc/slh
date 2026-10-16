@@ -1,0 +1,25 @@
+{
+  "colorFiles": [
+    "src/styles/tokens.css",
+    "src/lib/theme.ts",
+    "src/lib/tauri.ts",
+    "src/routes/Settings/SettingsPage.tsx",
+    "src/routes/Instance/InstancePage.tsx",
+    "src/components/instance/CreateInstanceWizard.tsx",
+    "src/components/instance/InstanceArtwork.tsx",
+    "src/components/instance/InstanceSidePanel.tsx",
+    "src/stores/packJobs.ts"
+  ],
+  "text": [],
+  "colorReasons": {
+    "src/styles/tokens.css": "Default palette before settings load",
+    "src/lib/theme.ts": "Reference black and white for luminance calculations",
+    "src/lib/tauri.ts": "Preview palettes and instance artwork",
+    "src/routes/Settings/SettingsPage.tsx": "Built-in palette definitions and independent console colors",
+    "src/routes/Instance/InstancePage.tsx": "Custom instance artwork",
+    "src/components/instance/CreateInstanceWizard.tsx": "Custom instance artwork presets",
+    "src/components/instance/InstanceArtwork.tsx": "Artwork colors, Minecraft skins and canvases",
+    "src/components/instance/InstanceSidePanel.tsx": "Preserved instance artwork during duplication",
+    "src/stores/packJobs.ts": "Placeholder instance artwork"
+  }
+}

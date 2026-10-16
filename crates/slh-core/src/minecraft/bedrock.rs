@@ -152,6 +152,10 @@ pub async fn list_versions(state: &AppState) -> AppResult<Vec<MinecraftVersionSu
             }
         }
     }
+    // Preview downloads cannot replace a packaged Store installation with a
+    // loose package. Keep only Preview versions Windows can already launch.
+    versions.retain(|version| version.version_type != "snapshot"
+        || version.install_method.as_deref() == Some("registered_store"));
     versions.sort_by(|left, right| version_cmp(&right.id, &left.id));
     Ok(versions)
 }
@@ -297,6 +301,9 @@ pub async fn install_instance(
         .find(|version| version.summary.id == instance.minecraft_version)
         .ok_or_else(|| AppError::NotFound(format!("Bedrock {}", instance.minecraft_version)))?;
 
+    if version.summary.version_type == "snapshot" {
+        return Err(AppError::Unavailable("Bedrock Preview downloads are disabled. Install Preview through Microsoft Store/Xbox, then select the installed Store version in SLH.".into()));
+    }
     let package_type = match &version.source {
         PackageSource::NativeMsixvc { .. } => "gdk",
         PackageSource::Uwp { .. } => "uwp",

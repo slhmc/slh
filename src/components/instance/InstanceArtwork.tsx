@@ -48,7 +48,7 @@ export function instanceArtworkColors(instance: Instance) {
   };
 }
 
-export function InstanceArtwork({ instance, size = "card" }: { instance: Instance; size?: "small" | "card" | "large" }) {
+export function InstanceArtwork({ instance, size = "card" }: { instance: Instance; size?: "small" | "card" | "large" | "icon" }) {
   const choice = instanceIconChoices.find((item) => item.key === instance.iconKey) ?? instanceIconChoices[0];
   const colors = instanceArtworkColors(instance);
   const Icon = choice.Icon;

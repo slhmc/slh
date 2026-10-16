@@ -2,8 +2,8 @@ src-tauri/migrations/*.sql text eol=lf
 patches/*.patch -whitespace
 crates/slh-core/migrations/*.sql text eol=lf
 
-/vendor/** linguist-vendored
+# Keep immutable checksums of migration 19 used by existing local profiles.
+crates/slh-core/migrations/0019_semantic_colors.sql -text
+src-tauri/migrations/0019_semantic_colors.sql -text
 
-# This shipped development migration retains its exact CRLF checksum.
-/crates/slh-core/migrations/0019_semantic_colors.sql -text
-/src-tauri/migrations/0019_semantic_colors.sql -text
+/vendor/** linguist-vendored

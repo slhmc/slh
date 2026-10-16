@@ -163,9 +163,13 @@ pub async fn update_setting(
     key: String,
     value: Value,
 ) -> CommandResult<Value> {
-    settings::update(&state.database, &key, value)
-        .await
-        .map_err(Into::into)
+    let saved = settings::update(&state.database, &key, value).await?;
+    Ok(saved)
+}
+
+#[tauri::command]
+pub async fn remember_section(state: State<'_, AppState>, section: String) -> CommandResult<()> {
+    settings::remember_section(&state.database, &section).await.map_err(Into::into)
 }
 
 #[tauri::command]
@@ -179,6 +183,7 @@ pub fn send_windows_notification(
     title: String,
     body: Option<String>,
 ) -> CommandResult<()> {
+    #[cfg(not(windows))]
     use tauri_plugin_notification::NotificationExt;
 
     let title = title.trim();
@@ -194,14 +199,22 @@ pub fn send_windows_notification(
         )
         .into());
     }
+    #[cfg(windows)]
+    {
+        let _ = app;
+        return crate::windows_notifications::send_native(title, body.as_deref()).map_err(Into::into);
+    }
+    #[cfg(not(windows))]
+    {
     let mut notification = app.notification().builder().title(title);
     if let Some(body) = body.as_deref().filter(|value| !value.trim().is_empty()) {
         notification = notification.body(body.trim());
     }
     notification
         .show()
-        .map_err(|error| crate::error::AppError::Process(format!("Could not show Windows notification: {error}")))
+        .map_err(|error| crate::error::AppError::Process(format!("Could not show system notification: {error}")))
         .map_err(Into::into)
+    }
 }
 
 #[tauri::command]
@@ -335,6 +348,40 @@ pub async fn get_local_font_data(state: State<'_, AppState>) -> CommandResult<Op
 #[tauri::command]
 pub async fn load_locale(state: State<'_, AppState>, code: String) -> CommandResult<Value> {
     localization::load_locale(&state.paths, &code).map_err(Into::into)
+}
+
+#[tauri::command]
+pub fn get_locale_snapshot(state: State<'_, AppState>, code: String) -> CommandResult<localization::LocaleSnapshot> {
+    localization::locale_snapshot(&state.paths, &code).map_err(Into::into)
+}
+
+#[tauri::command]
+pub fn get_locale_revision(state: State<'_, AppState>, code: String) -> CommandResult<String> {
+    localization::locale_revision(&state.paths, &code).map_err(Into::into)
+}
+
+#[tauri::command]
+pub fn open_languages_folder(state: State<'_, AppState>) -> CommandResult<()> {
+    std::fs::create_dir_all(&state.paths.languages).map_err(crate::error::AppError::from)?;
+    tauri_plugin_opener::open_path(&state.paths.languages, None::<&str>)
+        .map_err(|e| crate::error::AppError::Process(e.to_string()).into())
+}
+
+#[tauri::command]
+pub fn export_language_template(path: String) -> CommandResult<()> {
+    let target = std::path::Path::new(&path);
+    if !target.is_absolute() || target.extension().and_then(|v| v.to_str()).is_none_or(|v| !v.eq_ignore_ascii_case("json")) {
+        return Err(crate::error::AppError::InvalidInput("Choose an absolute JSON file path".into()).into());
+    }
+    let mut template: Value = serde_json::from_str(include_str!("../../resources/languages/en-US.json"))
+        .map_err(crate::error::AppError::from)?;
+    template.as_object_mut().unwrap().remove("legacy");
+    template["meta"] = serde_json::json!({ "code": "fr-FR", "name": "Français", "schemaVersion": 1 });
+    // Never overwrite an existing language, even if it was selected in the native dialog.
+    use std::io::Write;
+    let mut file = std::fs::OpenOptions::new().write(true).create_new(true).open(target).map_err(crate::error::AppError::from)?;
+    file.write_all(serde_json::to_string_pretty(&template).map_err(crate::error::AppError::from)?.as_bytes()).map_err(crate::error::AppError::from)?;
+    Ok(())
 }
 
 /// Re-scan the portable language folders without requiring an application restart.
@@ -654,7 +701,7 @@ pub async fn discover_java(
     let result = if scan_all.unwrap_or(false) {
         minecraft::java::discover(Some(&crate::core_host::host(&app)), &state, required_major).await
     } else {
-        minecraft::java::discover_fast(&state, required_major).await
+        minecraft::java::discover_available(&state, required_major).await
     };
     result.map_err(Into::into)
 }
@@ -752,7 +799,11 @@ pub async fn reveal_instance_path(
     state: State<'_, AppState>,
     instance_id: String,
     path: Option<String>,
+    category: Option<String>,
 ) -> CommandResult<()> {
+    if let Some(category) = category {
+        return crate::storage::reveal_instance_category(&state, &instance_id, &category).await.map_err(Into::into);
+    }
     crate::storage::reveal_instance_path(&state, &instance_id, path.as_deref())
         .await
         .map_err(Into::into)
@@ -801,6 +852,7 @@ pub async fn search_modrinth(
     project_type: Option<String>,
     game_version: Option<String>,
     loader: Option<String>,
+    category: Option<String>,
     sort: Option<String>,
     offset: Option<u64>,
     limit: Option<u64>,
@@ -812,6 +864,7 @@ pub async fn search_modrinth(
         project_type.as_deref(),
         game_version.as_deref(),
         loader.as_deref(),
+        category.as_deref(),
         sort.as_deref(),
         offset.unwrap_or(0),
         limit.unwrap_or(24),
@@ -827,6 +880,7 @@ pub async fn search_curseforge(
     project_type: Option<String>,
     game_version: Option<String>,
     loader: Option<String>,
+    category: Option<String>,
     sort: Option<String>,
     offset: Option<u64>,
     limit: Option<u64>,
@@ -838,6 +892,7 @@ pub async fn search_curseforge(
         project_type.as_deref(),
         game_version.as_deref(),
         loader.as_deref(),
+        category.as_deref(),
         sort.as_deref(),
         offset.unwrap_or(0),
         limit.unwrap_or(24),
@@ -968,6 +1023,45 @@ pub async fn install_modrinth_modpack(
 }
 
 #[tauri::command]
+pub fn cancel_pack_install(key: String) -> bool {
+    slh_core::pack_operations::cancel(&key)
+}
+
+#[tauri::command]
+pub async fn run_pack_install(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    key: String,
+    command_name: String,
+    args: serde_json::Value,
+) -> CommandResult<Instance> {
+    let host = crate::core_host::host(&app);
+    let state = &*state;
+    slh_core::pack_operations::run(&host, state, key.clone(), |host| async move {
+        let text = |field: &str| args.get(field).and_then(serde_json::Value::as_str).map(str::to_owned);
+        let instance = match command_name.as_str() {
+            "install_curseforge_modpack" => crate::content::curseforge::install_modpack_tracked(
+                &host, &state, &text("projectId").ok_or_else(|| crate::error::AppError::InvalidInput("Missing project ID".into()))?,
+                text("name"), text("versionId"), Some(key),
+            ).await?,
+            "install_modrinth_modpack" => crate::content::install::install_modpack(
+                &host, &state, &text("projectId").ok_or_else(|| crate::error::AppError::InvalidInput("Missing project ID".into()))?,
+                text("name"), text("minecraftVersion").as_deref(), text("loader").as_deref(), text("versionId").as_deref(),
+            ).await?,
+            "import_curseforge_pack" => crate::archives::import_curseforge_pack_tracked(
+                &host, &state, serde_json::from_value(args.get("request").cloned().unwrap_or_default())?, Some(key),
+            ).await?,
+            "import_modrinth_pack" => crate::archives::import_modrinth_pack(
+                &host, &state, serde_json::from_value(args.get("request").cloned().unwrap_or_default())?,
+            ).await?,
+            _ => return Err(crate::error::AppError::InvalidInput("Unsupported modpack operation".into())),
+        };
+        crate::sync::apply_to_new_instance(&state, &instance).await?;
+        Ok(instance)
+    }).await.map_err(Into::into)
+}
+
+#[tauri::command]
 pub async fn plan_curseforge_install(
     state: State<'_, AppState>,
     instance_id: String,
@@ -1068,24 +1162,43 @@ pub async fn set_instance_content_enabled(
 }
 
 #[tauri::command]
+pub async fn add_curseforge_manual_files(state: State<'_, AppState>, paths: Vec<String>) -> CommandResult<u64> {
+    crate::content::curseforge::add_manual_pack_files(&state, paths).await.map_err(Into::into)
+}
+
+#[tauri::command]
+pub async fn scan_curseforge_downloads(state: State<'_, AppState>, file_names: Vec<String>) -> CommandResult<Vec<String>> {
+    crate::content::curseforge::scan_manual_pack_downloads(&state, file_names).await.map_err(Into::into)
+}
+
+#[tauri::command]
+pub async fn scan_curseforge_archives(state: State<'_, AppState>) -> CommandResult<Vec<(String, String)>> {
+    crate::content::curseforge::scan_pack_archives(&state).await.map_err(Into::into)
+}
+
+#[tauri::command]
 pub async fn install_curseforge_modpack(
     app: AppHandle,
     state: State<'_, AppState>,
     project_id: String,
     name: Option<String>,
+    version_id: Option<String>,
+    progress_key: Option<String>,
 ) -> CommandResult<Instance> {
     async fn install(
         app: &AppHandle,
         state: &AppState,
         project_id: &str,
         name: Option<String>,
+        version_id: Option<String>,
+        progress_key: Option<String>,
     ) -> crate::error::AppResult<Instance> {
         let instance =
-            crate::content::curseforge::install_modpack(&crate::core_host::host(app), state, project_id, name).await?;
+            crate::content::curseforge::install_modpack_tracked(&crate::core_host::host(app), state, project_id, name, version_id, progress_key).await?;
         crate::sync::apply_to_new_instance(state, &instance).await?;
         Ok(instance)
     }
-    install(&app, &state, &project_id, name)
+    install(&app, &state, &project_id, name, version_id, progress_key)
         .await
         .map_err(Into::into)
 }
@@ -1337,17 +1450,19 @@ pub async fn import_curseforge_pack(
     app: AppHandle,
     state: State<'_, AppState>,
     request: ImportSlhRequest,
+    progress_key: Option<String>,
 ) -> CommandResult<Instance> {
     async fn import(
         app: &AppHandle,
         state: &AppState,
         request: ImportSlhRequest,
+        progress_key: Option<String>,
     ) -> crate::error::AppResult<Instance> {
-        let instance = crate::archives::import_curseforge_pack(&crate::core_host::host(app), state, request).await?;
+        let instance = crate::archives::import_curseforge_pack_tracked(&crate::core_host::host(app), state, request, progress_key).await?;
         crate::sync::apply_to_new_instance(state, &instance).await?;
         Ok(instance)
     }
-    import(&app, &state, request).await.map_err(Into::into)
+    import(&app, &state, request, progress_key).await.map_err(Into::into)
 }
 
 #[tauri::command]
@@ -1482,4 +1597,10 @@ pub async fn get_launcher_storage_usage(state: State<'_, AppState>, force: Optio
     tokio::task::spawn_blocking(move || crate::system_metrics::launcher_storage_bytes(&root, force.unwrap_or(false)))
         .await.map_err(|error| crate::error::AppError::Process(format!("Launcher storage task failed: {error}")))?
         .map_err(Into::into)
+}
+
+#[tauri::command]
+pub async fn list_content_categories(state: State<'_, AppState>, provider: String, project_type: String) -> CommandResult<Vec<slh_core::models::ContentCategory>> {
+ let result = match provider.as_str() { "modrinth" => crate::content::modrinth::categories(&state, &project_type).await, "curseforge" => crate::content::curseforge::categories(&state, &project_type).await, _ => Err(crate::error::AppError::InvalidInput("Unknown provider".into())) };
+ result.map_err(Into::into)
 }

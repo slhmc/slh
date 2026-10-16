@@ -135,6 +135,15 @@ export function createPlasticEnvironment(renderer: WebGLRenderer): Texture {
   target.texture.userData.slhEnvironmentTarget = target;
   rememberEnv(renderer, target);
   pmrem.dispose();
+  // The PMREM scene pass needs a depth attachment; sampling the finished
+  // environment does not. Reuse its exact half-float pixels as a plain texture
+  // so the scene does not keep a framebuffer and depth buffer alive.
+  const sampled = envFromCache();
+  if (sampled) {
+    delete target.texture.userData.slhEnvironmentTarget;
+    target.dispose();
+    return sampled;
+  }
   return target.texture;
 }
 

@@ -161,6 +161,8 @@ pub(crate) struct PackDownload {
     pub url: String,
     pub sha1: String,
     pub size_bytes: u64,
+    pub manual_download_url: Option<String>,
+    pub local_path: Option<PathBuf>,
 }
 
 pub(crate) fn environment_api_key() -> Option<String> {
@@ -273,6 +275,53 @@ async fn api_get(state: &AppState, relative_path: &str) -> AppResult<reqwest::Re
     }
 }
 
+async fn api_post(state: &AppState, relative_path: &str, body: &serde_json::Value) -> AppResult<reqwest::RequestBuilder> {
+    validate_api_relative_path(relative_path)?;
+    let request = if let Some(key) = active_api_key(state).await {
+        state.http.post(format!("{API_ROOT}/{relative_path}")).header("x-api-key", header_value(&key)?)
+    } else { state.http.post(format!("{RELAY_API_ROOT}/{relative_path}")) };
+    Ok(request.json(body))
+}
+
+/// Populate the same per-file cache used by normal lookups. A pack containing
+/// hundreds of mods needs two batch requests rather than two requests per mod.
+/// Older relays fall back once to GET without failing the user's installation.
+pub(crate) async fn prefetch_pack_metadata(state: &AppState, entries: &[(u64, u64)]) -> AppResult<()> {
+    if !state.curseforge_http.batch_available(api_post(state, "mods", &serde_json::json!({ "modIds": [] })).await?).await? { return Ok(()); }
+    for files in [false, true] {
+        let mut missing = Vec::new();
+        let mut seen = HashSet::new();
+        for &(project, file) in entries {
+            let id = if files { file } else { project };
+            if !seen.insert(id) { continue; }
+            let endpoint = if files { format!("mods/{project}/files/{file}") } else { format!("mods/{project}") };
+            if !state.curseforge_http.cached(api_get(state, &endpoint).await?, &state.database).await? { missing.push(id); }
+        }
+        for chunk in missing.chunks(100) {
+            let endpoint = if files { "mods/files" } else { "mods" };
+            let body = if files { serde_json::json!({ "fileIds": chunk }) } else { serde_json::json!({ "modIds": chunk }) };
+            let response: serde_json::Value = match send_api_json(state, api_post(state, endpoint, &body).await?).await {
+                Ok(value) => value,
+                Err(AppError::Unavailable(message)) if message == "CurseForge batch requests are unavailable" => return Ok(()),
+                Err(error) => return Err(error),
+            };
+            let data = response.get("data").and_then(|data| data.as_array()).ok_or_else(|| AppError::Unavailable("CurseForge batch response has no data array".into()))?;
+            for value in data {
+                let Some(id) = value.get("id").and_then(|id| id.as_u64()).filter(|id| chunk.contains(id)) else { continue; };
+                let endpoint = if files {
+                    let Some(&(project, _)) = entries.iter().find(|&&(_, file)| file == id) else { continue; };
+                    if value.get("modId").and_then(|id| id.as_u64()) != Some(project) {
+                        return Err(AppError::Security("CurseForge batch returned a file belonging to another project".into()));
+                    }
+                    format!("mods/{project}/files/{id}")
+                } else { format!("mods/{id}") };
+                state.curseforge_http.remember(api_get(state, &endpoint).await?, serde_json::json!({ "data": value }), &state.database).await?;
+            }
+        }
+    }
+    Ok(())
+}
+
 fn validate_api_relative_path(relative_path: &str) -> AppResult<()> {
     if relative_path.is_empty()
         || relative_path.starts_with('/')
@@ -291,40 +340,10 @@ async fn send_api_json<T: DeserializeOwned>(
     state: &AppState,
     request: reqwest::RequestBuilder,
 ) -> AppResult<T> {
-    let response = request.send().await?;
-    if !response.status().is_success() {
-        if active_api_key(state).await.is_none() {
-            if matches!(
-                response.status(),
-                reqwest::StatusCode::UNAUTHORIZED | reqwest::StatusCode::FORBIDDEN
-            ) {
-                return Err(AppError::Unavailable(
-                    "The SLH CurseForge relay is locked by Netlify access protection. Disable Visitor Access for /api/v1/* on the relay deployment.".into(),
-                ));
-            }
-            if response.status() == reqwest::StatusCode::NOT_FOUND {
-                return Err(AppError::Unavailable(
-                    "The SLH CurseForge relay route /api/v1/* is not deployed (HTTP 404)".into(),
-                ));
-            }
-        }
-        return Err(response
-            .error_for_status()
-            .expect_err("non-success response")
-            .into());
-    }
-    let content_type = response
-        .headers()
-        .get(reqwest::header::CONTENT_TYPE)
-        .and_then(|value| value.to_str().ok())
-        .unwrap_or_default()
-        .to_ascii_lowercase();
-    if !content_type.contains("application/json") {
-        return Err(AppError::Unavailable(
-            "CurseForge returned a non-JSON response; check the relay routing and access protection".into(),
-        ));
-    }
-    Ok(response.json().await?)
+    let value = state.curseforge_http.json(
+        &state.http, request, Some(&state.database), active_api_key(state).await.is_some(),
+    ).await?;
+    Ok(serde_json::from_value(value)?)
 }
 
 fn portable_key_path(paths: &PortablePaths) -> PathBuf {
@@ -353,6 +372,7 @@ pub async fn search(
     project_type: Option<&str>,
     game_version: Option<&str>,
     loader: Option<&str>,
+    category: Option<&str>,
     sort: Option<&str>,
     offset: u64,
     limit: u64,
@@ -368,6 +388,10 @@ pub async fn search(
         ),
         ("sortOrder", "desc".into()),
     ];
+    if let Some(category) = category.filter(|value| !value.is_empty()) {
+        let id = category.parse::<u64>().map_err(|_| AppError::InvalidInput("Invalid CurseForge category".into()))?;
+        parameters.push(("categoryId", id.to_string()));
+    }
     if !query.trim().is_empty() {
         parameters.push(("searchFilter", query.trim().to_owned()));
     }
@@ -774,7 +798,21 @@ pub async fn install_modpack(
     state: &AppState,
     project_id: &str,
     name: Option<String>,
+    version_id: Option<String>,
 ) -> AppResult<Instance> {
+    install_modpack_tracked(app, state, project_id, name, version_id, None).await
+}
+
+pub async fn install_modpack_tracked(
+    app: &Host, state: &AppState, project_id: &str, name: Option<String>,
+    version_id: Option<String>, progress_key: Option<String>,
+) -> AppResult<Instance> {
+    let operation_id = progress_key.unwrap_or_else(|| Uuid::new_v4().to_string());
+    let _ = app.emit(crate::host::EventKind::OperationProgress, ProgressEvent {
+        operation_id: operation_id.clone(), instance_id: None, operation: "modpack".into(),
+        stage: "metadata".into(), message: "Preparing modpack".into(), completed: 0,
+        total: None, downloaded_bytes: None, total_bytes: None,
+    });
     let project_id = validate_project_id(project_id)?;
     let project = project(state, project_id).await?;
     if project_type(project.class_id) != "modpack" {
@@ -796,7 +834,19 @@ pub async fn install_modpack(
     let instance_name =
         crate::instances::allocate_unique_display_name(&state.database, &requested_instance_name)
             .await?;
-    let file = latest_available_file(state, project_id).await?;
+    let file = if let Some(version_id) = version_id {
+        let file_id = validate_project_id(&version_id)?;
+        let response: FileResponse = send_api_json(
+            state,
+            api_get(state, &format!("mods/{project_id}/files/{file_id}")).await?,
+        ).await?;
+        if response.data.mod_id != project_id || !response.data.is_available {
+            return Err(AppError::Conflict("Selected CurseForge modpack file is unavailable".into()));
+        }
+        response.data
+    } else {
+        latest_available_file(state, project_id).await?
+    };
     validate_file_name(&file.file_name)?;
     if file.file_length > 512 * 1024 * 1024 {
         return Err(AppError::Security(
@@ -814,6 +864,7 @@ pub async fn install_modpack(
     tokio::fs::create_dir_all(&pack_directory).await?;
     let archive_path = pack_directory.join(format!("{project_id}-{}.zip", file.id));
     let download_id = Uuid::new_v4().to_string();
+    let _archive_download_guard = crate::pack_operations::ArchiveDownloadGuard(state.database.clone(), download_id.clone());
     sqlx::query(
         "INSERT INTO downloads(id, source, url, destination, status, total_bytes) \
          VALUES (?, 'curseforge', ?, ?, 'running', ?)",
@@ -824,7 +875,6 @@ pub async fn install_modpack(
     .bind(file.file_length as i64)
     .execute(&state.database)
     .await?;
-    let operation_id = Uuid::new_v4().to_string();
     let _ = app.emit(
         crate::host::EventKind::OperationProgress,
         ProgressEvent {
@@ -919,13 +969,14 @@ pub async fn install_modpack(
             return Err(error);
         }
     }
-    let imported = crate::archives::import_curseforge_pack(
+    let imported = crate::archives::import_curseforge_pack_tracked(
         app,
         state,
         ImportSlhRequest {
             archive_path: archive_path.to_string_lossy().into_owned(),
             name: Some(instance_name),
         },
+        Some(operation_id.clone()),
     )
     .await;
     if let Err(error) = &imported {
@@ -953,12 +1004,6 @@ pub(crate) async fn pack_download(
     file_id: u64,
 ) -> AppResult<PackDownload> {
     let project = project(state, project_id).await?;
-    if project.allow_mod_distribution == Some(false) {
-        return Err(AppError::Unavailable(format!(
-            "{} does not allow third-party distribution",
-            project.name
-        )));
-    }
     let response: FileResponse = send_api_json(
         state,
         api_get(state, &format!("mods/{project_id}/files/{file_id}")).await?,
@@ -977,7 +1022,17 @@ pub(crate) async fn pack_download(
         .find(|hash| hash.algo == 1)
         .map(|hash| hash.value.clone())
         .ok_or_else(|| AppError::Security("CurseForge file has no SHA-1 hash".into()))?;
-    let url = download_url(state, project_id, file_id, file.download_url.as_deref()).await?;
+    let manual_download_url = (project.allow_mod_distribution == Some(false))
+        .then(|| format!("https://www.curseforge.com/minecraft/{}/{}/download/{file_id}",
+            match project_type(project.class_id) {
+                "resourcepack" => "texture-packs", "shader" => "shaders", "world" => "worlds", _ => "mc-mods",
+            }, project.slug));
+    let local_path = if manual_download_url.is_some() {
+        cached_pack_file(state, project_id, file_id, &file.file_name, &sha1).await?
+    } else { None };
+    let url = if manual_download_url.is_some() { String::new() } else {
+        download_url(state, project_id, file_id, file.download_url.as_deref()).await?
+    };
     Ok(PackDownload {
         project_type: project_type(project.class_id).into(),
         display_name: project.name,
@@ -985,7 +1040,241 @@ pub(crate) async fn pack_download(
         url,
         sha1,
         size_bytes: file.file_length,
+        manual_download_url,
+        local_path,
     })
+}
+
+/// Preserve exact, author-downloaded artifacts after Downloads is cleaned, and
+/// reuse unmodified files already installed by SLH. Worlds use the original ZIP,
+/// never a player's modified save directory.
+async fn cached_pack_file(
+    state: &AppState, project_id: u64, file_id: u64, file_name: &str, sha1: &str,
+) -> AppResult<Option<PathBuf>> {
+    let cache = state.paths.downloads.join("curseforge-manual");
+    let cached = pack_cache_path(&cache, file_name, sha1)?;
+    if cached.is_file() && matches!(verify_sha1(&cached, sha1).await, Ok(true)) { return Ok(Some(cached)); }
+    if let Some(source) = verified_manual_file(&cache, file_name, sha1).await? {
+        return cache_verified_pack_file(&cache, &source, file_name, sha1).await.map(Some);
+    }
+    if let Some(directory) = browser_download_directory(state).await? {
+        if let Some(source) = verified_download_file(&directory, file_name, sha1).await? {
+            return cache_verified_pack_file(&cache, &source, file_name, sha1).await.map(Some);
+        }
+    }
+    let mut candidates: Vec<String> = sqlx::query_scalar(
+        "SELECT file_path FROM installed_content WHERE provider = 'curseforge' AND project_id = ? AND version_id = ?",
+    ).bind(project_id.to_string()).bind(file_id.to_string()).fetch_all(&state.database).await?;
+    candidates.push(state.paths.downloads.join("curseforge-worlds")
+        .join(format!("{project_id}-{file_id}.zip")).to_string_lossy().into_owned());
+    for candidate in candidates {
+        let source = PathBuf::from(candidate);
+        if source.is_file() && matches!(verify_sha1(&source, sha1).await, Ok(true)) {
+            return cache_verified_pack_file(&cache, &source, file_name, sha1).await.map(Some);
+        }
+    }
+    Ok(None)
+}
+
+async fn cache_verified_pack_file(cache: &Path, source: &Path, file_name: &str, sha1: &str) -> AppResult<PathBuf> {
+    let target = pack_cache_path(cache, file_name, sha1)?;
+    tokio::fs::create_dir_all(cache).await?;
+    if source == target { return Ok(target); }
+    // A unique temporary file avoids exposing a partially copied download to
+    // another pack installation. Hash again in case the source changed mid-copy.
+    let temporary = cache.join(format!("{}.slh-part", Uuid::new_v4()));
+    tokio::fs::copy(source, &temporary).await?;
+    if !verify_sha1(&temporary, sha1).await? {
+        let _ = tokio::fs::remove_file(&temporary).await;
+        return Err(AppError::Security(format!("Downloaded file changed while caching: {file_name}")));
+    }
+    if target.is_file() { tokio::fs::remove_file(&target).await?; }
+    tokio::fs::rename(temporary, &target).await?;
+    Ok(target)
+}
+
+fn pack_cache_path(cache: &Path, file_name: &str, sha1: &str) -> AppResult<PathBuf> {
+    validate_file_name(file_name)?;
+    if sha1.len() != 40 || !sha1.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+        return Err(AppError::Security("CurseForge file has an invalid SHA-1 hash".into()));
+    }
+    Ok(cache.join(format!("{}-{file_name}", sha1.to_ascii_lowercase())))
+}
+
+async fn verified_manual_file(directory: &Path, file_name: &str, sha1: &str) -> AppResult<Option<PathBuf>> {
+    validate_file_name(file_name)?;
+    let path = directory.join(file_name);
+    if path.is_file() && verify_sha1(&path, sha1).await? { return Ok(Some(path)); }
+    Ok(None)
+}
+
+pub(crate) async fn browser_download_directory(state: &AppState) -> AppResult<Option<PathBuf>> {
+    let settings = crate::database::setting(&state.database, "downloads").await?;
+    Ok(settings.get("curseforgeDirectory").and_then(serde_json::Value::as_str)
+        .filter(|path| !path.trim().is_empty()).map(PathBuf::from)
+        .or_else(|| directories::UserDirs::new().and_then(|dirs| dirs.download_dir().map(Path::to_path_buf))))
+}
+
+/// Only exact manifest artifacts in the configured browser folder or SLH's
+/// manual cache are disposable. Installed files and unrelated downloads stay.
+pub(crate) async fn cleanup_pack_downloads(state: &AppState, files: &[(String, String)], archive: &Path, archive_sha1: &str) -> AppResult<()> {
+    let settings = crate::database::setting(&state.database, "downloads").await?;
+    if settings.get("curseforgeDeleteAfterInstall").and_then(serde_json::Value::as_bool) != Some(true) { return Ok(()); }
+    let mut directories = vec![state.paths.downloads.join("curseforge-manual")];
+    if let Some(directory) = browser_download_directory(state).await? { directories.push(directory); }
+    let mut installed_roots = Vec::new();
+    for instance in crate::database::instances(&state.database).await? {
+        if let Ok(root) = tokio::fs::canonicalize(&instance.game_dir).await { installed_roots.push(root); }
+    }
+    let mut safe_directories = Vec::new();
+    for directory in directories {
+        if let Ok(resolved) = tokio::fs::canonicalize(&directory).await {
+            if !installed_roots.iter().any(|root| resolved.starts_with(root)) { safe_directories.push(directory); }
+        }
+    }
+    let mut directories = safe_directories;
+    let archive_parent = tokio::fs::canonicalize(archive.parent().unwrap_or(Path::new(""))).await.ok();
+    for directory in &directories {
+        for (name, sha1) in files {
+            for candidate in download_candidates(directory, &[name.clone()]).await? {
+                remove_verified_download(&candidate, sha1).await?;
+            }
+            let cached = pack_cache_path(directory, name, sha1)?;
+            remove_verified_download(&cached, sha1).await?;
+        }
+    }
+    directories.push(state.paths.downloads.join("curseforge-packs"));
+    for directory in directories {
+        if let Ok(parent) = tokio::fs::canonicalize(directory).await {
+            if archive_parent.as_ref() == Some(&parent) { remove_verified_download(archive, archive_sha1).await?; break; }
+        }
+    }
+    Ok(())
+}
+
+async fn remove_verified_download(path: &Path, sha1: &str) -> AppResult<()> {
+    let metadata = match tokio::fs::symlink_metadata(path).await {
+        Ok(metadata) => metadata,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+        Err(error) => return Err(error.into()),
+    };
+    if !metadata.file_type().is_file() || metadata.file_type().is_symlink() { return Ok(()); }
+    if verify_sha1(path, sha1).await? { tokio::fs::remove_file(path).await?; }
+    Ok(())
+}
+
+pub(crate) async fn archive_source_signature(path: &Path) -> AppResult<String> {
+    use sha2::Digest;
+    let metadata = tokio::fs::metadata(path).await?;
+    let value = format!("{}:{}:{:?}", path.display(), metadata.len(), metadata.modified()?);
+    Ok(format!("curseforge-auto:{}", hex::encode(sha2::Sha256::digest(value.as_bytes()))))
+}
+
+/// Enumerate complete ZIP names only; the UI waits for a stable signature and
+/// inspects the manifest before starting an ordinary tracked pack import.
+pub async fn scan_pack_archives(state: &AppState) -> AppResult<Vec<(String, String)>> {
+    let settings = crate::database::setting(&state.database, "downloads").await?;
+    if settings.get("curseforgeImportArchives").and_then(serde_json::Value::as_bool) != Some(true) { return Ok(Vec::new()); }
+    let Some(directory) = browser_download_directory(state).await? else { return Ok(Vec::new()); };
+    let mut entries = match tokio::fs::read_dir(directory).await {
+        Ok(entries) => entries,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
+        Err(error) => return Err(error.into()),
+    };
+    let mut result = Vec::new();
+    while let Some(entry) = entries.next_entry().await? {
+        let path = entry.path();
+        if !entry.file_type().await?.is_file() || !path.extension().is_some_and(|e| e.eq_ignore_ascii_case("zip")) { continue; }
+        let metadata = entry.metadata().await?;
+        if metadata.len() == 0 || metadata.len() > 512 * 1024 * 1024 { continue; }
+        let signature = archive_source_signature(&path).await?;
+        if crate::database::setting(&state.database, &signature).await.ok().and_then(|v| v.as_bool()) == Some(true) { continue; }
+        result.push((path.to_string_lossy().into_owned(), signature));
+    }
+    result.sort();
+    Ok(result)
+}
+
+fn browser_download_name(candidate: &str, expected: &str) -> bool {
+    if candidate == expected { return true; }
+    let path = Path::new(expected);
+    let Some(stem) = path.file_stem().and_then(|s| s.to_str()) else { return false; };
+    let Some(extension) = path.extension().and_then(|s| s.to_str()) else { return false; };
+    candidate.strip_prefix(&format!("{stem} (")).and_then(|s| s.strip_suffix(&format!(").{extension}")))
+        .is_some_and(|number| !number.is_empty() && number.chars().all(|ch| ch.is_ascii_digit()))
+}
+
+async fn download_candidates(directory: &Path, names: &[String]) -> AppResult<Vec<PathBuf>> {
+    for name in names { validate_file_name(name)?; }
+    let mut entries = match tokio::fs::read_dir(directory).await {
+        Ok(entries) => entries,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
+        Err(error) => return Err(error.into()),
+    };
+    let mut paths = Vec::new();
+    while let Some(entry) = entries.next_entry().await? {
+        if !names.iter().any(|name| browser_download_name(&entry.file_name().to_string_lossy(), name)) { continue; }
+        let metadata = match entry.metadata().await { Ok(value) => value, Err(_) => continue };
+        if metadata.is_file() && metadata.len() <= 512 * 1024 * 1024 { paths.push(entry.path()); }
+    }
+    paths.sort();
+    Ok(paths)
+}
+
+async fn verified_download_file(directory: &Path, name: &str, sha1: &str) -> AppResult<Option<PathBuf>> {
+    for path in download_candidates(directory, &[name.to_owned()]).await? {
+        // Browsers may still be writing the file. Only the exact manifest hash is usable.
+        if matches!(verify_sha1(&path, sha1).await, Ok(true)) { return Ok(Some(path)); }
+    }
+    Ok(None)
+}
+
+pub async fn scan_manual_pack_downloads(state: &AppState, file_names: Vec<String>) -> AppResult<Vec<String>> {
+    if file_names.len() > 512 { return Err(AppError::InvalidInput("Too many expected files".into())); }
+    let Some(downloads) = browser_download_directory(state).await? else { return Ok(Vec::new()); };
+    let mut signatures = Vec::new();
+    for path in download_candidates(&downloads, &file_names).await? {
+        if let Ok(metadata) = tokio::fs::metadata(&path).await {
+            let candidate = path.file_name().unwrap().to_string_lossy();
+            for name in &file_names {
+                if browser_download_name(&candidate, name) {
+                    signatures.push(format!("{name}\0{}:{}:{:?}", path.display(), metadata.len(), metadata.modified().ok()));
+                }
+            }
+        }
+    }
+    Ok(signatures)
+}
+
+pub async fn add_manual_pack_files(state: &AppState, paths: Vec<String>) -> AppResult<u64> {
+    if paths.len() > 512 { return Err(AppError::InvalidInput("Too many selected files".into())); }
+    let directory = state.paths.downloads.join("curseforge-manual");
+    tokio::fs::create_dir_all(&directory).await?;
+    let mut count = 0;
+    for source in paths {
+        let source = PathBuf::from(source);
+        let filename = source.file_name().and_then(|name| name.to_str())
+            .ok_or_else(|| AppError::InvalidInput("Selected file has no valid filename".into()))?;
+        validate_file_name(filename)?;
+        if !matches!(source.extension().and_then(|ext| ext.to_str()).map(str::to_ascii_lowercase).as_deref(), Some("jar" | "zip")) {
+            return Err(AppError::InvalidInput("Select CurseForge JAR or ZIP files".into()));
+        }
+        if tokio::fs::metadata(&source).await?.len() > 512 * 1024 * 1024 {
+            return Err(AppError::Security("Selected file exceeds 512 MiB".into()));
+        }
+        let destination = directory.join(filename);
+        if source == destination { continue; }
+        let temporary = directory.join(format!("{}.tmp", Uuid::new_v4()));
+        let result = async {
+            tokio::fs::copy(&source, &temporary).await?;
+            if destination.exists() { tokio::fs::remove_file(&destination).await?; }
+            tokio::fs::rename(&temporary, &destination).await
+        }.await;
+        if result.is_err() { let _ = tokio::fs::remove_file(&temporary).await; }
+        result?;
+        count += 1;
+    }
+    Ok(count)
 }
 
 async fn resolve(
@@ -1578,7 +1867,7 @@ fn content_folder(project_type: &str) -> Option<&'static str> {
     }
 }
 
-fn safe_modpack_name(title: &str) -> String {
+pub(crate) fn safe_modpack_name(title: &str) -> String {
     let mut result = String::with_capacity(title.len());
     for character in title.trim().chars().take(80) {
         if character.is_control()
@@ -1609,7 +1898,7 @@ fn safe_world_name(title: &str) -> String {
     }
 }
 
-async fn install_world_archive(
+pub(crate) async fn install_world_archive(
     state: &AppState,
     instance_id: &str,
     archive: &Path,
@@ -1721,6 +2010,25 @@ async fn backup_content_file(state: &AppState, instance_id: &str, source: &Path)
 mod tests {
     use super::*;
 
+    #[tokio::test]
+    async fn pack_cache_keeps_distinct_versions_and_rejects_changed_files() {
+        use sha1::{Digest, Sha1};
+        let directory = tempfile::tempdir().unwrap();
+        let source = directory.path().join("download.jar");
+        let cache = directory.path().join("cache");
+        tokio::fs::write(&source, b"first version").await.unwrap();
+        let first_hash = hex::encode(Sha1::digest(b"first version"));
+        let first = cache_verified_pack_file(&cache, &source, "mod.jar", &first_hash).await.unwrap();
+        tokio::fs::write(&source, b"second version").await.unwrap();
+        assert!(cache_verified_pack_file(&cache, &source, "mod.jar", &first_hash).await.is_err());
+        let second_hash = hex::encode(Sha1::digest(b"second version"));
+        let second = cache_verified_pack_file(&cache, &source, "mod.jar", &second_hash).await.unwrap();
+        assert_ne!(first, second);
+        assert!(verify_sha1(&first, &first_hash).await.unwrap());
+        assert!(verify_sha1(&second, &second_hash).await.unwrap());
+        assert!(pack_cache_path(&cache, "mod.jar", "../outside").is_err());
+    }
+
     #[test]
     fn curseforge_ids_loaders_and_names_are_constrained() {
         assert_eq!(validate_project_id("238222").unwrap(), 238222);
@@ -1761,4 +2069,101 @@ mod tests {
         std::fs::write(world.join("level.dat"), b"fixture").unwrap();
         assert_eq!(find_world_root(temporary.path()).unwrap(), world);
     }
+    #[tokio::test]
+    async fn manual_pack_files_require_exact_hashes_and_safe_names() {
+        let directory = tempfile::tempdir().unwrap();
+        let sha1 = "a9993e364706816aba3e25717850c26c9cd0d89d";
+        assert!(verified_manual_file(directory.path(), "mod.jar", sha1).await.unwrap().is_none());
+        std::fs::write(directory.path().join("mod.jar"), b"wrong version").unwrap();
+        assert!(verified_manual_file(directory.path(), "mod.jar", sha1).await.unwrap().is_none());
+        std::fs::write(directory.path().join("mod.jar"), b"abc").unwrap();
+        assert_eq!(verified_manual_file(directory.path(), "mod.jar", sha1).await.unwrap(), Some(directory.path().join("mod.jar")));
+        assert!(verified_manual_file(directory.path(), "../mod.jar", sha1).await.is_err());
+    }
+
+    #[tokio::test]
+    async fn downloads_accept_browser_duplicates_only_after_hash_verification() {
+        let directory = tempfile::tempdir().unwrap();
+        let sha1 = "a9993e364706816aba3e25717850c26c9cd0d89d";
+        std::fs::write(directory.path().join("required.jar"), b"wrong version").unwrap();
+        std::fs::write(directory.path().join("required (1).jar.crdownload"), b"abc").unwrap();
+        std::fs::write(directory.path().join("different.jar"), b"abc").unwrap();
+        assert!(verified_download_file(directory.path(), "required.jar", sha1).await.unwrap().is_none());
+        let duplicate = directory.path().join("required (2).jar");
+        std::fs::write(&duplicate, b"abc").unwrap();
+        assert_eq!(verified_download_file(directory.path(), "required.jar", sha1).await.unwrap(), Some(duplicate));
+        assert!(download_candidates(directory.path(), &["../escape.jar".into()]).await.is_err());
+        assert!(!browser_download_name("required (bad).jar", "required.jar"));
+    }
+
+    #[tokio::test]
+    async fn pack_world_is_unpacked_into_saves_without_replacing_override_world() {
+        use std::io::Write;
+        let directory = tempfile::tempdir().unwrap();
+        let paths = PortablePaths::from_executable(&directory.path().join("SLH.exe"), Some(directory.path().to_path_buf())).unwrap();
+        let state = AppState::initialize_isolated_at(paths).await.unwrap();
+        let archive_path = directory.path().join("world.zip");
+        let mut zip = zip::ZipWriter::new(std::fs::File::create(&archive_path).unwrap());
+        zip.start_file("OneBlock/level.dat", zip::write::SimpleFileOptions::default()).unwrap();
+        zip.write_all(b"world fixture").unwrap();
+        zip.start_file("OneBlock/region/r.0.0.mca", zip::write::SimpleFileOptions::default()).unwrap();
+        zip.write_all(b"region fixture").unwrap();
+        zip.finish().unwrap();
+        let saves = directory.path().join("game/saves");
+        std::fs::create_dir_all(saves.join("PackWorld")).unwrap();
+        std::fs::write(saves.join("PackWorld/level.dat"), b"override fixture").unwrap();
+        let destination = saves.join("curseforge-307740");
+        install_world_archive(&state, "fixture", &archive_path, &destination, None).await.unwrap();
+        assert_eq!(std::fs::read(destination.join("level.dat")).unwrap(), b"world fixture");
+        assert!(destination.join("region/r.0.0.mca").is_file());
+        assert!(!destination.join("OneBlock").exists());
+        assert_eq!(std::fs::read(saves.join("PackWorld/level.dat")).unwrap(), b"override fixture");
+        state.database.close().await;
+    }
+
+    #[tokio::test]
+    async fn custom_downloads_scan_and_cleanup_preserve_unrelated_files() {
+        let root = tempfile::tempdir().unwrap();
+        let paths = PortablePaths::from_executable(&root.path().join("SLH.exe"), Some(root.path().to_path_buf())).unwrap();
+        let state = AppState::initialize_isolated_at(paths).await.unwrap();
+        let browser = root.path().join("Browser");
+        tokio::fs::create_dir_all(&browser).await.unwrap();
+        let archive = browser.join("pack.zip");
+        let required = browser.join("required (1).jar");
+        let unrelated = browser.join("unrelated.jar");
+        let wrong = browser.join("required.jar");
+        for path in [&archive, &required, &unrelated] { tokio::fs::write(path, b"abc").await.unwrap(); }
+        tokio::fs::write(&wrong, b"wrong version").await.unwrap();
+        tokio::fs::write(browser.join("partial.zip.crdownload"), b"abc").await.unwrap();
+        let sha1 = "a9993e364706816aba3e25717850c26c9cd0d89d";
+        let mut settings = crate::database::setting(&state.database, "downloads").await.unwrap();
+        settings["curseforgeDirectory"] = serde_json::json!(browser);
+        crate::settings::update(&state.database, "downloads", settings.clone()).await.unwrap();
+        assert!(scan_pack_archives(&state).await.unwrap().is_empty());
+        assert_eq!(scan_manual_pack_downloads(&state, vec!["required.jar".into()]).await.unwrap().len(), 2);
+        let cached = cached_pack_file(&state, 1, 1, "required.jar", sha1).await.unwrap().unwrap();
+        assert!(verify_sha1(&cached, sha1).await.unwrap());
+        let files = vec![("required.jar".into(), sha1.into())];
+        cleanup_pack_downloads(&state, &files, &archive, sha1).await.unwrap();
+        assert!(archive.exists() && required.exists() && cached.exists());
+        settings["curseforgeImportArchives"] = serde_json::json!(true);
+        settings["curseforgeDeleteAfterInstall"] = serde_json::json!(true);
+        crate::settings::update(&state.database, "downloads", settings).await.unwrap();
+        let found = scan_pack_archives(&state).await.unwrap();
+        assert_eq!(found.len(), 1);
+        crate::database::set_setting(&state.database, &found[0].1, &serde_json::json!(true)).await.unwrap();
+        assert!(scan_pack_archives(&state).await.unwrap().is_empty());
+        cleanup_pack_downloads(&state, &files, &archive, sha1).await.unwrap();
+        assert!(!archive.exists() && !required.exists() && !cached.exists());
+        assert!(wrong.exists() && unrelated.exists());
+    }
+
+
+}
+
+pub async fn categories(state: &AppState, project_type: &str) -> AppResult<Vec<crate::models::ContentCategory>> {
+ let class_id = class_id_for(project_type).ok_or_else(|| AppError::InvalidInput("Unknown content type".into()))?;
+ let request = api_get(state, "categories").await?.query(&[("gameId", MINECRAFT_GAME_ID.to_string()), ("classId", class_id.to_string())]);
+ let response: serde_json::Value = send_api_json(state, request).await?;
+ Ok(response["data"].as_array().ok_or_else(|| AppError::Unavailable("Category list missing".into()))?.iter().filter(|v| v["isClass"].as_bool() != Some(true)).filter_map(|v| Some(crate::models::ContentCategory { id: v["id"].as_u64()?.to_string(), name: v["name"].as_str()?.into() })).collect())
 }

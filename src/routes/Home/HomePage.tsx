@@ -1,4 +1,6 @@
+import { useUiText } from "../../i18n/UiText";
 import { BeautifulHomePage } from "./BeautifulHomePage";
+import { HomeDiscoverSearch } from "./HomeDiscoverSearch";
 import { ArrowRight, Clock, CloudArrowDown, Coffee, Plus, UserCircle } from "../../components/icons";
 import { useNavigate } from "react-router-dom";
 import { useAppStore } from "../../stores/appStore";
@@ -14,7 +16,8 @@ export function HomePage() {
 }
 
 function ClassicHomePage() {
-  const { tr, locale } = useI18n();
+  const uiText = useUiText();
+  const { locale } = useI18n();
   const bootstrap = useAppStore((state) => state.bootstrap);
   const openWizard = useAppStore((state) => state.setCreateWizardOpen);
   const select = useAppStore((state) => state.selectInstance);
@@ -28,16 +31,17 @@ function ClassicHomePage() {
     <div className={page.page}>
       <header className={page.header}>
         <div>
-          <h1>{tr("Ready when you are")}</h1>
-          <p data-minimal-text>{tr("Continue an instance, check your runtime, or prepare something new without leaving your library.")}</p>
+          <h1>{uiText("home.texts.readyWhenYouAre", "Ready when you are")}</h1>
+          <p data-minimal-text>{uiText("home.texts.continueAnInstanceCheckYourRuntimeOrPrepareSomething", "Continue an instance, check your runtime, or prepare something new without leaving your library.")}</p>
         </div>
-        <button className={common.button} type="button" onClick={() => openWizard(true)}><Plus size={17} weight="bold" /> {tr("New instance")}</button>
+        <button className={common.button} type="button" onClick={() => openWizard(true)}><Plus size={17} weight="bold" /> {uiText("titlebar.newInstance", "New instance")}</button>
       </header>
       <div className={styles.dashboard}>
         <section className={styles.continuePanel}>
-          <div className={styles.panelHeading}><h2>{tr("Continue playing")}</h2><span>{recent.length} {tr("recent")}</span></div>
+          <div className={styles.panelHeading}><h2>{uiText("home.texts.continuePlaying", "Continue playing")}</h2><span>{recent.length} {uiText("home.texts.recent", "recent")}</span></div>
+          <HomeDiscoverSearch />
           <div className={styles.recentList}>
-            {recent.length === 0 ? <p className={styles.empty}>{tr("Your recently played instances will appear here.")}</p> : recent.map((instance) => (
+            {recent.length === 0 ? <p className={styles.empty}>{uiText("home.texts.yourRecentlyPlayedInstancesWillAppearHere", "Your recently played instances will appear here.")}</p> : recent.map((instance) => (
               <button
                 type="button"
                 key={instance.id}
@@ -48,29 +52,29 @@ function ClassicHomePage() {
                 }}
               >
                 <InstanceArtwork instance={instance} size="small" />
-                <span><strong>{instance.name}</strong><small data-minimal-text>Minecraft {instance.minecraftVersion} · {instance.loaderType === "bedrock" ? "Bedrock" : instance.loaderType}</small></span>
-                <span className={styles.time}><Clock size={14} /> {instance.lastPlayedAt ? new Date(instance.lastPlayedAt).toLocaleDateString(locale) : tr("Not played")}</span>
+                <span><strong>{instance.name}</strong><small data-minimal-text>{uiText("settings.minecraft", "Minecraft")}{" "}{instance.minecraftVersion} · {instance.loaderType === "bedrock" ? uiText("installation.texts.bedrock", "Bedrock") : instance.loaderType}</small></span>
+                <span className={styles.time}><Clock size={14} /> {instance.lastPlayedAt ? new Date(instance.lastPlayedAt).toLocaleDateString(locale) : uiText("home.texts.notPlayed", "Not played")}</span>
                 <ArrowRight size={17} />
               </button>
             ))}
           </div>
         </section>
         <aside className={styles.statusPanel}>
-          <div className={styles.statusHeader}><h2>{tr("Launcher status")}</h2><span className={common.successBadge}>{tr("Local")}</span></div>
+          <div className={styles.statusHeader}><h2>{uiText("accounts.texts.launcherStatus", "Launcher status")}</h2><span className={common.successBadge}>{uiText("accounts.texts.local", "Local")}</span></div>
           <div className={styles.statusRows}>
-            <div><UserCircle size={19} /><span><small data-minimal-text>{tr("Active account")}</small><strong>{active?.username ?? tr("Not selected")}</strong></span></div>
-            <div><Coffee size={19} /><span><small data-minimal-text>{tr("Java selection")}</small><strong>{bootstrap.settings.minecraft.javaMode === "auto" ? tr("Automatic") : tr("Custom")}</strong></span></div>
-            <div><CloudArrowDown size={19} /><span><small data-minimal-text>{tr("Downloads")}</small><strong>{bootstrap.settings.downloads.concurrency} {tr("concurrent")}</strong></span></div>
+            <div><UserCircle size={19} /><span><small data-minimal-text>{uiText("shell.texts.activeAccount", "Active account")}</small><strong>{active?.username ?? uiText("home.texts.notSelected", "Not selected")}</strong></span></div>
+            <div><Coffee size={19} /><span><small data-minimal-text>{uiText("home.texts.javaSelection", "Java selection")}</small><strong>{bootstrap.settings.minecraft.javaMode === "auto" ? uiText("accounts.texts.automatic", "Automatic") : uiText("accounts.texts.custom", "Custom")}</strong></span></div>
+            <div><CloudArrowDown size={19} /><span><small data-minimal-text>{uiText("settings.downloads", "Downloads")}</small><strong>{bootstrap.settings.downloads.concurrency} {uiText("home.texts.concurrent", "concurrent")}</strong></span></div>
           </div>
-          <div className={styles.portable}><small data-minimal-text>{tr("Data folder")}</small><code>{bootstrap.portableRoot}</code></div>
+          <div className={styles.portable}><small data-minimal-text>{uiText("accounts.texts.dataFolder", "Data folder")}</small><code>{bootstrap.portableRoot}</code></div>
         </aside>
       </div>
       <section className={page.section}>
-        <div className={page.sectionHeader}><h2>{tr("Quick actions")}</h2></div>
+        <div className={page.sectionHeader}><h2>{uiText("home.texts.quickActions", "Quick actions")}</h2></div>
         <div className={styles.quickActions}>
-          <button type="button" onClick={() => openWizard(true)}><Plus size={20} /><span><strong>{tr("Create instance")}</strong><small data-minimal-text>{tr("Install a clean Minecraft version")}</small></span></button>
-          <button type="button" onClick={() => navigate("/discover")}><CloudArrowDown size={20} /><span><strong>{tr("Browse Discover")}</strong><small data-minimal-text>{tr("Explore content from Modrinth")}</small></span></button>
-          <button type="button" onClick={() => navigate("/settings/java")}><Coffee size={20} /><span><strong>{tr("Check Java")}</strong><small data-minimal-text>{tr("Review detected runtimes")}</small></span></button>
+          <button type="button" onClick={() => openWizard(true)}><Plus size={20} /><span><strong>{uiText("library.create", "Create instance")}</strong><small data-minimal-text>{uiText("home.texts.installACleanMinecraftVersion", "Install a clean Minecraft version")}</small></span></button>
+          <button type="button" onClick={() => navigate("/discover")}><CloudArrowDown size={20} /><span><strong>{uiText("home.texts.browseDiscover", "Browse Discover")}</strong><small data-minimal-text>{uiText("home.texts.exploreContentFromModrinth", "Explore content from Modrinth")}</small></span></button>
+          <button type="button" onClick={() => navigate("/settings/java")}><Coffee size={20} /><span><strong>{uiText("home.texts.checkJava", "Check Java")}</strong><small data-minimal-text>{uiText("home.texts.reviewDetectedRuntimes", "Review detected runtimes")}</small></span></button>
         </div>
       </section>
     </div>

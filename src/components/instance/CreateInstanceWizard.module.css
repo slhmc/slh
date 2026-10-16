@@ -1,7 +1,7 @@
 .wizard {
   display: grid;
-  min-height: 670px;
-  grid-template-columns: 208px minmax(0, 1fr);
+  min-height: 480px;
+  grid-template-columns: 170px minmax(0, 1fr);
 }
 
 .steps {
@@ -17,7 +17,7 @@
 .sourceButton:hover { color: var(--color-text); background: var(--color-surface); }
 .sourceCurrent { border-color: var(--color-accent); color: var(--color-accent-contrast); background: var(--color-accent); }
 .sourceCurrent:hover { color: var(--color-accent-contrast); background: var(--color-accent-hover); }
-.sourceButton span { font-size: 11px; font-weight: 700; }
+.sourceButton span { font-size: 0.75rem; font-weight: 700; }
 .sourceIcon { display: block; width: 24px; height: 24px; object-fit: contain; image-rendering: pixelated; }
 
 .step {
@@ -29,7 +29,7 @@
   padding: 0 9px;
   border-radius: var(--radius-sm);
   color: var(--color-text-subtle);
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 .step > span {
@@ -39,7 +39,7 @@
   place-items: center;
   border: 1px solid var(--color-border);
   border-radius: 50%;
-  font-size: 10px;
+  font-size: 0.75rem;
 }
 
 .step.current {
@@ -81,8 +81,8 @@
     "runtime review";
   grid-template-columns: minmax(500px, 1.1fr) minmax(390px, 0.9fr);
   align-content: start;
-  gap: 14px;
-  padding: 22px 24px;
+  gap: 12px;
+  padding: 16px;
   overflow: auto;
 }
 
@@ -124,7 +124,7 @@
   color: var(--color-text-muted);
   background: transparent;
   cursor: pointer;
-  font-size: 11px;
+  font-size: 0.75rem;
   font-weight: 700;
 }
 
@@ -136,13 +136,13 @@
 
 .stageHeader h3 {
   margin: 0;
-  font-size: 18px;
+  font-size: 1.125rem;
 }
 
 .stageHeader p {
   margin: 5px 0 0;
   color: var(--color-text-muted);
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 .checkLabel {
@@ -150,7 +150,7 @@
   align-items: center;
   gap: 7px;
   color: var(--color-text-muted);
-  font-size: 11px;
+  font-size: 0.75rem;
   white-space: nowrap;
 }
 
@@ -214,12 +214,27 @@
 .javaOption small {
   margin-top: 3px;
   color: var(--color-text-muted);
-  font-size: 11px;
+  font-size: 0.75rem;
   line-height: 1.35;
 }
 
 .versionRow > svg:last-child {
   color: var(--color-accent);
+}
+
+.versionDetails {
+  min-width: 0;
+  transform: translateY(-2px);
+}
+
+.versionDetails strong {
+  line-height: 1.4;
+}
+
+.versionRow .versionBadge {
+  align-self: center;
+  line-height: 1.4;
+  transform: translateY(-2px);
 }
 
 .versionIcon {
@@ -248,7 +263,7 @@
   border-radius: var(--radius-sm);
   color: var(--color-error);
   background: var(--color-error-soft);
-  font-size: 12px;
+  font-size: 0.75rem;
   line-height: 1.45;
 }
 
@@ -269,7 +284,7 @@
 .reviewStage .stageHeader { min-height: 0; }
 .loaderStage .loaderGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .loaderStage .loaderCard { min-height: 56px; grid-template-columns: 32px minmax(0, 1fr) 18px; gap: 8px; padding: 8px; }
-.loaderStage .loaderIcon { width: 32px; height: 32px; font-size: 9px; }
+.loaderStage .loaderIcon { width: 32px; height: 32px; font-size: 0.75rem; }
 .loaderStage .loaderCard small { display: none; }
 .loaderStage .loaderVersionField { margin-top: 12px; }
 .identityStage .formGrid { grid-template-columns: minmax(0, 1fr) minmax(220px, 0.55fr); gap: 12px; }
@@ -307,7 +322,7 @@
 
 .loaderCard em {
   color: var(--color-text-subtle);
-  font-size: 10px;
+  font-size: 0.75rem;
   font-style: normal;
 }
 
@@ -325,8 +340,8 @@
   color: var(--color-accent-hover);
   background: var(--color-sidebar);
   font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 800;
+  font-size: 0.75rem;
+  font-weight: 700;
 }
 
 .loaderIcon img {
@@ -414,7 +429,7 @@
   align-items: center;
   gap: 6px;
   color: var(--color-text-muted);
-  font-size: 10px;
+  font-size: 0.75rem;
 }
 
 .colorFields input {
@@ -430,7 +445,7 @@
 .colorFields code {
   color: var(--color-text);
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 0.75rem;
 }
 
 .iconPreview {
@@ -471,7 +486,7 @@
 .bedrockNotice small {
   margin-top: 5px;
   color: var(--color-text-muted);
-  font-size: 11px;
+  font-size: 0.75rem;
   line-height: 1.4;
 }
 
@@ -509,7 +524,7 @@
 .mirrorRow small {
   margin-top: 4px;
   color: var(--color-text-muted);
-  font-size: 11px;
+  font-size: 0.75rem;
   line-height: 1.4;
 }
 
@@ -572,7 +587,7 @@
   border-radius: var(--radius-xs);
   color: var(--color-accent);
   background: color-mix(in srgb, var(--color-accent) 10%, var(--color-surface));
-  font-size: 11px;
+  font-size: 0.75rem;
   font-weight: 700;
   white-space: nowrap;
 }
@@ -661,13 +676,13 @@
 .memoryBlock small {
   margin-top: 3px;
   color: var(--color-text-muted);
-  font-size: 11px;
+  font-size: 0.75rem;
 }
 
 .memoryBlock output {
   color: var(--color-focus);
   font-family: var(--font-mono);
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .memoryBlock input {
@@ -692,7 +707,7 @@
 
 .review dt {
   color: var(--color-text-muted);
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 .review dd {
@@ -705,18 +720,19 @@
 .review .memoryReview dd {
   min-width: 0;
   overflow: hidden;
-  font-size: 11px;
+  font-size: 0.75rem;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .footer {
   display: flex;
-  min-height: 64px;
+  width: 100%;
+  min-height: 40px;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 18px;
-  border-top: 1px solid var(--color-border);
+  gap: 12px;
+  padding: 0;
   background: var(--color-surface);
 }
 
@@ -741,3 +757,18 @@
 }
 
 @keyframes spin { to { transform: rotate(360deg); } }
+
+.identityStage .stageHeader { min-height: 0; margin-bottom: 12px; }
+.identityStage .stageHeader p { display: none; }
+.identityStage .formGrid { grid-template-columns: 72px minmax(160px, 1fr) minmax(220px, .65fr); align-items: start; gap: 12px; }
+.identityStage .artworkEditor { position: relative; order: -1; grid-column: auto; grid-template-columns: 1fr; padding: 0; border: 0; }
+.identityStage .artworkPreview { width: 72px; height: 72px; cursor: pointer; display: grid; place-items: center; border: 1px solid var(--color-border); border-radius: var(--radius-md); }
+.editOverlay { position: absolute; opacity: 0; pointer-events: none; }
+.artworkPreview:hover > svg:first-child, .artworkPreview:focus-visible > svg:first-child { opacity: .35; }
+.artworkPreview:hover .editOverlay, .artworkPreview:focus-visible .editOverlay { opacity: 1; }
+.identityStage .artworkControls { position: absolute; z-index: 10; top: 80px; left: 0; width: min(380px, 65vw); padding: 16px; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); box-shadow: var(--shadow-panel); }
+.groupField { min-width: 0; }
+.groupDetails { margin-top: 8px; font-size: .8125rem; }
+.groupDetails summary { cursor: pointer; color: var(--color-link); }
+.groupDetails .groupCreate { margin-top: 8px; }
+@media (max-width: 800px) { .identityStage .formGrid { grid-template-columns: 72px minmax(0, 1fr); } .groupField { grid-column: 2; } .groupCreate { grid-template-columns: minmax(0, 1fr); } }

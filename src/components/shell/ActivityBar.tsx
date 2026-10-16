@@ -1,9 +1,12 @@
-import { ArrowsClockwise, CheckCircle, CloudArrowDown } from "../icons";
+import { useUiText } from "../../i18n/UiText";
+import { CheckCircle, CloudArrowDown } from "../icons";
 import { useAppStore } from "../../stores/appStore";
 import { useI18n } from "../../i18n/I18nProvider";
 import styles from "./ActivityBar.module.css";
+import { BusyIndicator } from "../common/Controls";
 
 export function ActivityBar() {
+  const uiText = useUiText();
   const { tr } = useI18n();
   const activities = useAppStore((state) => state.activities);
   // A full-disk Java scan is an explicit Settings operation, not a download.
@@ -17,19 +20,19 @@ export function ActivityBar() {
       <div className={styles.status}>
         {latest ? (
           <>
-            {complete ? <CheckCircle size={15} weight="fill" /> : <ArrowsClockwise className={styles.spin} size={15} weight="bold" />}
-            <span data-minimal-text>{tr(latest.message)}</span>
+            {complete ? <CheckCircle size={15} weight="fill" /> : <BusyIndicator size={15} />}
+            <span data-minimal-text>{latest.messageKey ? uiText(latest.messageKey, tr(latest.message), latest.params) : tr(latest.message)}</span>
             {latest.total ? <small data-minimal-text>{latest.completed} / {latest.total}</small> : null}
           </>
         ) : (
           <>
             <CloudArrowDown size={15} />
-            <span data-minimal-text>{tr("No active downloads")}</span>
+            <span data-minimal-text>{uiText("accounts.texts.noActiveDownloads", "No active downloads")}</span>
           </>
         )}
       </div>
       {progress !== null ? (
-        <div className={styles.progress} aria-label={`${Math.round(progress)} percent`}>
+        <div className={styles.progress} aria-label={uiText("common.progressPercent", "{percent}% complete", { percent: Math.round(progress) })} role="progressbar" aria-valuenow={Math.round(progress)} aria-valuemin={0} aria-valuemax={100}>
           <span style={{ width: `${progress}%` }} />
         </div>
       ) : null}

@@ -4,8 +4,8 @@
 .instanceTabsMenu header { cursor: grab; }
 .instanceTabsMenu header:active { cursor: grabbing; }
 .menu header > svg { color: var(--color-accent); }
-.menu header strong { font-size: 12px; }
-.menu header span { color: var(--color-text-muted); font-size: 9px; }
+.menu header strong { font-size: 0.75rem; }
+.menu header span { color: var(--color-text-muted); font-size: 0.75rem; }
 .menu > div { padding: 5px; }
 .separator { height: 1px; margin: 5px 4px; background: var(--color-border-strong); }
 .itemRow { position: relative; display: flex; align-items: center; gap: 3px; cursor: grab; user-select: none; }
@@ -18,5 +18,5 @@
 .itemToggle:active { transform: translateY(1px); }
 .check { display: grid; width: 18px; place-items: center; color: var(--color-accent); }
 .itemToggle > svg { color: var(--color-text-muted); }
-.itemToggle > span:last-child { font-size: 11px; }
-.dragPreview { position: fixed; z-index: 1200; min-width: 130px; padding: 8px 10px; border: 1px solid var(--color-accent); border-radius: var(--radius-xs); color: var(--color-text); background: color-mix(in srgb, var(--color-surface) 92%, var(--color-accent)); box-shadow: var(--shadow-dialog); font-size: 11px; font-weight: 700; pointer-events: none; transform: translate(12px, 12px); }
+.itemToggle > span:last-child { font-size: 0.75rem; }
+.dragPreview { position: fixed; z-index: 1200; min-width: 130px; padding: 8px 10px; border: 1px solid var(--color-accent); border-radius: var(--radius-xs); color: var(--color-text); background: color-mix(in srgb, var(--color-surface) 92%, var(--color-accent)); box-shadow: var(--shadow-dialog); font-size: 0.75rem; font-weight: 700; pointer-events: none; transform: translate(12px, 12px); }

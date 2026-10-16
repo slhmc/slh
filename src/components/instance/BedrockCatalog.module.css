@@ -3,7 +3,7 @@
 .header { justify-content: space-between; }
 .header > div { display: grid; gap: 5px; }
 .header h1 { margin: 0; font-size: clamp(22px, 2.3vw, 32px); }
-.header small, .meta, .resultSummary { color: var(--color-text-muted); font-size: 11px; }
+.header small, .meta, .resultSummary { color: var(--color-text-muted); font-size: 0.75rem; }
 .toolbar { align-items: stretch; }
 .search { display: flex; min-width: 250px; flex: 1; align-items: center; gap: 10px; padding: 0 13px; border: 1px solid var(--color-border); border-radius: var(--radius-md); color: var(--color-text-muted); background: var(--color-surface); }
 .search input { width: 100%; min-height: 44px; border: 0; outline: 0; color: var(--color-text); background: transparent; }
@@ -12,7 +12,7 @@
 .types button.active, .types button:hover { color: var(--color-text); background: var(--color-surface); }
 .filters { flex-wrap: wrap; padding: 12px; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); }
 .filterLabel { display: flex; align-items: center; gap: 6px; margin-right: 5px; white-space: nowrap; }
-.filters label { display: grid; min-width: 180px; flex: 1; gap: 4px; color: var(--color-text-muted); font-size: 10px; }
+.filters label { display: grid; min-width: 180px; flex: 1; gap: 4px; color: var(--color-text-muted); font-size: 0.75rem; }
 .filters select { width: 100%; min-height: 35px; padding: 6px 10px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); color: var(--color-text); background: var(--color-surface-2); }
 .notice, .error, .state { margin: 0; padding: 11px 13px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); color: var(--color-text-muted); line-height: 1.5; }
 .error { color: var(--color-error); }
@@ -26,12 +26,12 @@
 .summary { display: grid; min-width: 0; gap: 5px; padding: 0; border: 0; text-align: left; color: inherit; background: none; cursor: pointer; }
 .summary:disabled { cursor: default; }
 .summary strong, .summary small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.summary small { color: var(--color-text-muted); font-size: 10px; }
-.cardBody p { display: -webkit-box; overflow: hidden; margin: 0; color: var(--color-text-muted); font-size: 11px; line-height: 1.5; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
+.summary small { color: var(--color-text-muted); font-size: 0.75rem; }
+.cardBody p { display: -webkit-box; overflow: hidden; margin: 0; color: var(--color-text-muted); font-size: 0.75rem; line-height: 1.5; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
 .meta { justify-content: space-between; }
 .meta span { display: flex; align-items: center; gap: 4px; }
 .cardBody > button:last-child { justify-self: end; }
-.backdrop { position: fixed; z-index: 50; inset: 0; display: grid; place-items: center; background: #0009; }
+.backdrop { position: fixed; z-index: 50; inset: 0; display: grid; place-items: center; background: var(--color-overlay); }
 .detail { display: grid; gap: 15px; width: min(480px, calc(100vw - 40px)); padding: 22px; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); }
 .detail > button:first-child, .detail > button:last-child { justify-self: end; }
 .detail h2, .detail p { margin: 0; }

@@ -19,6 +19,23 @@ const ALLOWED_SETTING_KEYS: &[&str] = &[
     "onboarding",
 ];
 
+/// Navigation must not overwrite resource preferences from a newer UI snapshot.
+pub async fn remember_section(pool: &SqlitePool, section: &str) -> AppResult<()> {
+    if !matches!(section, "home" | "library" | "discover" | "servers") {
+        return Err(AppError::InvalidInput("Invalid remembered section".into()));
+    }
+    sqlx::query("UPDATE settings SET value_json = json_set(value_json, '$.lastSection', ?), updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE key = 'general' AND json_extract(value_json, '$.rememberSection') = 1")
+        .bind(section).execute(pool).await?;
+    Ok(())
+}
+
+pub async fn minecraft_memory_defaults(pool: &SqlitePool) -> AppResult<(i64, i64)> {
+    let settings = database::setting(pool, "minecraft").await?;
+    let max = settings["memoryMaxMb"].as_i64().unwrap_or(4096).clamp(256, 1_048_576);
+    let min = settings["memoryMinMb"].as_i64().unwrap_or(512).clamp(256, max);
+    Ok((min, max))
+}
+
 pub async fn update(pool: &SqlitePool, key: &str, value: Value) -> AppResult<Value> {
     if !ALLOWED_SETTING_KEYS.contains(&key) {
         return Err(AppError::InvalidInput(format!(
@@ -29,6 +46,21 @@ pub async fn update(pool: &SqlitePool, key: &str, value: Value) -> AppResult<Val
         return Err(AppError::InvalidInput(
             "Settings payload must be a JSON object".into(),
         ));
+    }
+    if key == "general" {
+        if let Some(policy) = value.get("webview") {
+            let policy: crate::webview_settings::WebviewSettings = serde_json::from_value(policy.clone())
+                .map_err(|e| AppError::InvalidInput(format!("Invalid WebView2 settings: {e}")))?;
+            policy.validate()?;
+        }
+    }
+    if key == "minecraft" {
+        validate_optional_booleans(&value, &["fullscreen", "closeLauncherOnExit"])?;
+        for (field,min,max) in [("memoryMinMb",256,1048576),("memoryMaxMb",256,1048576),("resolutionWidth",320,16384),("resolutionHeight",240,16384)] {
+            if !value[field].as_u64().is_some_and(|v| v >= min && v <= max) { return Err(AppError::InvalidInput(format!("Invalid {field}"))); }
+        }
+        if value["memoryMinMb"].as_u64() > value["memoryMaxMb"].as_u64() { return Err(AppError::InvalidInput("Minimum memory exceeds maximum memory".into())); }
+        if !value["jvmArgs"].as_array().is_some_and(|v| v.len() <= 128 && v.iter().all(|a| a.as_str().is_some_and(|s| !s.contains('\0') && s.len() <= 4096))) { return Err(AppError::InvalidInput("Invalid JVM arguments".into())); }
     }
     if key == "privacy" {
         let telemetry = value
@@ -43,6 +75,15 @@ pub async fn update(pool: &SqlitePool, key: &str, value: Value) -> AppResult<Val
     }
     if key == "appearance" {
         validate_appearance(&value)?;
+    }
+    if key == "downloads" {
+        validate_optional_booleans(&value, &["curseforgeImportArchives", "curseforgeDeleteAfterInstall"])?;
+        if let Some(directory) = value.get("curseforgeDirectory").filter(|v| !v.is_null()) {
+            let directory = directory.as_str().ok_or_else(|| AppError::InvalidInput("Invalid CurseForge downloads folder".into()))?;
+            if directory.contains('\0') || !Path::new(directory).is_absolute() || directory.trim().is_empty() {
+                return Err(AppError::InvalidInput("Choose an absolute CurseForge downloads folder".into()));
+            }
+        }
     }
     if key == "notifications" {
         validate_notifications(&value)?;
@@ -113,6 +154,10 @@ fn validate_bedrock(value: &Value) -> AppResult<()> {
 }
 
 fn validate_java(value: &Value) -> AppResult<()> {
+    validate_optional_booleans(value, &["autoDetect", "autoDownload", "skipCompatibilityCheck", "warnLowMemory"])?;
+    if value.get("permGenMb").is_some_and(|v| !v.as_u64().is_some_and(|n| n <= 4096)) {
+        return Err(AppError::InvalidInput("PermGen memory must be an integer from 0 to 4096 MB".into()));
+    }
     let Some(directory) = value.get("installDirectory") else {
         return Err(AppError::InvalidInput(
             "Java install directory is required".into(),
@@ -138,6 +183,7 @@ fn validate_java(value: &Value) -> AppResult<()> {
 }
 
 fn validate_appearance(value: &Value) -> AppResult<()> {
+    validate_optional_booleans(value, &["fitProjectTitles"])?;
     const COLORS: &[&str] = &[
         "background",
         "surface",
@@ -156,10 +202,26 @@ fn validate_appearance(value: &Value) -> AppResult<()> {
                 .chars()
                 .all(|character| character.is_ascii_hexdigit())
     };
+    for colors in std::iter::once(value).chain(value.get("presets").and_then(Value::as_array).into_iter().flatten().filter_map(|v| v.get("colors"))) {
+        for key in ["success", "warning", "error", "info"] {
+            if let Some(color) = colors.get(key) {
+                if !color.as_str().is_some_and(&valid_color) {
+                    return Err(AppError::InvalidInput(format!("Appearance color {key} must use #RRGGBB")));
+                }
+            }
+        }
+    }
     if let Some(minimalism) = value.get("minimalism") {
         if !minimalism.is_boolean() {
             return Err(AppError::InvalidInput(
                 "Appearance minimalism must be a boolean".into(),
+            ));
+        }
+    }
+    if let Some(mode) = value.get("homeCharacterMode") {
+        if !mode.as_u64().is_some_and(|mode| mode <= 2) {
+            return Err(AppError::InvalidInput(
+                "Home character mode must be 0 (off), 1 (image), or 2 (3D)".into(),
             ));
         }
     }
@@ -252,6 +314,7 @@ fn validate_appearance(value: &Value) -> AppResult<()> {
 }
 
 fn validate_notifications(value: &Value) -> AppResult<()> {
+    validate_optional_booleans(value, &["briefEnabled"])?;
     let max_visible = value
         .get("maxVisible")
         .and_then(Value::as_u64)
@@ -279,6 +342,15 @@ fn validate_notifications(value: &Value) -> AppResult<()> {
             return Err(AppError::InvalidInput(
                 "Notification destination must be launcher or windows".into(),
             ));
+        }
+    }
+    Ok(())
+}
+
+fn validate_optional_booleans(value: &Value, keys: &[&str]) -> AppResult<()> {
+    for key in keys {
+        if value.get(*key).is_some_and(|v| !v.is_boolean()) {
+            return Err(AppError::InvalidInput(format!("Setting {key} must be true or false")));
         }
     }
     Ok(())
@@ -336,19 +408,63 @@ mod tests {
     use super::*;
 
     #[tokio::test]
-    async fn category_saves_preserve_unknown_nested_preferences() {
-        let root = tempfile::tempdir().unwrap();
-        let paths = crate::portable::PortablePaths::from_executable(&root.path().join("slh"), Some(root.path().to_path_buf())).unwrap();
-        paths.initialize().unwrap();
-        let pool = crate::database::connect(&paths).await.unwrap();
-        database::set_setting(&pool, "general", &serde_json::json!({"rememberSection":true,"future":{"enabled":true,"path":"custom"},"list":[1,2]})).await.unwrap();
-        let updated = update(&pool, "general", serde_json::json!({"rememberSection":false,"future":{"new":1},"list":[],"optional":null})).await.unwrap();
-        assert_eq!(updated["future"]["enabled"], true);
-        assert_eq!(updated["future"]["path"], "custom");
-        assert_eq!(updated["future"]["new"], 1);
-        assert_eq!(updated["rememberSection"], false);
-        assert_eq!(updated["list"], serde_json::json!([]));
-        assert!(updated["optional"].is_null());
+    async fn remembering_a_page_preserves_new_resource_preferences() {
+        let pool = sqlx::sqlite::SqlitePoolOptions::new().max_connections(1).connect("sqlite::memory:").await.unwrap();
+        sqlx::migrate!("./migrations").run(&pool).await.unwrap();
+        let mut general = database::setting(&pool, "general").await.unwrap();
+        general["rememberSection"] = Value::Bool(true);
+        general["keyboardZoom"] = Value::Bool(false);
+        let mut policy = crate::webview_settings::WebviewSettings::default();
+        policy.enabled = true;
+        general["webview"] = serde_json::to_value(&policy).unwrap();
+        update(&pool, "general", general.clone()).await.unwrap();
+        remember_section(&pool, "home").await.unwrap();
+        general["lastSection"] = Value::String("home".into());
+        assert_eq!(database::setting(&pool, "general").await.unwrap(), general);
+        assert!(remember_section(&pool, "../settings").await.is_err());
+        general["rememberSection"] = Value::Bool(false);
+        update(&pool, "general", general.clone()).await.unwrap();
+        remember_section(&pool, "library").await.unwrap();
+        assert_eq!(database::setting(&pool, "general").await.unwrap(), general);
+    }
+
+    #[tokio::test]
+    async fn invalid_webview_limits_do_not_overwrite_other_preferences() {
+        let pool = sqlx::sqlite::SqlitePoolOptions::new().max_connections(1).connect("sqlite::memory:").await.unwrap();
+        sqlx::migrate!("./migrations").run(&pool).await.unwrap();
+        let original = database::setting(&pool, "general").await.unwrap();
+        let mut value = original.clone();
+        let mut policy = crate::webview_settings::WebviewSettings::default();
+        policy.enabled = true;
+        policy.background_memory_mb = 16;
+        value["webview"] = serde_json::to_value(&policy).unwrap();
+        assert!(update(&pool, "general", value.clone()).await.is_err());
+        assert_eq!(database::setting(&pool, "general").await.unwrap(), original);
+        policy.extreme = true;
+        value["webview"] = serde_json::to_value(&policy).unwrap();
+        update(&pool, "general", value.clone()).await.unwrap();
+        assert_eq!(database::setting(&pool, "general").await.unwrap(), value);
+    }
+
+    #[tokio::test]
+    async fn memory_defaults_are_persisted_and_invalid_updates_leave_them_intact() {
+        let pool = sqlx::sqlite::SqlitePoolOptions::new().max_connections(1).connect("sqlite::memory:").await.unwrap();
+        sqlx::migrate!("./migrations").run(&pool).await.unwrap();
+        let mut minecraft = database::setting(&pool, "minecraft").await.unwrap();
+        minecraft["memoryMinMb"] = Value::from(1024);
+        minecraft["memoryMaxMb"] = Value::from(8192);
+        minecraft["fullscreen"] = Value::from(true);
+        update(&pool, "minecraft", minecraft.clone()).await.unwrap();
+        assert_eq!(minecraft_memory_defaults(&pool).await.unwrap(), (1024,8192));
+        minecraft["memoryMinMb"] = Value::from(16384);
+        assert!(update(&pool, "minecraft", minecraft).await.is_err());
+        assert_eq!(minecraft_memory_defaults(&pool).await.unwrap(), (1024,8192));
+        let legacy = serde_json::json!({"installDirectory":null});
+        assert!(validate_java(&legacy).is_ok());
+        for field in ["autoDetect", "autoDownload", "skipCompatibilityCheck", "warnLowMemory"] {
+            let mut invalid=legacy.clone(); invalid[field]=Value::from("false");
+            assert!(validate_java(&invalid).is_err());
+        }
     }
 
     #[test]
@@ -361,6 +477,16 @@ mod tests {
             ,"scalePercent":100
         });
         assert!(validate_appearance(&valid).is_ok());
+        for mode in 0..=2 {
+            let mut selected = valid.clone();
+            selected["homeCharacterMode"] = serde_json::json!(mode);
+            assert!(validate_appearance(&selected).is_ok());
+        }
+        for mode in [serde_json::json!(-1),serde_json::json!(3),serde_json::json!(1.5),serde_json::json!("1")] {
+            let mut selected = valid.clone();
+            selected["homeCharacterMode"] = mode;
+            assert!(validate_appearance(&selected).is_err());
+        }
         for fps in [0, 1, 30, 60] {
             let mut selected = valid.clone();
             selected["homeCharacterFps"] = serde_json::json!(fps);

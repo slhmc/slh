@@ -24,6 +24,7 @@ mod version_migration;
 mod window_state;
 mod window_activity;
 mod webview_runtime;
+mod webview_profile;
 mod windows_notifications;
 
 use tauri::Manager;
@@ -60,6 +61,12 @@ pub fn run() {
     windows_notifications::repair_existing_shortcut();
     #[cfg(windows)]
     if !webview_runtime::ensure_available() { return; }
+
+    let mut context = tauri::generate_context!();
+    // Absolute per-installation browser paths require the runtime window builder.
+    for window in &mut context.config_mut().app.windows {
+        window.create = false;
+    }
 
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
@@ -102,11 +109,19 @@ pub fn run() {
                     state::AppState::initialize_isolated_at(paths).await
                 } else { state::AppState::initialize_at(paths).await }
             })?;
-            let main_window = app
-                .get_webview_window("main")
-                .ok_or_else(|| std::io::Error::other("main window was not created"))?;
             app.manage(window_activity::Activity::default());
             app.manage(ui_events::UiEvents::default());
+            let updater = tauri_plugin_updater::Builder::new();
+            #[cfg(windows)]
+            let updater = updater.installer_arg(format!("/D={}", state.paths.executable_dir.display()));
+            app.handle().plugin(updater.build())?;
+            app.manage(state.clone());
+            let config = app.config().app.windows.iter().find(|window| window.label == "main")
+                .ok_or_else(|| std::io::Error::other("main window configuration is missing"))?;
+            webview_profile::preserve_legacy_local_storage(app.handle(), &state.paths.cache.join("webview2"))?;
+            let main_window = tauri::WebviewWindowBuilder::from_config(app, config)?
+                .data_directory(state.paths.cache.join("webview2"))
+                .build()?;
             tauri::async_runtime::block_on(window_state::restore(&main_window, &state.database))?;
             window_activity::attach(&main_window);
             let startup_instance = startup_instance_argument();
@@ -115,13 +130,6 @@ pub fn run() {
             let avatar_state = state.clone();
             let monitor_state = state.clone();
             let monitor_app = app.handle().clone();
-            // Keep NSIS updates in the current directory, including portable
-            // installs. /D is last and does not touch adjacent user data.
-            let updater = tauri_plugin_updater::Builder::new();
-            #[cfg(windows)]
-            let updater = updater.installer_arg(format!("/D={}", state.paths.executable_dir.display()));
-            app.handle().plugin(updater.build())?;
-            app.manage(state);
             tauri::async_runtime::spawn(async move {
                 let mut interval = tokio::time::interval(std::time::Duration::from_secs(10));
                 loop {
@@ -168,6 +176,8 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             window_activity::scenes_released,
+            window_activity::ui_paused,
+            window_activity::get_window_activity,
             ui_events::get_ui_snapshot,
             commands::exit_app,
             commands::save_window_state,
@@ -175,7 +185,12 @@ pub fn run() {
             commands::check_launcher_updates,
             commands::load_locale,
             commands::list_locales,
+            commands::get_locale_snapshot,
+            commands::get_locale_revision,
+            commands::open_languages_folder,
+            commands::export_language_template,
             commands::update_setting,
+            commands::remember_section,
             commands::prepare_windows_notifications,
             commands::send_windows_notification,
             commands::open_bedrock_content_file,
@@ -221,6 +236,7 @@ pub fn run() {
             commands::install_instance,
             commands::launch_instance,
             commands::kill_instance,
+            commands::list_content_categories,
             commands::search_modrinth,
             commands::search_curseforge,
             commands::search_bedrock_curseforge,
@@ -234,6 +250,8 @@ pub fn run() {
             commands::plan_modrinth_install,
             commands::install_modrinth_project,
             commands::install_modrinth_modpack,
+            commands::run_pack_install,
+            commands::cancel_pack_install,
             commands::plan_curseforge_install,
             commands::install_curseforge_project,
             commands::list_installed_content,
@@ -241,6 +259,9 @@ pub fn run() {
             commands::delete_instance_content,
             commands::set_instance_content_enabled,
             commands::install_curseforge_modpack,
+            commands::add_curseforge_manual_files,
+            commands::scan_curseforge_downloads,
+            commands::scan_curseforge_archives,
             commands::list_loader_versions,
             commands::list_sync_mappings,
             commands::create_sync_mapping,
@@ -270,6 +291,14 @@ pub fn run() {
             commands::create_instance_desktop_shortcut,
             commands::repair_instance,
         ])
-        .run(tauri::generate_context!())
+        .run(context)
         .expect("SLH failed to start");
+}
+
+/// Diagnostic mode verifies the actual Windows toast payload without opening UI.
+#[cfg(windows)]
+pub fn check_system_notification() -> bool {
+    windows_notifications::ensure_start_menu_shortcut()
+        .and_then(|()| windows_notifications::send_native("Smile LauncHer", Some("System notification icon check")))
+        .is_ok()
 }

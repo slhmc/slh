@@ -1,0 +1,6 @@
+.message { max-height: 240px; overflow: auto; overscroll-behavior: contain; overflow-wrap: anywhere; white-space: pre-wrap; margin: 0; }
+.message p { margin: 0 0 12px; }
+.files { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; max-height: 240px; overflow: auto; overscroll-behavior: contain; }
+.files li { display: grid; gap: 4px; padding: 8px 12px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); }
+.files a, .message a { color: var(--color-link); text-decoration: underline; text-underline-offset: .15em; }
+.files code { color: var(--color-text-muted); overflow-wrap: anywhere; font-size: var(--text-caption); }

@@ -7,7 +7,7 @@
 <p align="center">Minecraft Java Edition · Separate instances · Mods and modpacks · A customizable interface</p>
 
 <p align="center">
-  <a href="https://github.com/slhmc/slh/releases/tag/v0.2.0"><img src="assets/readme/buttons/download-en.png" width="420" alt="Download SLH"></a>
+  <a href="https://github.com/slhmc/slh/releases/tag/v0.2.1"><img src="assets/readme/buttons/download-en.png" width="420" alt="Download SLH"></a>
 </p>
 <p align="center">
   <a href="https://slhmc.github.io/"><img src="assets/readme/buttons/website-en.png" width="200" alt="SLH website"></a>
@@ -63,7 +63,7 @@ Explore the [interactive preview on the SLH website](https://slhmc.github.io/#pr
 
 ## Download and play
 
-Try the [v0.2.0 pre-release](https://github.com/slhmc/slh/releases/tag/v0.2.0). Choose a package for your operating system.
+Try the [v0.2.0 pre-release](https://github.com/slhmc/slh/releases/tag/v0.2.1). Choose a package for your operating system.
 
 > ⚠️ **Linux and macOS builds have not been manually tested.** All four desktop targets were built and passed unit tests, but launching SLH and Minecraft on Linux and macOS has not been verified.
 

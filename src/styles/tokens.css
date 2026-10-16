@@ -19,6 +19,8 @@
   --color-success: #3f8050;
   --color-warning: #9a6818;
   --color-error: #b23b34;
+  --color-info: #9bc8ff;
+  --color-info-soft: color-mix(in srgb, var(--color-info) 15%, var(--color-surface));
   --color-success-soft: color-mix(in srgb, var(--color-success) 15%, var(--color-surface));
   --color-warning-soft: color-mix(in srgb, var(--color-warning) 15%, var(--color-surface));
   --color-error-soft: color-mix(in srgb, var(--color-error) 15%, var(--color-surface));
@@ -45,4 +47,14 @@
   --sidebar-width: 236px;
   --font-ui: "Pixeloid Sans", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
   --font-mono: "Cascadia Code", "Cascadia Mono", Consolas, monospace;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --text-caption: 0.8125rem;
+  --text-body: 0.875rem;
+  --text-heading: 1.1875rem;
+  --control-height: 38px;
+  --panel-padding: 20px;
 }

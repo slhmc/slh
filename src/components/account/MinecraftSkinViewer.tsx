@@ -23,7 +23,9 @@ function disposeViewer(viewer: SkinViewer | undefined, canvas: HTMLCanvasElement
   });
   // skinview3d 3.4 disposes textures and renderer, but leaves geometry and composer targets.
   viewer.dispose();
-  (viewer as unknown as { composer: { dispose(): void } }).composer.dispose();
+  const composer = (viewer as unknown as { composer: { passes: { dispose(): void }[]; dispose(): void } }).composer;
+  composer.passes.forEach((pass) => pass.dispose());
+  composer.dispose();
   resources.forEach((resource) => resource.dispose());
   const context = canvas.getContext("webgl2") ?? canvas.getContext("webgl");
   context?.getExtension("WEBGL_lose_context")?.loseContext();

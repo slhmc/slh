@@ -20,6 +20,17 @@ visual-*.png
 
 crates/**/target/
 
-/crates/slh-native/
+# Local work products and private verification data do not belong on GitHub.
+backups/
+forgithub/
+.netlify/
+docs/verification/
+**/__pycache__/
+*.pyc
+
+# Migration projects are maintained separately from this WebView2 launcher.
 /SLH2/
 /SLH-Opt/
+/crates/slh-native/
+
+/release-notes.txt

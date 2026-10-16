@@ -2,6 +2,8 @@
 
 ## Commands
 
+Install dependencies with `npm ci` before the commands below. Generated dependencies, build outputs, local backups, screenshots, and release packages are excluded from Git. Keep personal profiles and development archives outside the source repository.
+
 ```powershell
 npm install
 npm run dev

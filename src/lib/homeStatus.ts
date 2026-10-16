@@ -9,6 +9,7 @@ export const homeStatusItems = [
 ] as const;
 export type HomeStatusId = typeof homeStatusItems[number]["id"];
 export const homeStatusIds: HomeStatusId[] = homeStatusItems.map((item) => item.id);
+export const homeDefaultStatusIds: HomeStatusId[] = ["launcher", "java", "downloads", "storage", "folder"];
 export function homeStatusOrder(saved?: string[]): HomeStatusId[] {
   return [...new Set([...(saved ?? []), ...homeStatusIds])].filter((id): id is HomeStatusId => homeStatusIds.includes(id as HomeStatusId));
 }

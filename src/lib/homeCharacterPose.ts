@@ -6,7 +6,10 @@ export function stabilizeHomePose(player: PlayerObject, standing: boolean, bound
   player.position.x = 0;
   player.position.z = 0;
   if (!standing) return; // Preserve deliberate jumps, steps and the flying pose.
-  player.updateWorldMatrix(true, true);
+  // Grounding only needs the legs. Avoid updating head, arms and hidden cape
+  // subtrees here; the renderer updates the full scene before drawing.
+  player.skin.leftLeg.updateWorldMatrix(true, false);
+  player.skin.rightLeg.updateWorldMatrix(true, false);
   bounds.makeEmpty().expandByObject(player.skin.leftLeg).expandByObject(player.skin.rightLeg);
   if (Number.isFinite(bounds.min.y)) player.position.y += -16 - bounds.min.y;
 }

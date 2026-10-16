@@ -167,13 +167,13 @@
 }
 
 .accountText strong {
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 .accountText small {
   margin-top: 2px;
   color: var(--color-text-muted);
-  font-size: 10px;
+  font-size: 0.75rem;
   text-transform: capitalize;
 }
 
@@ -228,7 +228,7 @@
   color: var(--color-text);
   background: color-mix(in srgb, var(--color-surface) 92%, var(--color-accent));
   box-shadow: var(--shadow-dialog);
-  font-size: 11px;
+  font-size: 0.75rem;
   font-weight: 700;
   pointer-events: none;
   user-select: none;
@@ -269,4 +269,31 @@
 
   .dockDropLeft,
   .dockDropRight { width: 76px; }
+}
+
+.compact.sidebar { grid-area: auto; min-width: 0; height: 100%; flex-direction: row; align-items: center; border: 0; }
+.compact .brand { display: none; }
+.compact .navigation { display: flex; min-width: 0; flex: 1; padding: 0; gap: 2px; }
+.compact .navItem { min-height: 30px; gap: 6px; padding: 0 8px; font-size: 0.75rem; white-space: nowrap; }
+.compact .navItem.active::before { top: auto; bottom: 0; left: 8px; right: 8px; width: auto; height: 2px; }
+.compact .bottom { display: flex; align-items: center; gap: 2px; margin: 0; padding: 0 4px; border-top: 0; }
+.compact .account { min-height: 30px; display: flex; gap: 6px; padding: 0 6px; }
+.compact .avatar { width: 24px; height: 24px; }
+.compact .accountText { max-width: 110px; }
+.compact .accountText small { display: none; }
+@media (max-width: 1240px) {
+  .compact .navItem span { display: block; }
+  .compact .accountText { display: none; }
+}
+@media (max-width: 900px) {
+  .compact .navItem { width: 30px; padding: 0; justify-content: center; }
+  .compact .navItem span { display: none; }
+}
+
+@media (max-width: 620px) {
+  .brand, .navItem span, .accountText { display: none; }
+  .navigation { padding: 8px; }
+  .navItem { justify-content: center; padding: 0; }
+  .bottom { padding: 8px; }
+  .account { padding: 4px; justify-content: center; }
 }

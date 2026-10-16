@@ -10,7 +10,9 @@
   gap: 8px;
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
-  white-space: nowrap;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.4;
   cursor: pointer;
   transition: color 140ms ease, background 140ms ease, border-color 140ms ease, box-shadow 140ms ease, transform 100ms ease;
 }
@@ -34,7 +36,7 @@
 }
 
 .button {
-  min-height: 38px;
+  min-height: var(--control-height);
   padding: 0 16px;
   border-color: color-mix(in srgb, var(--color-accent) 78%, var(--color-text));
   color: var(--color-accent-contrast);
@@ -49,7 +51,7 @@
 }
 
 .secondaryButton {
-  min-height: 38px;
+  min-height: var(--control-height);
   padding: 0 13px;
   border-color: var(--color-border-strong);
   background: var(--color-surface-3);
@@ -79,7 +81,7 @@
 }
 
 .dangerButton {
-  min-height: 38px;
+  min-height: var(--control-height);
   padding: 0 13px;
   border-color: color-mix(in srgb, var(--color-error) 58%, var(--color-border));
   color: color-mix(in srgb, var(--color-error) 22%, var(--color-text));
@@ -114,7 +116,7 @@
 
 .input,
 .select {
-  min-height: 38px;
+  min-height: var(--control-height);
   padding: 0 11px;
 }
 
@@ -142,14 +144,14 @@
 
 .label {
   color: var(--color-text-muted);
-  font-size: 12px;
-  font-weight: 650;
+  font-size: 0.75rem;
+  font-weight: 700;
 }
 
 .hint {
   margin: 0;
   color: var(--color-text-subtle);
-  font-size: 12px;
+  font-size: 0.75rem;
   line-height: 1.45;
 }
 
@@ -159,7 +161,7 @@
   align-items: center;
   gap: 8px;
   color: var(--color-text-muted);
-  font-size: 11px;
+  font-size: 0.75rem;
   line-height: 1.35;
   cursor: pointer;
 }
@@ -182,8 +184,8 @@
   border-radius: var(--radius-xs);
   color: var(--color-text-muted);
   background: color-mix(in srgb, var(--color-surface-2) 65%, transparent);
-  font-size: 11px;
-  font-weight: 650;
+  font-size: 0.75rem;
+  font-weight: 700;
 }
 
 .successBadge {
@@ -212,4 +214,9 @@
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   clip-path: inset(50%);
+}
+
+@media (hover: hover) { .secondaryButton:hover:not(:disabled) { background: var(--color-surface-hover); } }
+@media (prefers-reduced-motion: no-preference) {
+  .button:active:not(:disabled), .secondaryButton:active:not(:disabled), .ghostButton:active:not(:disabled), .dangerButton:active:not(:disabled), .iconButton:active:not(:disabled) { transform: scale(.96); transition: transform 150ms ease-out; }
 }
