@@ -12,7 +12,7 @@ use serde_json::Value;
 use std::path::{Path, PathBuf};
 use tokio::io::AsyncWriteExt;
 
-const USER_AGENT: &str = "SLH/0.2.2 (https://github.com/slhmc/slh)";
+const USER_AGENT: &str = "SLH/0.2.2.1 (https://github.com/slhmc/slh)";
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CoreVersion {

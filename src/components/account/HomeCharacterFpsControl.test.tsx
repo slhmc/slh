@@ -5,6 +5,15 @@ import { HomeCharacterFpsControl } from "./HomeCharacterFpsControl";
 vi.mock("../../i18n/I18nProvider", () => ({ useI18n: () => ({ tr: (value: string) => value }) }));
 afterEach(cleanup);
 
+it("keeps FPS controls visible but disabled for non-3D modes", () => {
+  const onCommit = vi.fn();
+  const view = render(<HomeCharacterFpsControl value={30} disabled onCommit={onCommit} />);
+  expect((view.getByRole("slider") as HTMLInputElement).disabled).toBe(true);
+  expect((view.getByRole("button", { name: "Set 30 FPS" }) as HTMLButtonElement).disabled).toBe(true);
+  fireEvent.click(view.getByRole("button", { name: "Set 30 FPS" }));
+  expect(onCommit).not.toHaveBeenCalled();
+});
+
 it("snaps pointer input to 30 and persists once when dragging finishes", () => {
   const onCommit = vi.fn();
   const view = render(<HomeCharacterFpsControl value={20} onCommit={onCommit} />);

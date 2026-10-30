@@ -613,3 +613,7 @@ mod tests {
         assert!(!is_stable("21.1.10-beta"));
     }
 }
+
+pub async fn horizon_minecraft_versions(state: &crate::state::AppState) -> crate::error::AppResult<Vec<String>> {
+    crate::minecraft::horizon_catalog::minecraft_versions(state).await
+}

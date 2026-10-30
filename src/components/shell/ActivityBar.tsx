@@ -21,8 +21,8 @@ export function ActivityBar() {
         {latest ? (
           <>
             {complete ? <CheckCircle size={15} weight="fill" /> : <BusyIndicator size={15} />}
-            <span data-minimal-text>{latest.messageKey ? uiText(latest.messageKey, tr(latest.message), latest.params) : tr(latest.message)}</span>
-            {latest.total ? <small data-minimal-text>{latest.completed} / {latest.total}</small> : null}
+            <span data-minimal-text>{latest.operation === "delete" ? uiText("instance.removingFiles", "Removing instance files") : latest.messageKey ? uiText(latest.messageKey, tr(latest.message), latest.params) : tr(latest.message)}</span>
+            {latest.total ? <small>{latest.operation === "delete" ? `${Math.floor(progress ?? 0)}%` : `${latest.completed} / ${latest.total}`}</small> : null}
           </>
         ) : (
           <>

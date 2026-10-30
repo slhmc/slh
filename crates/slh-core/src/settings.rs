@@ -222,6 +222,9 @@ fn validate_appearance(value: &Value) -> AppResult<()> {
             ));
         }
     }
+    if value.get("homeCharacterCursorFollow").is_some_and(|value| !value.is_boolean()) {
+        return Err(AppError::InvalidInput("Home character cursor follow must be a boolean".into()));
+    }
     if let Some(mode) = value.get("homeCharacterMode") {
         if !mode.as_u64().is_some_and(|mode| mode <= 2) {
             return Err(AppError::InvalidInput(

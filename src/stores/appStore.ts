@@ -36,6 +36,9 @@ interface AppStore {
   accountPopoverOpen: boolean;
   activities: ProgressEvent[];
   instanceOperationIds: string[];
+  deletingInstanceIds: string[];
+  deletedInstanceIds: string[];
+  deleteInstance: (id: string) => Promise<void>;
   toasts: ToastMessage[];
   initialize: () => Promise<void>;
   refresh: () => Promise<void>;
@@ -75,6 +78,36 @@ export const useAppStore = create<AppStore>((set, get) => ({
   accountPopoverOpen: false,
   activities: [],
   instanceOperationIds: [],
+  deletingInstanceIds: [],
+  deletedInstanceIds: [],
+  deleteInstance: async (id) => {
+    if (get().deletingInstanceIds.includes(id)) return;
+    const original = get().bootstrap?.instances.find(instance => instance.id === id);
+    if (!original) return;
+    const operationId = `delete-${id}`;
+    set(state => ({
+      deletingInstanceIds: [...state.deletingInstanceIds, id],
+      selectedInstanceId: state.selectedInstanceId === id ? null : state.selectedInstanceId,
+      bootstrap: state.bootstrap ? { ...state.bootstrap, instances: state.bootstrap.instances.filter(instance => instance.id !== id) } : null,
+    }));
+    const progress = (stage: string) => get().receiveProgress({ operationId, instanceId: id, operation: "delete", stage,
+      message: "Removing instance files", messageKey: "instance.removingFiles", completed: 0, total: null, downloadedBytes: null, totalBytes: null });
+    progress("delete-scanning");
+    try {
+      await command("delete_instance", { instanceId: id });
+      // Ignore bootstrap responses taken before the deletion committed.
+      set(state => ({ deletedInstanceIds: [...state.deletedInstanceIds, id] }));
+      progress("complete");
+    } catch (error) {
+      // Restore the card even if the following bootstrap request also fails.
+      set(state => ({ bootstrap: state.bootstrap ? { ...state.bootstrap, instances: [...state.bootstrap.instances, original] } : null }));
+      progress("failed");
+      throw error;
+    } finally {
+      set(state => ({ deletingInstanceIds: state.deletingInstanceIds.filter(value => value !== id) }));
+      await get().refresh();
+    }
+  },
   toasts: [],
   initialize: () => {
     if (startupRequest) return startupRequest;
@@ -99,6 +132,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
     try {
       const bootstrap = await command<BootstrapData>("get_bootstrap");
       const selected = get().selectedInstanceId;
+      bootstrap.instances = bootstrap.instances.filter(instance => !get().deletingInstanceIds.includes(instance.id) && !get().deletedInstanceIds.includes(instance.id));
       set({
         bootstrap,
         selectedInstanceId: bootstrap.instances.some((instance) => instance.id === selected)
@@ -213,7 +247,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
         return;
       }
       // Content dialogs already report their own result with file counts.
-      if (event.operation !== "content") {
+      if (event.operation !== "content" && event.operation !== "delete") {
         get().pushToast({ tone: "success", title: "Instance ready", message: event.message });
       }
     }

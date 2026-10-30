@@ -26,8 +26,8 @@ export function HomeCharacterModeControl({value,vertical,onChange}: {
           if (next !== null) { event.preventDefault(); onChange(next as HomeCharacterMode); }
         }} />
     </div>
-    <div className={styles.labels}>{([2,1,0] as const).map(mode => <button key={mode} type="button" aria-pressed={selected === mode}
-      onClick={() => onChange(mode)}>{t(`settings.character.mode${mode}`)}</button>)}
+    <div className={styles.labels}>{([2,1,0] as const).map(mode => <button key={mode} type="button" aria-pressed={selected === mode} aria-label={t(`settings.character.mode${mode}`)}
+      onClick={() => onChange(mode)}>{vertical ? t(`settings.character.mode${mode}`) : <><span>{t(`settings.character.mode${mode}`).split(" · ")[0]} ·</span><br /><span>{t(`settings.character.mode${mode}`).split(" · ")[1]}</span></>}</button>)}
     </div>
   </div>;
 }

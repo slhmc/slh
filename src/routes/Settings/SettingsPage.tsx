@@ -784,12 +784,22 @@ export function SettingsPage() {
                 void save("appearance",next);
               }} />
             </SettingRow> : null}
-            {appearance.beautifulHome !== false && homeCharacterMode(appearance.homeCharacterMode) === 2 ? <SettingRow className={styles.homeSubsetting} title={uiText("accounts.texts.playerFps", "Player FPS")} description={uiText("settings.texts.160FpsOrUnlimitedTheSliderSnapsTo", "1–60 FPS or unlimited. The slider snaps to 30 FPS. Rendering pauses when the window is minimized.")}>
-              <HomeCharacterFpsControl value={appearance.homeCharacterFps} onCommit={(fps) => {
+            {appearance.beautifulHome !== false && bootstrap.settings.general.compactSettings !== true ? <SettingRow title={uiText("settings.character3d", "3D character settings")}>
+              <div className={styles.character3dControls}><label><span>{uiText("settings.character.followCursor", "Follow cursor")}</span><Toggle label={uiText("settings.character.followCursor", "Follow cursor")} checked={appearance.homeCharacterCursorFollow === true} disabled={homeCharacterMode(appearance.homeCharacterMode) !== 2} onChange={checked => { const next = { ...appearance, homeCharacterCursorFollow: checked }; setAppearance(next); void save("appearance", next); }} /></label><div><span>{uiText("accounts.texts.playerFps", "Player FPS")}</span><HomeCharacterFpsControl disabled={homeCharacterMode(appearance.homeCharacterMode) !== 2} value={appearance.homeCharacterFps} onCommit={(fps) => {
+                const next = { ...appearance, homeCharacterFps: fps };
+                setAppearance(next);
+                void save("appearance", next);
+              }} /></div></div>
+            </SettingRow> : null}
+            {appearance.beautifulHome !== false && bootstrap.settings.general.compactSettings === true ? <SettingRow className={styles.homeSubsetting} title={uiText("accounts.texts.playerFps", "Player FPS")} description={uiText("settings.texts.160FpsOrUnlimitedTheSliderSnapsTo", "1–60 FPS or unlimited. The slider snaps to 30 FPS. Rendering pauses when the window is minimized.")}>
+              <HomeCharacterFpsControl disabled={homeCharacterMode(appearance.homeCharacterMode) !== 2} value={appearance.homeCharacterFps} onCommit={(fps) => {
                 const next = { ...appearance, homeCharacterFps: fps };
                 setAppearance(next);
                 void save("appearance", next);
               }} />
+            </SettingRow> : null}
+            {appearance.beautifulHome !== false && bootstrap.settings.general.compactSettings === true ? <SettingRow className={styles.homeSubsetting} title={uiText("settings.character.followCursor", "Follow cursor")}>
+              <Toggle label={uiText("settings.character.followCursor", "Follow cursor")} checked={appearance.homeCharacterCursorFollow === true} disabled={homeCharacterMode(appearance.homeCharacterMode) !== 2} onChange={checked => { const next = { ...appearance, homeCharacterCursorFollow: checked }; setAppearance(next); void save("appearance", next); }} />
             </SettingRow> : null}
             <SettingRow title={t("settings.minimalism", "Minimalism")} description={t("settings.minimalismDescription", "Hide secondary labels and descriptions while keeping essential controls and icons.")}>
               <Toggle checked={appearance.minimalism === true} onChange={(checked) => {
@@ -988,6 +998,7 @@ export function SettingsPage() {
         {section === "sync" ? (
           <SettingsSection title={uiText("settings.sync", "Sync")} description={uiText("settings.texts.sharedFoldersAutomaticallyFeedCurrentInstancesAndEveryInstance", "Shared folders automatically feed current instances and every instance created later.")}>
             <div className={styles.safetyCallout}><ShieldCheck size={25} weight="duotone" /><div><strong>{uiText("settings.texts.worldSynchronizationIsOff", "World synchronization is off")}</strong><p>{uiText("settings.texts.worldOverwritesRequireExplicitAcknowledgementABackupAndA", "World overwrites require explicit acknowledgement, a backup, and a check that Minecraft is not running.")}</p></div></div>
+            <SettingRow title={uiText("settings.syncRust", "Sync with Rust instances")} description={uiText("settings.syncRustDescription", "Include Rust instances in shared options, servers and other configured mappings.")}><Toggle checked={bootstrap.settings.sync.rustEnabled === true} onChange={checked => void save("sync", { ...bootstrap.settings.sync, rustEnabled: checked })} /></SettingRow>
             <SettingRow title={uiText("settings.texts.allowWorldMappings", "Allow world mappings")} description={uiText("settings.texts.stillRequiresConfirmationForEveryNewlyCreatedMapping", "Still requires confirmation for every newly created mapping.")}><Toggle checked={bootstrap.settings.sync.worldsEnabled} onChange={(checked) => void save("sync", { ...bootstrap.settings.sync, worldsEnabled: checked }, checked ? "World mapping gate enabled" : "World mapping gate disabled")} /></SettingRow>
             <div className={styles.sharedLibrary}><span><strong>{uiText("settings.texts.sharedLibrary", "Shared library")}</strong><small>{uiText("settings.texts.optionsServersResourcepacksScreenshotsModConfigsAndWorlds", "options, servers, resourcepacks, screenshots, mod-configs, and worlds")}</small></span><button className={common.secondaryButton} type="button" onClick={() => void command("reveal_shared_path").catch((error) => pushToast({ tone: "error", title: uiText("settings.texts.sharedFolderCouldNotBeOpened", "Shared folder could not be opened"), message: String((error as { message?: string }).message ?? error) }))}>{uiText("settings.texts.openSharedFolder", "Open shared folder")}</button></div>
             <div className={styles.syncForm}>
@@ -1054,10 +1065,11 @@ export function SettingsPage() {
             </SettingRow>
             </div>
             <div className={styles.tileGrid}>
-            <SettingRow title={uiText("settings.rustMinecraft", "Minecraft on Rust")} description={uiText("settings.rustMinecraftDescription", "Show compatible Horizon releases from GitHub. Requires Windows x64, Vulkan and a Microsoft account with Minecraft. Java is selected for preparation according to the release.")}>
+            <SettingRow className={styles.horizonSetting} title={uiText("settings.rustMinecraft", "Minecraft on Rust")} description={uiText("settings.rustMinecraftDescription", "Show compatible Horizon releases from GitHub. Requires Windows x64, Vulkan and a Microsoft account with Minecraft. Java is selected for preparation according to the release.")}>
               <div className={styles.horizonControls}>
                 <Toggle checked={bootstrap.settings.general.rustMinecraft === true} onChange={(checked) => updateGeneral({ rustMinecraft: checked })} />
-                <button className={common.iconButton} type="button" aria-label={uiText("settings.horizonFaq", "FAQ?")} title={uiText("settings.horizonFaq", "FAQ?")} onClick={() => void openUrl("https://github.com/horizon-rust/horizon").catch(error => pushToast({ tone: "error", title: uiText("settings.horizonFaq", "FAQ?"), message: String(error) }))}>?</button>
+                <span className={styles.horizonMeta}>
+                <button className={common.iconButton} type="button" aria-label={uiText("settings.horizonFaq", "FAQ?")} title={uiText("settings.horizonFaq", "FAQ?")} onClick={() => void openUrl("https://github.com/horizon-rust/horizon").catch(error => pushToast({ tone: "error", title: uiText("settings.horizonFaq", "FAQ?"), message: String(error) }))}>?</button><span className={common.warningBadge}>{uiText("common.beta", "Beta")}</span></span>
               </div>
             </SettingRow>
             <SettingRow title={uiText("settings.texts.launcherVersion", "Launcher version")} description={uiText("settings.texts.clickTheVersionToViewThisBuildSLocal", "Click the version to view this build's local date and time.")}><button className={styles.buildVersion} type="button" onClick={() => setShowBuildTime((value) => !value)} title={uiText("settings.texts.showBuildTime", "Show build time")}>{showBuildTime && bootstrap.buildUnix > 0 ? new Date(bootstrap.buildUnix * 1000).toLocaleString(locale) : `SLH ${bootstrap.version}`}</button></SettingRow>

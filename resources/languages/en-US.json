@@ -15,6 +15,7 @@
     "continue": "Continue"
   },
   "common": {
+    "beta": "Beta",
     "play": "Play",
     "cancel": "Cancel",
     "save": "Save",
@@ -512,12 +513,16 @@
     "orderNotSaved": "Instance order was not saved"
   },
   "settings": {
+    "character3d": "3D character settings",
+    "syncRust": "Sync with Rust instances",
+    "syncRustDescription": "Include Rust instances in shared options, servers and other configured mappings.",
     "rustMinecraft": "Minecraft on Rust",
     "rustMinecraftDescription": "Show compatible Horizon releases from GitHub. Requires Windows x64, Vulkan and a Microsoft account with Minecraft. Java is selected for preparation according to the release.",
     "horizonFaq": "FAQ?",
     "character": {
       "title": "Home character",
       "description": "3D animates the character. Image shows your skin in a fixed pose. Off hides the character.",
+      "followCursor": "Follow cursor",
       "mode2": "2 · 3D",
       "mode1": "1 · Image",
       "mode0": "0 · Off",
@@ -2159,6 +2164,12 @@
     }
   },
   "installation": {
+    "horizonVersionsHint": "Only Minecraft versions supported by verified Horizon releases are listed.",
+    "horizonCompatibleRelease": "Compatible Horizon release available",
+    "horizonClient": "Horizon client",
+    "horizonClientHint": "Choose a Minecraft version to see compatible Horizon releases.",
+    "horizonLoadingVersions": "Loading versions",
+    "horizonChooseVersion": "Choose Minecraft",
     "horizonRelease": "Horizon release",
     "horizonNoReleases": "No compatible Horizon releases for this Minecraft version",
     "horizonApply": "Apply release",
@@ -2526,6 +2537,13 @@
     "modpackExample": "e.g. Cobblemon"
   },
   "instance": {
+    "removingFiles": "Removing instance files",
+    "filesAdded": "Files added: {count}",
+    "filesNotAdded": "Some files could not be added. Check the file type and whether it already exists.",
+    "chooseFiles": "Choose files",
+    "addingFiles": "Adding files…",
+    "releaseFiles": "Release to add files",
+    "dropFiles": "Drop {types} files here or choose files",
     "texts": {
       "contentCouldNotBeIndexed": "Content could not be indexed",
       "filesCouldNotBeIndexed": "Files could not be indexed",

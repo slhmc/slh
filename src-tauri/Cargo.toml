@@ -1,6 +1,6 @@
 [package]
 name = "slh"
-version = "0.2.2"
+version = "0.2.2+1"
 description = "SLH portable Minecraft launcher"
 authors = ["SLH"]
 edition = "2024"

@@ -129,7 +129,7 @@ export function BeautifulHomePage() {
     </aside>
     <section className={styles.character} aria-label={uiText("home.texts.playerCharacter", "Player character")}>
       <header><div><strong><UserCircle size={22} />{active?.username ?? uiText("accounts.texts.offline", "Offline")}</strong><small>{provider}{active ? ` · ${tr(active.authStatus === "ready" ? uiText("home.texts.ready", "Ready") : uiText("home.texts.authenticationRequired", "Authentication required"))}` : ""}</small></div></header>
-      <div className={styles.stage}><Suspense fallback={<div className={styles.loading}><SpinnerGap size={24} /></div>}>{homeCharacterMode(bootstrap.settings.appearance.homeCharacterMode) === 2 ? <HomeCharacter account={active} frameRate={bootstrap.settings.appearance.homeCharacterFps} /> : homeCharacterMode(bootstrap.settings.appearance.homeCharacterMode) === 1 ? <StaticHomeCharacter account={active} /> : null}</Suspense></div>
+      <div className={styles.stage}><Suspense fallback={<div className={styles.loading}><SpinnerGap size={24} /></div>}>{homeCharacterMode(bootstrap.settings.appearance.homeCharacterMode) === 2 ? <HomeCharacter account={active} frameRate={bootstrap.settings.appearance.homeCharacterFps} cursorFollow={bootstrap.settings.appearance.homeCharacterCursorFollow} /> : homeCharacterMode(bootstrap.settings.appearance.homeCharacterMode) === 1 ? <StaticHomeCharacter account={active} /> : null}</Suspense></div>
     </section>
     <aside className={styles.right}>
       <section className={styles.discoverCard}>

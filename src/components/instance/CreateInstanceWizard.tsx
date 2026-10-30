@@ -30,12 +30,13 @@ import bedrockIcon from "../../assets/loader-icons/bedrock.png";
 import forgeIcon from "../../assets/loader-icons/forge.png";
 import neoforgeIcon from "../../assets/loader-icons/neoforge.png";
 import quiltIcon from "../../assets/loader-icons/quilt.png";
+import rustIcon from "../../assets/loader-icons/rust.svg";
 import vanillaIcon from "../../assets/loader-icons/vanilla.png";
 import modrinthIcon from "../../assets/provider-icons/modrinth.png";
 import curseforgeIcon from "../../assets/provider-icons/curseforge.png";
 
 type Loader = CreateInstanceRequest["loaderType"];
-type Edition = "java" | "bedrock";
+type Edition = "java" | "bedrock" | "rust";
 const defaultVersionTypes = { release: true, snapshot: false, old_beta: false, old_alpha: false };
 const versionTypeLabels = { release: "Releases", snapshot: "Snapshots", old_beta: "Beta", old_alpha: "Alpha" } as const;
 
@@ -108,7 +109,7 @@ export function CreateInstanceWizard() {
     setVersions([]);
     setVersionsLoading(true);
     setVersionError(null);
-    command<MinecraftVersionSummary[]>(edition === "java" ? "list_minecraft_versions" : "list_bedrock_versions")
+    (edition === "rust" ? command<string[]>("list_horizon_minecraft_versions").then(ids => ids.map((id): MinecraftVersionSummary => ({ id, versionType: "release" as const, releaseTime: "", url: "", sha1: "" }))) : command<MinecraftVersionSummary[]>(edition === "java" ? "list_minecraft_versions" : "list_bedrock_versions"))
       .then((items) => {
         if (!active) return;
         setVersions(items);
@@ -252,7 +253,7 @@ export function CreateInstanceWizard() {
     setVersion("");
     setVersionSearch("");
     setShowSnapshots(next === "bedrock" ? bootstrap?.settings.bedrock.showPreviewVersions ?? false : false);
-    setLoader(next === "bedrock" ? "bedrock" : "vanilla");
+    setLoader(next === "bedrock" ? "bedrock" : next === "rust" ? "rust" : "vanilla");
     setBedrockProfileMode(next === "bedrock" ? bootstrap?.settings.bedrock.defaultProfileMode ?? "shared" : "shared");
     setLoaderVersions([]);
     setLoaderVersion("");
@@ -287,7 +288,7 @@ export function CreateInstanceWizard() {
     && (loader === "vanilla" || loader === "bedrock" || Boolean(loaderVersion))
     && (edition === "bedrock" || javaMode === "auto" || Boolean(javaPath));
   const rustEnabled = bootstrap?.settings.general.rustMinecraft === true;
-  const loaders = edition === "java" ? [...javaLoaders, ...(rustEnabled ? [{ id: "rust" as Loader, name: "Rust", description: tr(uiText("installation.horizonDescription", "Experimental Horizon. Choose a release compatible with this Minecraft version. Microsoft account required; Java mods are incompatible.")), enabled: Boolean(version) }] : [])].map(item => ({ ...item, enabled: item.enabled && (item.id === "vanilla" || !selectedVersion?.versionType.startsWith("old_")) })) : bedrockLoaders;
+  const loaders = edition === "rust" ? [{ id: "rust" as Loader, name: "Rust", description: tr(uiText("installation.horizonDescription", "Experimental Horizon client for Minecraft on Rust. A Microsoft account is required; Java mods are incompatible.")), enabled: Boolean(version), iconSrc: rustIcon }] : edition === "java" ? javaLoaders.map(item => ({ ...item, enabled: item.enabled && (item.id === "vanilla" || !selectedVersion?.versionType.startsWith("old_")) })) : bedrockLoaders;
 
   const openBedrockStore = async () => {
     try {
@@ -387,18 +388,19 @@ export function CreateInstanceWizard() {
           <div className={styles.stage}>
             <div className={styles.versionStage}>
                 <div className={styles.stageHeader}>
-                  <div><h3>{uiText("installation.texts.chooseMinecraft", "Choose Minecraft")}</h3><p>{tr(edition === "java" ? uiText("installation.texts.releaseMetadataComesDirectlyFromMojangSOfficialManifest", "Release metadata comes directly from Mojang's official manifest.") : uiText("installation.bedrockRequirements", "Bedrock requires a licensed Store/Xbox account. Extracted versions also need Windows Developer Mode. Preview is available through Store."))}</p></div>
+                  <div><h3>{uiText("installation.texts.chooseMinecraft", "Choose Minecraft")}</h3><p>{edition === "rust" ? uiText("installation.horizonVersionsHint", "Only Minecraft versions supported by verified Horizon releases are listed.") : tr(edition === "java" ? uiText("installation.texts.releaseMetadataComesDirectlyFromMojangSOfficialManifest", "Release metadata comes directly from Mojang's official manifest.") : uiText("installation.bedrockRequirements", "Bedrock requires a licensed Store/Xbox account. Extracted versions also need Windows Developer Mode. Preview is available through Store."))}</p></div>
                   <div className={styles.versionControls}>
                     <div className={styles.editionToggle} role="tablist" aria-label={uiText("installation.texts.minecraftEdition", "Minecraft edition")}>
                       <button className={edition === "java" ? styles.activeEdition : ""} type="button" role="tab" aria-selected={edition === "java"} onClick={() => chooseEdition("java")}>{uiText("settings.java", "Java")}</button>
                       <button className={edition === "bedrock" ? styles.activeEdition : ""} type="button" role="tab" aria-selected={edition === "bedrock"} disabled={!bootstrap?.settings.bedrock.enabled} title={!bootstrap?.settings.bedrock.enabled ? uiText("installation.texts.enableBedrockInSettingsFirst", "Enable Bedrock in Settings first") : undefined} onClick={() => chooseEdition("bedrock")}>{uiText("installation.texts.bedrock", "Bedrock")}</button>
+                      {rustEnabled ? <button className={edition === "rust" ? styles.activeEdition : ""} type="button" role="tab" aria-selected={edition === "rust"} onClick={() => chooseEdition("rust")}>{"Rust"}</button> : null}
                     </div>
                     {edition === "java" ? <div className={styles.versionTypes} role="group" aria-label={uiText("installation.versionTypes.label", "Version types")}>
                       {(Object.keys(defaultVersionTypes) as Array<keyof typeof defaultVersionTypes>).map(type => <label className={styles.versionTypeChoice} key={type}>
                         <span>{uiText(`installation.versionTypes.${type}`, versionTypeLabels[type])}</span>
                         <input type="checkbox" checked={versionTypes[type]} onChange={event => setVersionTypes(current => ({ ...current, [type]: event.target.checked }))} />
                       </label>)}
-                    </div> : <label className={styles.checkLabel}><input type="checkbox" checked={showSnapshots} onChange={event => setShowSnapshots(event.target.checked)} />{uiText("installation.texts.includePreviewBuilds", "Include preview builds")}</label>}
+                    </div> : edition === "bedrock" ? <label className={styles.checkLabel}><input type="checkbox" checked={showSnapshots} onChange={event => setShowSnapshots(event.target.checked)} />{uiText("installation.texts.includePreviewBuilds", "Include preview builds")}</label> : null}
                   </div>
                 </div>
                 <input className={common.input} value={versionSearch} onChange={(event) => setVersionSearch(event.target.value)} placeholder={uiText("installation.texts.searchVersions", "Search versions")} aria-label={uiText("installation.texts.searchMinecraftVersions", "Search Minecraft versions")} />
@@ -419,7 +421,7 @@ export function CreateInstanceWizard() {
                   {!versionsLoading && !versionError ? filteredVersions.map((item) => (
                     <button className={`${styles.versionRow} ${version === item.id ? styles.selected : ""}`} type="button" key={item.id} onClick={() => chooseVersion(item)}>
                       {edition === "bedrock" ? <img className={styles.versionIcon} src={bedrockIcon} alt="" /> : <Cube size={18} weight="duotone" />}
-                      <span className={styles.versionDetails}><strong>{item.id}</strong><small>{item.installMethod === "registered_store" ? uiText("installation.texts.alreadyInstalledFromMicrosoftStore", "Already installed from Microsoft Store") : item.status === "downloaded" ? uiText("installation.texts.downloadedInstallationCanResume", "Downloaded; installation can resume") : item.releaseTime ? new Date(item.releaseTime).toLocaleDateString(locale) : uiText("installation.texts.availableFromMicrosoftCdn", "Available from Microsoft CDN")}</small></span>
+                      <span className={styles.versionDetails}><strong>{item.id}</strong><small>{edition === "rust" ? uiText("installation.horizonCompatibleRelease", "Compatible Horizon release available") : item.installMethod === "registered_store" ? uiText("installation.texts.alreadyInstalledFromMicrosoftStore", "Already installed from Microsoft Store") : item.status === "downloaded" ? uiText("installation.texts.downloadedInstallationCanResume", "Downloaded; installation can resume") : item.releaseTime ? new Date(item.releaseTime).toLocaleDateString(locale) : uiText("installation.texts.availableFromMicrosoftCdn", "Available from Microsoft CDN")}</small></span>
                       <span className={`${styles.versionBadge} ${item.versionType === "release" ? common.successBadge : common.warningBadge}`}>{edition === "java" ? uiText(`installation.versionTypes.${item.versionType}`, versionTypeLabels[item.versionType]) : tr(item.versionType)}</span>
                       {version === item.id ? <Check size={17} weight="bold" /> : null}
                     </button>
@@ -428,7 +430,7 @@ export function CreateInstanceWizard() {
             </div>
 
             <div className={styles.loaderStage}>
-                <div className={styles.stageHeader}><div><h3>{tr(edition === "java" ? uiText("installation.texts.chooseALoader", "Choose a loader") : uiText("installation.texts.chooseABedrockCore", "Choose a Bedrock core"))}</h3><p>{tr(edition === "java" ? uiText("installation.texts.onlyCompatibilityVerifiedForMinecraftCanBeSelected", "Only compatibility verified for Minecraft {version} can be selected.") : uiText("installation.texts.bedrockUsesTheOfficialWindowsPackageJavaLoadersDo", "Bedrock uses the official Windows package; Java loaders do not apply.")).replace("{version}", version)}</p></div></div>
+                <div className={styles.stageHeader}><div><h3>{edition === "rust" ? uiText("installation.horizonClient", "Horizon client") : tr(edition === "java" ? uiText("installation.texts.chooseALoader", "Choose a loader") : uiText("installation.texts.chooseABedrockCore", "Choose a Bedrock core"))}</h3><p>{edition === "rust" ? uiText("installation.horizonClientHint", "Choose a Minecraft version to see compatible Horizon releases.") : tr(edition === "java" ? uiText("installation.texts.onlyCompatibilityVerifiedForMinecraftCanBeSelected", "Only compatibility verified for Minecraft {version} can be selected.") : uiText("installation.texts.bedrockUsesTheOfficialWindowsPackageJavaLoadersDo", "Bedrock uses the official Windows package; Java loaders do not apply.")).replace("{version}", version)}</p></div></div>
                 <div className={styles.loaderGrid}>
                   {loaders.map((item) => {
                     return (
@@ -439,9 +441,9 @@ export function CreateInstanceWizard() {
                       disabled={!item.enabled}
                       onClick={() => setLoader(item.id)}
                     >
-                      <span className={styles.loaderIcon} title={`${item.name} loader`}>{item.iconSrc ? <img src={item.iconSrc} alt="" /> : <Cube size={27} weight="duotone" />}</span>
+                      <span className={styles.loaderIcon}>{item.iconSrc ? <img src={item.iconSrc} alt="" /> : <Cube size={27} weight="duotone" />}</span>
                       <span><strong>{tr(item.name)}</strong><small>{tr(item.description)}</small></span>
-                      {!item.enabled ? <em>{uiText("installation.texts.adapterPending", "Adapter pending")}</em> : loader === item.id ? <Check size={17} weight="bold" /> : null}
+                      {!item.enabled ? <em>{edition === "rust" ? (versionsLoading ? uiText("installation.horizonLoadingVersions", "Loading versions") : uiText("installation.horizonChooseVersion", "Choose Minecraft")) : uiText("installation.texts.adapterPending", "Adapter pending")}</em> : loader === item.id ? <Check size={17} weight="bold" /> : null}
                     </button>
                   );
                   })}
@@ -498,7 +500,7 @@ export function CreateInstanceWizard() {
                 </div>
             </div>
 
-            {edition === "java" ? <div className={styles.runtimeStage}>
+            {edition !== "bedrock" ? <div className={styles.runtimeStage}>
                 <div className={styles.stageHeader}><div><h3>{uiText("installation.texts.javaAndMemory", "Java and memory")}</h3><p>{uiText("installation.texts.slhValidatesTheRuntimeAgainBeforeEveryLaunch", "SLH validates the runtime again before every launch.")}</p></div></div>
                 <div className={styles.javaOptions}>
                   <label className={`${styles.javaOption} ${javaMode === "auto" ? styles.selected : ""}`}>

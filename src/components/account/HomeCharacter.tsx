@@ -8,11 +8,22 @@ import type { SkinViewEngine } from "../../vendor/mine3d/core/scene-loop";
 import { useHomeSkin } from "../../lib/useHomeSkin";
 import styles from "./HomeCharacter.module.css";
 
-export function HomeCharacter({ account, frameRate }: { account: Account | null; frameRate?: number }) {
+export function HomeCharacter({ account, frameRate, cursorFollow }: { account: Account | null; frameRate?: number; cursorFollow?: boolean }) {
   const uiText = useUiText();
   const fps = homeCharacterFps(frameRate);
   const engineRef = useRef<SkinViewEngine | null>(null);
   const fpsRef = useRef(fps);
+  const followRef = useRef(cursorFollow === true);
+  useEffect(() => { followRef.current = cursorFollow === true; engineRef.current?.setCursorFollow(followRef.current); }, [cursorFollow]);
+  useEffect(() => {
+    const move = (event: PointerEvent) => {
+      if (!followRef.current || !host.current) return;
+      const rect = host.current.getBoundingClientRect();
+      engineRef.current?.setCursorAim((event.clientX - (rect.left + rect.width / 2)) / (window.innerWidth / 2), ((rect.top + rect.height / 2) - event.clientY) / (window.innerHeight / 2));
+    };
+    window.addEventListener("pointermove", move);
+    return () => window.removeEventListener("pointermove", move);
+  }, []);
   
   const host = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -108,7 +119,7 @@ export function HomeCharacter({ account, frameRate }: { account: Account | null;
       engine.controls.minPolarAngle = angle;
       engine.controls.maxPolarAngle = angle;
       engine.setContactShadowVisible(true);
-      engine.setCursorFollow(false);
+      engine.setCursorFollow(followRef.current);
       const bounds = poses.homePoseBounds();
       engine.setPoseHook(({ player }) => poses.stabilizeHomePose(player, true, bounds));
       resize = (forceFit = false) => {

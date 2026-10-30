@@ -199,3 +199,4 @@ mod tests {
         state.database.close().await;
     }
 }
+

@@ -15,6 +15,7 @@
     "continue": "Далее"
   },
   "common": {
+    "beta": "Бета",
     "play": "Играть",
     "cancel": "Отмена",
     "save": "Сохранить",
@@ -514,12 +515,16 @@
     "orderNotSaved": "Не удалось сохранить порядок сборок"
   },
   "settings": {
+    "character3d": "Настройки 3D-персонажа",
+    "syncRust": "Синхронизация со сборками Rust",
+    "syncRustDescription": "Включает сборки Rust в синхронизацию настроек, серверов и других выбранных файлов.",
     "rustMinecraft": "Майнкрафт на Rust",
     "rustMinecraftDescription": "Совместимые релизы Horizon с GitHub. Нужны Windows x64, Vulkan и Microsoft-аккаунт с Minecraft. Java для подготовки подбирается по требованиям релиза.",
     "horizonFaq": "ЧаВо? — FaQ?",
     "character": {
       "title": "Персонаж на главной",
       "description": "3D — анимированный персонаж. Картинка — ваш скин в статичной позе. Выключен — персонаж скрыт.",
+      "followCursor": "Следить за курсором",
       "mode2": "2 · 3D",
       "mode1": "1 · Картинка",
       "mode0": "0 · Выключен",
@@ -2189,6 +2194,12 @@
     }
   },
   "installation": {
+    "horizonVersionsHint": "Показаны только версии Minecraft, совместимые с проверенными релизами Horizon.",
+    "horizonCompatibleRelease": "Есть совместимый релиз Horizon",
+    "horizonClient": "Клиент Horizon",
+    "horizonClientHint": "Выберите версию Minecraft, затем релиз Horizon.",
+    "horizonLoadingVersions": "Загрузка версий",
+    "horizonChooseVersion": "Выберите Minecraft",
     "horizonRelease": "Версия Horizon",
     "horizonNoReleases": "Для этой версии Minecraft нет совместимых релизов Horizon",
     "horizonApply": "Применить версию",
@@ -2556,6 +2567,13 @@
     "modpackExample": "Например, Cobblemon"
   },
   "instance": {
+    "removingFiles": "Удаление файлов сборки",
+    "filesAdded": "Добавлено файлов: {count}",
+    "filesNotAdded": "Не удалось добавить часть файлов. Проверьте формат и нет ли уже таких файлов в сборке.",
+    "chooseFiles": "Выбрать файлы",
+    "addingFiles": "Добавление файлов…",
+    "releaseFiles": "Отпустите, чтобы добавить файлы",
+    "dropFiles": "Перетащите сюда файлы {types} или выберите их",
     "texts": {
       "contentCouldNotBeIndexed": "Не удалось проиндексировать контент",
       "filesCouldNotBeIndexed": "Не удалось проиндексировать файлы",

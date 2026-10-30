@@ -10,7 +10,7 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { ArrowClockwise, Check, Clock, DownloadSimple, Export, File, FileText, FolderOpen, Funnel, GearSix, Image as ImageIcon, Info, Palette, Play, PuzzlePiece, SpinnerGap, Square, Stack, Trash, WarningCircle, Worlds, Wrench, X } from "../../components/icons";
 import { open as openDialog, save as saveDialog } from "@tauri-apps/plugin-dialog";
 import { command, listenConsoleLine, listenLaunchState, revealInstancePath } from "../../lib/tauri";
-import type { BedrockRuntimeStatus, ConsoleLine, ConsoleSettings, ContentInstallPlan, ExportEntry, ExportResult, GeneralSettings, Instance, InstanceFileEntry, LoaderVersion, MinecraftVersionSummary, UpdateInstanceRequest } from "../../lib/types";
+import type { BedrockRuntimeStatus, ConsoleLine, ConsoleSettings, ContentInstallPlan, ExportEntry, ExportResult, Instance, InstanceFileEntry, LoaderVersion, MinecraftVersionSummary, UpdateInstanceRequest } from "../../lib/types";
 import { useAppStore } from "../../stores/appStore";
 import { versionNotification } from "../../lib/versionNotifications";
 import common from "../../components/common/Common.module.css";
@@ -25,17 +25,12 @@ import { BedrockCatalog } from "../../components/instance/BedrockCatalog";
 import { InstanceVersionMigrationDialog } from "../../components/instance/InstanceVersionMigrationDialog";
 import type { ContentInstallResult, InstalledContentRecord } from "../../lib/types";
 import menuStyles from "../../components/shell/NavigationContextMenu.module.css";
+import { fileDropCategory, useInstanceFileDrop, type FileDropCategory } from "../../lib/useInstanceFileDrop";
 
 const tabs = ["overview", "mods", "resourcepacks", "shaders", "worlds", "screenshots", "settings", "logs"] as const;
 type InstanceTab = (typeof tabs)[number];
-type InstanceTabsPosition = NonNullable<GeneralSettings["instanceTabsPosition"]>;
 
-const instanceTabsPositionOptions: Array<[InstanceTabsPosition, string]> = [
-  ["top", "Top"],
-  ["bottom", "Bottom"],
-  ["left", "Left"],
-  ["right", "Right"],
-];
+
 
 const tabLabels: Record<InstanceTab, string> = {
   overview: "Overview",
@@ -445,19 +440,6 @@ export function InstancePage() {
     }
   }, [bootstrap, pushToast, refresh, tr]);
 
-  const saveInstanceTabsPosition = useCallback(async (position: InstanceTabsPosition) => {
-    if (!bootstrap) return;
-    try {
-      await command("update_setting", {
-        key: "general",
-        value: { ...bootstrap.settings.general, instanceTabsPosition: position },
-      });
-      await refresh();
-    } catch (error) {
-      pushToast({ tone: "error", title: uiText("instance.texts.instanceTabsPositionWasNotSaved", "Instance tabs position was not saved"), message: String((error as { message?: string }).message ?? error) });
-    }
-  }, [bootstrap, pushToast, refresh, tr]);
-
   const reorderInstanceTabs = useCallback(async (id: InstanceTab, targetId: InstanceTab, after: boolean) => {
     if (id === targetId) return;
     const nextOrder = tabOrder.filter((item) => item !== id);
@@ -630,6 +612,45 @@ export function InstancePage() {
     navigate({ search: params.toString() ? `?${params.toString()}` : "" }, { replace: true });
   }, [instance, location.search]);
 
+  const [fileImportBusy, setFileImportBusy] = useState(false);
+  const fileImportLock = useRef(false);
+  const importLocalFiles = async (category: FileDropCategory, paths: string[]) => {
+    if (!instance || fileImportLock.current || (isBedrock && category === "shaders")) return;
+    fileImportLock.current = true;
+    setFileImportBusy(true);
+    setContentBrowserOpen(false);
+    navigate(`/instance/${instance.id}?tab=${category}`, { replace: true });
+    try {
+      const result = await command<{ imported: number; errors: string[] }>("import_instance_files", { instanceId: instance.id, category, paths });
+      if (result.imported) pushToast({ tone: "success", title: uiText("instance.filesAdded", "Files added: {count}", { count: result.imported }), message: "" });
+      if (result.errors.length) pushToast({ tone: "error", title: uiText("instance.filesNotAdded", "Some files could not be added. Check the file type and whether it already exists."), message: result.errors.join("\n") });
+      setContentRevision(value => value + 1);
+    } catch (error) {
+      pushToast({ tone: "error", title: uiText("instance.filesNotAdded", "Some files could not be added. Check the file type and whether it already exists."), message: String((error as { message?: string }).message ?? error) });
+    } finally {
+      fileImportLock.current = false;
+      setFileImportBusy(false);
+    }
+  };
+  const fileDropOver = useInstanceFileDrop(instance?.id, {
+    hover: category => {
+      if (!instance || (isBedrock && category === "shaders")) return;
+      setContentBrowserOpen(false);
+      if (tab !== category) navigate(`/instance/${instance.id}?tab=${category}`, { replace: true });
+    },
+    drop: (category, paths) => { void importLocalFiles(category, paths); },
+  });
+  const chooseLocalFiles = async () => {
+    const category = fileDropCategory(tab);
+    if (!category) return;
+    try {
+      const selected = await openDialog({ multiple: true, filters: [{ name: uiText("instance.chooseFiles", "Choose files"), extensions: isBedrock ? ["mcpack", "mcaddon", "zip"] : category === "mods" ? ["jar"] : ["zip"] }] });
+      if (selected) await importLocalFiles(category, Array.isArray(selected) ? selected : [selected]);
+    } catch (error) {
+      pushToast({ tone: "error", title: uiText("instance.filesNotAdded", "Some files could not be added. Check the file type and whether it already exists."), message: String(error) });
+    }
+  };
+
   if (!bootstrap) return null;
   if (!instance) return <div className={styles.notFound}><WarningCircle size={36} /><h1>{uiText("instance.texts.instanceNotFound", "Instance not found")}</h1><button className={common.secondaryButton} type="button" onClick={() => navigate("/library")}>{uiText("instance.texts.backToLibrary", "Back to Library")}</button></div>;
   const displayedFiles = tab === "screenshots"
@@ -740,8 +761,10 @@ export function InstancePage() {
 
   const deleteInstance = async () => {
     setBusy(true);
+    const pending = useAppStore.getState().deleteInstance(instance.id);
+    navigate("/library", { replace: true });
     try {
-      await command("delete_instance", { instanceId: instance.id });
+      await pending;
       selectInstance(null);
       await refresh();
       pushToast(versionNotification(instance, "deleted"));
@@ -1108,6 +1131,8 @@ export function InstancePage() {
             className={`${tab === item ? styles.active : ""} ${tabDraggedId === item ? styles.tabDragging : ""} ${tabDropTarget?.id === item ? (tabDropTarget.after ? styles.tabInsertAfter : styles.tabInsertBefore) : ""}`}
             key={item}
             data-slh-instance-tab={item}
+            data-instance-file-drop={fileDropCategory(item) ?? undefined}
+            data-file-over={fileDropOver === item || undefined}
             data-minimal-compact
             aria-label={tr(isBedrock && item === "mods" ? uiText("installation.texts.addOns", "Add-ons") : tabLabels[item])}
             aria-current={tab === item ? "page" : undefined}
@@ -1122,10 +1147,10 @@ export function InstancePage() {
           ><Icon size={15} /><span data-minimal-text>{tr(isBedrock && item === "mods" ? uiText("installation.texts.addOns", "Add-ons") : tabLabels[item])}</span></button>;
         })}
       </DetailTabs>
-      <main className={styles.content}>
+      <main className={`${styles.content} ${fileDropOver && fileDropOver === tab ? styles.fileDropActive : ""}`} data-instance-file-drop={fileDropCategory(tab) ?? undefined}>
         {tab === "overview" ? (
           <div className={styles.overview}>
-            <section><h2>{uiText("instance.texts.instance", "Instance")}</h2>{isBedrock ? <><dl><div><dt>{uiText("installation.texts.bedrockVersion", "Bedrock version")}</dt><dd>{instance.minecraftVersion}</dd></div><div><dt>{uiText("installation.texts.profile", "Profile")}</dt><dd>{tr(instance.bedrockProfileMode === "isolated" ? uiText("installation.texts.isolatedProfile", "Isolated profile") : uiText("installation.texts.sharedStoreData", "Shared Store data"))}</dd></div><div><dt>{uiText("settings.java", "Java")}</dt><dd>{uiText("instance.texts.notUsedByBedrock", "Not used by Bedrock")}</dd></div></dl><p>{uiText("instance.texts.worldsAddOnsAndResourcePacksAreManagedIn", "Worlds, add-ons, and resource packs are managed in Minecraft's Bedrock data folders.")}</p></> : <dl><div><dt>{uiText("library.version", "Version")}</dt><dd>{instance.minecraftVersion}</dd></div><div><dt>{uiText("library.loader", "Loader")}</dt><dd>{instance.loaderVersion ?? instance.loaderType}</dd></div><div><dt>{uiText("installation.texts.memory", "Memory")}</dt><dd>{instance.memoryMinMb} {uiText("instance.texts.to", "to")} {instance.memoryMaxMb} {uiText("installation.texts.mb", "MB")}</dd></div><div><dt>{uiText("settings.java", "Java")}</dt><dd>{instance.javaPath ?? uiText("accounts.texts.automatic", "Automatic")}</dd></div><div><dt>{uiText("instance.texts.gameDirectory", "Game directory")}</dt><dd>{instance.gameDir}</dd></div></dl>}</section>
+            <section><h2>{uiText("instance.texts.instance", "Instance")}</h2>{isBedrock ? <><dl><div><dt>{uiText("installation.texts.bedrockVersion", "Bedrock version")}</dt><dd>{instance.minecraftVersion}</dd></div><div><dt>{uiText("installation.texts.profile", "Profile")}</dt><dd>{tr(instance.bedrockProfileMode === "isolated" ? uiText("installation.texts.isolatedProfile", "Isolated profile") : uiText("installation.texts.sharedStoreData", "Shared Store data"))}</dd></div><div><dt>{uiText("settings.java", "Java")}</dt><dd>{uiText("instance.texts.notUsedByBedrock", "Not used by Bedrock")}</dd></div></dl><p>{uiText("instance.texts.worldsAddOnsAndResourcePacksAreManagedIn", "Worlds, add-ons, and resource packs are managed in Minecraft's Bedrock data folders.")}</p></> : <dl><div><dt>{uiText("library.version", "Version")}</dt><dd>{instance.minecraftVersion}</dd></div><div><dt>{uiText("library.loader", "Loader")}</dt><dd>{instance.loaderType.charAt(0).toUpperCase() + instance.loaderType.slice(1)}{instance.loaderVersion ? ` ${instance.loaderVersion}` : ""}</dd></div><div><dt>{uiText("installation.texts.memory", "Memory")}</dt><dd>{instance.memoryMinMb} {uiText("instance.texts.to", "to")} {instance.memoryMaxMb} {uiText("installation.texts.mb", "MB")}</dd></div><div><dt>{uiText("settings.java", "Java")}</dt><dd>{instance.javaPath ?? uiText("accounts.texts.automatic", "Automatic")}</dd></div><div><dt>{uiText("instance.texts.gameDirectory", "Game directory")}</dt><dd>{instance.gameDir}</dd></div></dl>}</section>
             <section><h2>{uiText("instance.texts.healthAndPortability", "Health and portability")}</h2><div className={styles.health}><span className={instance.status === "installed" ? common.successBadge : common.warningBadge}>{instance.status === "installed" ? uiText("home.texts.ready", "Ready") : uiText("instance.texts.attention", "Attention")}</span><p>{instance.status === "installed" ? uiText("instance.texts.verifiedMetadataAndGameFilesAreInstalled", "Verified metadata and game files are installed.") : uiText("instance.texts.installOrRepairThisInstanceBeforeLaunching", "Install or repair this instance before launching.")}</p><div className={styles.healthActions}><button className={common.secondaryButton} type="button" disabled={busy || instance.status === "running"} onClick={() => void repair()}><ArrowClockwise size={16} /> {uiText("instance.texts.repair", "Repair")}</button><button className={common.secondaryButton} type="button" disabled={busy || instance.status === "running"} onClick={() => void openExportDialog()}><Export size={16} /> {uiText("installation.texts.export", "Export")}</button></div></div></section>
           </div>
         ) : (["mods", "resourcepacks", "shaders", "worlds", "screenshots"].includes(tab) || (isBedrock && tab === "logs")) ? (
@@ -1140,6 +1165,11 @@ export function InstancePage() {
                 {tab !== "logs" ? <button className={common.secondaryButton} type="button" onClick={() => setContentRevision((value) => value + 1)}><ArrowClockwise size={16} /> {uiText("installation.texts.refresh", "Refresh")}</button> : null}
               </> : contentProjectTypes[tab] ? <><button className={common.secondaryButton} type="button" disabled={contentActionBusy} onClick={() => setContentBrowserOpen(true)}><DownloadSimple size={16} /> {tr(contentDownloadLabels[tab])}</button><button className={common.secondaryButton} type="button" disabled={contentActionBusy} onClick={() => void updateContentNow()}>{contentActionBusy ? <SpinnerGap className={styles.spin} size={16} /> : <ArrowClockwise size={16} />} {uiText("discover.texts.update", "Update")}</button></> : null}
               {tab === "screenshots" ? <button className={common.secondaryButton} type="button" aria-pressed={screenshotsNewestFirst} onClick={() => setScreenshotsNewestFirst((current) => !current)}><Funnel size={16} /> {screenshotsNewestFirst ? uiText("instance.texts.newestFirst", "Newest first") : uiText("instance.texts.oldestFirst", "Oldest first")}</button> : null}<span className={common.badge}>{files.length} {tr(files.length === 1 ? uiText("instance.texts.item", "item") : uiText("instance.texts.items", "items"))}</span></div></header>
+            {fileDropCategory(tab) ? <div className={styles.fileDropHint} role="status">
+              <DownloadSimple size={18} />
+              <span>{fileImportBusy ? uiText("instance.addingFiles", "Adding files…") : fileDropOver === tab ? uiText("instance.releaseFiles", "Release to add files") : uiText("instance.dropFiles", "Drop {types} files here or choose files", { types: isBedrock ? ".mcpack / .mcaddon / .zip" : tab === "mods" ? ".jar" : ".zip" })}</span>
+              <button className={common.secondaryButton} type="button" disabled={fileImportBusy} onClick={() => void chooseLocalFiles()}>{uiText("instance.chooseFiles", "Choose files")}</button>
+            </div> : null}
             {selectedContent.length > 0 && !(isBedrock && tab === "logs") ? <div className={styles.selectionBar}>
               <span><strong>{selectedContent.length}</strong> {tr(selectedContent.length === 1 ? uiText("instance.texts.itemSelected", "item selected") : uiText("instance.texts.itemsSelected", "items selected"))}</span>
               <div>
@@ -1161,17 +1191,7 @@ export function InstancePage() {
           </div>
         ) : tab === "settings" ? (
           <div className={styles.instanceSettings}>
-            <section>
-              <header><h2>{uiText("instance.texts.instanceLayout", "Instance layout")}</h2></header>
-              <div className={styles.interfaceSettingsBody}>
-                <label className={common.field}>
-                  <span className={common.label}>{uiText("instance.texts.tabsPosition", "Tabs position")}</span>
-                  <select className={common.select} value={configuredTabsPosition ?? "top"} onChange={(event) => void saveInstanceTabsPosition(event.target.value as InstanceTabsPosition)}>
-                    {instanceTabsPositionOptions.map(([position, label]) => <option value={position} key={position}>{tr(label)}</option>)}
-                  </select>
-                </label>
-              </div>
-            </section>
+            
             <section className={styles.identitySettings}>
               <header><h2>{uiText("instance.texts.nameAndArtwork", "Name and artwork")}</h2></header>
               <div className={styles.identityForm}>

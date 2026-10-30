@@ -4,7 +4,7 @@ import path from 'node:path';
 
 const target = process.argv[2];
 if (!target || !/^(x86_64-pc-windows-msvc|x86_64-unknown-linux-gnu|x86_64-apple-darwin|aarch64-apple-darwin)$/.test(target)) throw Error('A supported Rust target is required');
-const version = JSON.parse(readFileSync('package.json', 'utf8')).version;
+const version = JSON.parse(readFileSync('package.json', 'utf8')).version.replace(/\+1$/, '.1');
 const output = path.resolve('artifacts/packages');
 const release = path.resolve(`src-tauri/target/${target}/release`);
 const base = `SLH-${version}-${target}`;

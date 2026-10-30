@@ -19,7 +19,7 @@ vi.mock("../../vendor/mine3d/core/scene-loop", () => ({ SkinViewEngine: class {
   idleAnimation = { id: "idle" }; controls = { getPolarAngle: () => 1, getAzimuthalAngle: () => 0, addEventListener: vi.fn(), removeEventListener: vi.fn(), object: { position: { set: vi.fn() } }, target: { x: 0, y: 0, z: 0 }, update: vi.fn() };
   getCameraDistance = () => 110;
   fitPlayerToFrame = vi.fn(); setSize = vi.fn(); setSkin = vi.fn().mockResolvedValue(undefined); setCape = vi.fn().mockResolvedValue(undefined);
-  setContactShadowVisible = vi.fn(); setCursorFollow = vi.fn(); setAnimation = vi.fn();
+  setContactShadowVisible = vi.fn(); setCursorFollow = vi.fn(); setCursorAim = vi.fn(); setAnimation = vi.fn();
   setPoseHook = vi.fn(); setRenderOnDemand = vi.fn(); setAnimationActive = vi.fn(); setAnimationFrameRate = vi.fn();
   hitPlayerAt = vi.fn().mockReturnValue(true); start = vi.fn(); stop = vi.fn(); dispose = vi.fn();
   constructor() { if (mocks.unavailable) throw new Error("WebGL unavailable"); mocks.engines.push(this); }
@@ -38,6 +38,20 @@ beforeEach(() => {
   });
 });
 afterEach(() => { cleanup(); vi.useRealTimers(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
+
+it("follows pointer movement only while the setting is enabled", async () => {
+  const view = render(<HomeCharacter account={null} cursorFollow />);
+  await waitFor(() => expect(mocks.engines[0]?.start).toHaveBeenCalled());
+  const engine = mocks.engines[0];
+  expect(engine.setCursorFollow).toHaveBeenLastCalledWith(true);
+  fireEvent.pointerMove(window, { clientX: 400, clientY: 200 });
+  expect(engine.setCursorAim).toHaveBeenCalled();
+  view.rerender(<HomeCharacter account={null} cursorFollow={false} />);
+  expect(engine.setCursorFollow).toHaveBeenLastCalledWith(false);
+  engine.setCursorAim.mockClear();
+  fireEvent.pointerMove(window, { clientX: 500, clientY: 300 });
+  expect(engine.setCursorAim).not.toHaveBeenCalled();
+});
 
 it("does not resize or reframe an unchanged or hidden canvas, then resumes it", async () => {
   render(<HomeCharacter account={null} />);

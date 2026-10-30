@@ -208,8 +208,9 @@ export function LibraryPage() {
   const deleteInstance = async (instance: Instance) => {
     if (deletingInstanceId || instance.status === "running" || instance.status === "installing" || instance.status === "launching") return;
     setDeletingInstanceId(instance.id);
+    setContextMenu(null);
     try {
-      await command("delete_instance", { instanceId: instance.id });
+      await useAppStore.getState().deleteInstance(instance.id);
       if (selectedId === instance.id) select(null);
       setContextMenu(null);
       await refresh();

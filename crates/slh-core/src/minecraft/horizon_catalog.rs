@@ -238,7 +238,7 @@ fn write_cache(path: &Path, releases: &[Release]) -> AppResult<()> {
     Ok(())
 }
 
-pub async fn versions(state: &AppState, minecraft: &str) -> AppResult<Vec<LoaderVersion>> {
+async fn catalog(state: &AppState) -> AppResult<Vec<Release>> {
     let _catalog_guard = CATALOG_LOCK.lock().await;
     let path = state.paths.cache.join("horizon/releases.json");
     let fresh = tokio::fs::metadata(&path)
@@ -267,7 +267,19 @@ pub async fn versions(state: &AppState, minecraft: &str) -> AppResult<Vec<Loader
             },
         }
     };
-    Ok(releases
+    Ok(releases)
+}
+
+pub async fn minecraft_versions(state: &AppState) -> AppResult<Vec<String>> {
+    let mut games = Vec::new();
+    for release in catalog(state).await? {
+        if !games.contains(&release.game.version) { games.push(release.game.version); }
+    }
+    Ok(games)
+}
+
+pub async fn versions(state: &AppState, minecraft: &str) -> AppResult<Vec<LoaderVersion>> {
+    Ok(catalog(state).await?
         .into_iter()
         .filter(|r| r.game.version == minecraft)
         .enumerate()

@@ -190,6 +190,7 @@ export interface AppearancePreset {
 export interface AppearanceSettings extends AppearanceColors {
   beautifulHome?: boolean;
   homeCharacterFps?: number;
+  homeCharacterCursorFollow?: boolean;
   homeCharacterMode?: 0 | 1 | 2;
   homeStatusVisible?: string[];
   homeStatusOrder?: string[];
@@ -283,6 +284,7 @@ export interface AppSettings {
   sync: {
     backupRetention: number;
     worldsEnabled: boolean;
+    rustEnabled?: boolean;
   };
   notifications: NotificationSettings;
   console: ConsoleSettings;

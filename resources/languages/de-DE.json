@@ -15,6 +15,7 @@
     "continue": "Weiter"
   },
   "common": {
+    "beta": "Beta",
     "play": "Spielen",
     "cancel": "Abbrechen",
     "save": "Speichern",
@@ -512,12 +513,16 @@
     "orderNotSaved": "Die Reihenfolge der Instanzen wurde nicht gespeichert"
   },
   "settings": {
+    "character3d": "3D-Figureinstellungen",
+    "syncRust": "Mit Rust-Instanzen synchronisieren",
+    "syncRustDescription": "Rust-Instanzen in die Synchronisation von Optionen, Servern und anderen gewählten Dateien einbeziehen.",
     "rustMinecraft": "Minecraft in Rust",
     "rustMinecraftDescription": "Kompatible Horizon-Releases von GitHub. Erfordert Windows x64, Vulkan und ein Microsoft-Konto mit Minecraft. Java wird für die Vorbereitung passend zum Release gewählt.",
     "horizonFaq": "FAQ?",
     "character": {
       "title": "Figur auf der Startseite",
       "description": "3D animiert die Figur. Bild zeigt deinen Skin in einer festen Pose. Aus blendet die Figur aus.",
+      "followCursor": "Blick folgt dem Mauszeiger",
       "mode2": "2 · 3D",
       "mode1": "1 · Bild",
       "mode0": "0 · Aus",
@@ -2131,6 +2136,12 @@
     }
   },
   "installation": {
+    "horizonVersionsHint": "Es werden nur Minecraft-Versionen mit geprüften Horizon-Releases angezeigt.",
+    "horizonCompatibleRelease": "Kompatibles Horizon-Release verfügbar",
+    "horizonClient": "Horizon-Client",
+    "horizonClientHint": "Wähle eine Minecraft-Version und anschließend ein Horizon-Release.",
+    "horizonLoadingVersions": "Versionen werden geladen",
+    "horizonChooseVersion": "Minecraft auswählen",
     "horizonRelease": "Horizon-Version",
     "horizonNoReleases": "Keine kompatiblen Horizon-Releases für diese Minecraft-Version",
     "horizonApply": "Version anwenden",
@@ -2498,6 +2509,13 @@
     "modpackExample": "z. B. Cobblemon"
   },
   "instance": {
+    "removingFiles": "Instanzdateien werden gelöscht",
+    "filesAdded": "Dateien hinzugefügt: {count}",
+    "filesNotAdded": "Einige Dateien konnten nicht hinzugefügt werden. Prüfe den Dateityp und ob die Dateien bereits vorhanden sind.",
+    "chooseFiles": "Dateien auswählen",
+    "addingFiles": "Dateien werden hinzugefügt…",
+    "releaseFiles": "Zum Hinzufügen loslassen",
+    "dropFiles": "Dateien vom Typ {types} hier ablegen oder auswählen",
     "texts": {
       "contentCouldNotBeIndexed": "Inhalt konnte nicht indiziert werden",
       "filesCouldNotBeIndexed": "Dateien konnten nicht indiziert werden",

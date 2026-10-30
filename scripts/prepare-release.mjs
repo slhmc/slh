@@ -2,7 +2,8 @@ import { readFileSync, writeFileSync, readdirSync, unlinkSync, existsSync } from
 import path from "node:path";
 
 const directory = process.argv[2] ?? "packages";
-const version = JSON.parse(readFileSync("package.json", "utf8")).version;
+const internalVersion = JSON.parse(readFileSync("package.json", "utf8")).version;
+const version = internalVersion.replace(/\+1$/, ".1");
 const platforms = {};
 const files = readdirSync(directory);
 for (const file of files.filter(name => name.startsWith("update-") && name.endsWith(".json"))) {
@@ -33,7 +34,7 @@ const notes = template.replaceAll("{{VERSION}}", version).replaceAll("{{COMMIT}}
 if (/\{\{[A-Z_]+\}\}/.test(notes)) throw Error("Unresolved release note placeholder");
 writeFileSync("release-notes.txt", notes);
 writeFileSync(path.join(directory, "latest.json"), JSON.stringify({
-  version,
+  version: internalVersion,
   notes: "Local servers and Leaf, experimental Horizon, offline skins, legacy Minecraft and Forge fixes, more reliable Modrinth/CurseForge installs and launch diagnostics.",
   pub_date: new Date().toISOString(),
   platforms,

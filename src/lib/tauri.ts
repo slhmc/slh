@@ -13,7 +13,7 @@ export const isTauri =
   typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
 const previewBootstrap: BootstrapData = {
-  version: "0.2.2-dev",
+  version: "0.2.2.1-dev",
   buildUnix: 0,
   portableRoot: "E:\\SLH-Portable",
   firstRun: false,
@@ -333,6 +333,10 @@ export async function command<T>(name: string, args?: Record<string, unknown>): 
         backupPath: null,
       } as T;
     }
+    if (name === "import_instance_files") {
+      return { imported: (args?.paths as string[] | undefined)?.length ?? 0, errors: [] } as T;
+    }
+    if (name === "list_horizon_minecraft_versions") return ["26.4", "26.3"] as T;
     if (name === "list_minecraft_versions") {
       return [
         { id: "26.4", versionType: "release", releaseTime: "2026-11-01T00:00:00Z", url: "", sha1: "" },

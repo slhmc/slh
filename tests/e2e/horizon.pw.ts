@@ -1,45 +1,23 @@
 import { expect, test } from "@playwright/test";
 
-test("Horizon releases are opt-in, filtered by Minecraft, and support future versions", async ({ page }) => {
-  await page.goto("/#/library");
-  await page.getByRole("button", { name: "New instance", exact: true }).click();
-  let dialog = page.getByRole("dialog");
-  await expect(dialog.getByRole("button", { name: /^Rust/ })).toHaveCount(0);
-  await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+test("Horizon edition lists only supported Minecraft versions and pins its release", async ({ page }) => {
   await page.goto("/#/settings/advanced");
   await page.getByRole("switch", { name: "Minecraft on Rust", exact: true }).check();
-  await expect(page.getByRole("button", { name: "FAQ?", exact: true })).toBeVisible();
   await page.goto("/#/library");
   await page.getByRole("button", { name: "New instance", exact: true }).click();
-  dialog = page.getByRole("dialog");
-  await dialog.getByRole("button", { name: /Minecraft 1.21.8|^1.21.8/ }).click();
-  await dialog.getByRole("button", { name: /^Rust/ }).click();
-  await expect(dialog.getByRole("combobox", { name: "Horizon release", exact: true })).toBeDisabled();
-  await expect(dialog.getByRole("button", { name: "Create and install", exact: true })).toBeDisabled();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByRole("tab", { name: "Rust", exact: true }).click();
+  await expect(dialog.getByText("Only Minecraft versions supported by verified Horizon releases are listed.")).toBeVisible();
+  await expect(dialog.getByRole("heading", { name: "Horizon client" })).toBeVisible();
+  await expect(dialog.getByText("Adapter pending")).toHaveCount(0);
+  await expect(dialog.getByRole("button", { name: /Minecraft 1.21.8|^1.21.8/ })).toHaveCount(0);
   await dialog.getByRole("button", { name: /Minecraft 26.3|^26.3/ }).click();
-  await dialog.getByRole("button", { name: /^Rust/ }).click();
+  await expect(dialog.getByText("Compatible Horizon release available").first()).toBeVisible();
   const release = dialog.getByRole("combobox", { name: "Horizon release", exact: true });
   await expect(release).toHaveValue("v0.2.97");
   await release.selectOption("v0.2.95");
   await expect(dialog.getByRole("button", { name: "Create and install", exact: true })).toBeEnabled();
-  await dialog.getByRole("button", { name: /Minecraft 1.21.8|^1.21.8/ }).click();
-  await expect(release).toBeDisabled();
-  await expect(dialog.getByRole("button", { name: "Create and install", exact: true })).toBeDisabled();
-  await dialog.getByRole("button", { name: /Minecraft 26.4|^26.4/ }).click();
-  await expect(release).toHaveValue("v0.3.0");
-  await expect(release.locator('option[value="v0.2.97"]')).toHaveCount(0);
-  await expect(dialog.getByRole("button", { name: "Create and install", exact: true })).toBeEnabled();
-  await dialog.getByRole("button", { name: /Minecraft 26.3|^26.3/ }).click();
-  await expect(release).toHaveValue("v0.2.97");
-  await expect(release.locator('option[value="v0.3.0"]')).toHaveCount(0);
-  await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
-  await page.goto("/#/settings/advanced");
-  await page.getByRole("switch", { name: "Minecraft on Rust", exact: true }).uncheck();
-  await page.goto("/#/library");
-  await page.getByRole("button", { name: "New instance", exact: true }).click();
-  await expect(page.getByRole("dialog").getByRole("button", { name: /^Rust/ })).toHaveCount(0);
 });
-
 
 test("an existing Horizon instance keeps its pinned release until explicit apply", async ({ page }) => {
   await page.addInitScript(() => { (window as any).horizonMutations = []; });

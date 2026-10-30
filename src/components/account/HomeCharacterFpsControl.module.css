@@ -1,4 +1,5 @@
 .control { display: grid; width: 100%; grid-template-columns: minmax(110px, 1fr) 90px; align-items: start; gap: 12px; }
+.control[aria-disabled="true"] { opacity: .55; }
 .track { position: relative; padding-bottom: 22px; }
 .track input { width: 100%; accent-color: var(--color-accent); }
 .control strong { text-align: right; font-size: 0.75rem; padding-top: 3px; }

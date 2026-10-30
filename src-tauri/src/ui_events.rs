@@ -89,7 +89,7 @@ pub fn deliver(app: &AppHandle, event: CoreEvent) -> slh_core::error::AppResult<
 }
 fn background_notification(app: &AppHandle, event: &CoreEvent, sequence: u64) {
     let (title, error) = match event {
-        CoreEvent::Progress(progress) if progress.stage == "complete" => (match progress.operation.as_str() { "java" => "Java runtime ready", "install" => "Installation complete", _ => "Instance ready" }, false),
+        CoreEvent::Progress(progress) if progress.stage == "complete" => (match progress.operation.as_str() { "java" => "Java runtime ready", "install" => "Installation complete", "delete" => "Instance deleted", _ => "Instance ready" }, false),
         CoreEvent::Progress(progress) if progress.stage == "failed" => ("Operation failed", true),
         CoreEvent::Launch(launch) if launch.state == "crashed" => ("Minecraft crashed", true),
         CoreEvent::SyncError(_) => ("Sync failed", true),

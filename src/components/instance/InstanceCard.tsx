@@ -44,7 +44,7 @@ export function InstanceCard({ instance, selected, view, groupName, insertPositi
       <div>
         <button type="button" onClick={onOpenFolder}><FolderOpen size={16} /> {uiText("installation.texts.openFolder", "Open folder")}</button>
         <button type="button" onClick={onSettings}><Wrench size={16} /> {uiText("navigation.settings", "Settings")}</button>
-        <button className={styles.deleteAction} type="button" disabled={instance.status === "running"} onClick={onDelete}><Trash size={16} /> {uiText("common.delete", "Delete")}</button>
+        <button className={styles.deleteAction} type="button" disabled={Boolean(progress) || ["running", "installing", "launching"].includes(instance.status)} onClick={onDelete}><Trash size={16} /> {uiText("common.delete", "Delete")}</button>
       </div>
     </details>
   );
@@ -69,7 +69,7 @@ export function InstanceCard({ instance, selected, view, groupName, insertPositi
         <span className={styles.loader}>{instance.loaderType === "bedrock" ? uiText("installation.texts.bedrock", "Bedrock") : instance.loaderType}</span>
         <span>{groupName ?? uiText("library.ungrouped", "Ungrouped")}</span>
         <span className={styles.lastPlayed}>{formatLastPlayed(instance.lastPlayedAt, tr, locale)}</span>
-        {progress ? <span role="status">{progress.message}</span> : null}
+        {progress ? <span className={styles.listProgress} role="status">{progress.message}</span> : null}
         {selected ? <Check className={styles.check} size={16} weight="bold" /> : null}
         {actionMenu}
       </LibraryCardSurface>

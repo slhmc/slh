@@ -43,6 +43,10 @@ struct SyncSettings {
     worlds_enabled: bool,
 }
 
+async fn rust_enabled(state: &AppState) -> AppResult<bool> {
+    Ok(database::setting(&state.database, "sync").await?["rustEnabled"].as_bool() == Some(true))
+}
+
 pub async fn list_mappings(pool: &SqlitePool) -> AppResult<Vec<SyncMapping>> {
     let rows = sqlx::query(
         "SELECT id, category, scope_ids_json, direction, enabled, source_relative_path, \
@@ -81,7 +85,8 @@ pub async fn create_mapping(
     if all_instances {
         unique.insert("*".to_owned());
         instances = database::instances(&state.database).await?;
-        instances.retain(|instance| instance.loader_type != "rust");
+        let include_rust = rust_enabled(state).await?;
+        instances.retain(|instance| instance.loader_type != "rust" || include_rust);
     } else {
         for id in &request.instance_ids {
             if id == "*" {
@@ -93,7 +98,7 @@ pub async fn create_mapping(
                 continue;
             }
             let instance = database::instance(&state.database, id).await?;
-            if instance.loader_type == "rust" {
+            if instance.loader_type == "rust" && !rust_enabled(state).await? {
                 return Err(AppError::Unavailable("Horizon uses isolated settings and does not participate in Java instance synchronization".into()));
             }
             instances.push(instance);
@@ -211,7 +216,7 @@ pub async fn run_for_instance(
 ) -> AppResult<Vec<SyncRunResult>> {
     // Horizon rewrites options.txt in its own format. Wildcard Java mappings
     // must never import those settings or publish them back into shared storage.
-    if instance.loader_type == "rust" {
+    if instance.loader_type == "rust" && !rust_enabled(state).await? {
         return Ok(Vec::new());
     }
     let mappings = list_mappings(&state.database).await?;
@@ -281,7 +286,8 @@ pub async fn run_mapping_now(
         }
         instances
     };
-    instances.retain(|instance| instance.loader_type != "rust");
+    let include_rust = rust_enabled(state).await?;
+        instances.retain(|instance| instance.loader_type != "rust" || include_rust);
     let source = instances
         .iter()
         .find(|instance| instance.id == source_instance_id)
@@ -420,7 +426,7 @@ async fn sync_roots(
     force: bool,
     counters: &mut Counters,
 ) -> AppResult<()> {
-    if instance.loader_type == "rust" {
+    if instance.loader_type == "rust" && !rust_enabled(state).await? {
         return Err(AppError::Unavailable("Horizon uses isolated settings and does not participate in Java instance synchronization".into()));
     }
     let shared = state.paths.shared.join(&mapping.source_relative_path);
@@ -821,6 +827,12 @@ mod tests {
         assert_eq!(std::fs::read_to_string(Path::new(&other_java.game_dir).join("options.txt")).unwrap(), "Java changed");
         assert_eq!(std::fs::read_to_string(&rust_file).unwrap(), "Horizon");
         assert!(run_mapping_now(&state,&mapping.id,&rust.id).await.is_err());
+        sqlx::query("UPDATE settings SET value_json=json_set(value_json,'$.rustEnabled',json('true')) WHERE key='sync'")
+            .execute(&state.database).await.unwrap();
+        run_mapping_now(&state, &mapping.id, &java.id).await.unwrap();
+        assert_eq!(std::fs::read_to_string(&rust_file).unwrap(), "Java changed");
+        sqlx::query("UPDATE settings SET value_json=json_set(value_json,'$.rustEnabled',json('false')) WHERE key='sync'")
+            .execute(&state.database).await.unwrap();
         // Existing Java conflicts remain protected instead of being overwritten.
         std::fs::write(&shared,"Shared changed").unwrap();
         std::fs::write(Path::new(&other_java.game_dir).join("options.txt"),"Local changed").unwrap();

@@ -20,3 +20,5 @@
 .vertical .labels button { text-align: left; }
 @media (hover: hover) { .labels button:hover { color: var(--color-text); background: var(--color-surface-2); } }
 @media (prefers-reduced-motion: no-preference) { .thumb { transition: left 150ms ease-out, top 150ms ease-out; } .labels button:active { transform: scale(.96); transition: transform 150ms ease-out; } }
+
+.vertical .labels button { white-space: nowrap; overflow-wrap: normal; }

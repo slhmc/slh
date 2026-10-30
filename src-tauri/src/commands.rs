@@ -72,7 +72,7 @@ pub async fn get_bootstrap(
             .is_none_or(|completed| !completed);
         Ok(BootstrapData {
             capabilities: slh_core::platform::capabilities(),
-            version: env!("CARGO_PKG_VERSION").into(),
+            version: display_launcher_version(env!("CARGO_PKG_VERSION")),
             build_unix: env!("SLH_BUILD_UNIX").parse().unwrap_or_default(),
             portable_root: state.paths.root.to_string_lossy().into_owned(),
             first_run,
@@ -148,13 +148,19 @@ pub async fn check_launcher_updates(
         .map(ToOwned::to_owned);
     let update_available = crate::updates::is_newer(&latest_version, &current_version);
     Ok(LauncherUpdateInfo {
-        current_version,
+        current_version: display_launcher_version(&current_version),
         latest_version,
         release_name,
         release_url,
         published_at,
         update_available,
     })
+}
+
+fn display_launcher_version(version: &str) -> String {
+    // Cargo and Tauri require SemVer's three numeric fields. The product's
+    // fourth hotfix component is encoded as build metadata internally.
+    version.strip_suffix("+1").map_or_else(|| version.to_owned(), |base| format!("{base}.1"))
 }
 
 #[tauri::command]
@@ -818,11 +824,12 @@ pub async fn create_instance_version_copy(
 
 #[tauri::command]
 pub async fn delete_instance(
+    app: AppHandle,
     state: State<'_, AppState>,
     instance_id: String,
 ) -> CommandResult<DeleteInstanceResult> {
     let _maintenance = slh_core::storage_cleanup::gate().read().await;
-    instances::delete_instance(&state, &instance_id)
+    instances::delete_instance(&crate::core_host::host(&app), &state, &instance_id)
         .await
         .map_err(Into::into)
 }
@@ -1176,6 +1183,14 @@ pub async fn reconcile_installed_content(
 }
 
 #[tauri::command]
+pub async fn import_instance_files(
+    state: State<'_, AppState>, instance_id: String, category: String, paths: Vec<String>,
+) -> CommandResult<slh_core::content::local::ImportResult> {
+    let _maintenance = slh_core::storage_cleanup::gate().read().await;
+    slh_core::content::local::import_files(&state, &instance_id, &category, paths).await.map_err(Into::into)
+}
+
+#[tauri::command]
 pub async fn delete_instance_content(
     state: State<'_, AppState>,
     instance_id: String,
@@ -1241,6 +1256,11 @@ pub async fn install_curseforge_modpack(
     install(&app, &state, &project_id, name, version_id, progress_key)
         .await
         .map_err(Into::into)
+}
+
+#[tauri::command]
+pub async fn list_horizon_minecraft_versions(state: State<'_, AppState>) -> CommandResult<Vec<String>> {
+    slh_core::loaders::horizon_minecraft_versions(&state).await.map_err(Into::into)
 }
 
 #[tauri::command]

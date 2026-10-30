@@ -129,6 +129,43 @@ fn pinned_download(value: &serde_json::Value, destination: PathBuf) -> AppResult
     })
 }
 
+async fn download_imports(
+    client: &reqwest::Client,
+    plans: Vec<DownloadPlan>,
+    source: &Path,
+    cache: &Path,
+    concurrency: usize,
+    mut progress: impl FnMut(usize, usize),
+) -> AppResult<()> {
+    use futures_util::{stream, StreamExt};
+    let total = plans.len();
+    let mut pending = stream::iter(plans.into_iter().map(|plan| async move {
+        let hash = plan.sha1.as_deref().ok_or_else(|| AppError::Security("Missing import checksum".into()))?;
+        if plan.destination.is_file() && super::download::verify_sha1(&plan.destination, hash).await? {
+            return Ok::<(), AppError>(());
+        }
+        plan.destination.strip_prefix(source)
+            .map_err(|_| AppError::Security("Import outside Horizon directory".into()))?;
+        // The same Maven path can identify different bytes in two Horizon
+        // releases. Content-address every import so concurrent installations
+        // never overwrite a file before the other instance copies it.
+        let cached = cache.join("horizon/objects").join(hash);
+        download_verified(client, &DownloadPlan { destination: cached.clone(), ..plan.clone() }).await?;
+        tokio::fs::create_dir_all(plan.destination.parent().unwrap()).await?;
+        // No hard links: preparation must not be able to mutate shared cache files.
+        tokio::fs::copy(cached, &plan.destination).await?;
+        Ok(())
+    })).buffer_unordered(concurrency.clamp(1, super::download::MAX_DOWNLOAD_CONCURRENCY));
+    let mut completed = 0;
+    progress(0, total);
+    while let Some(result) = pending.next().await {
+        result?;
+        completed += 1;
+        progress(completed, total);
+    }
+    Ok(())
+}
+
 /// Mojang may republish the same game version with a different asset index.
 /// Horizon accepts only the manifests pinned in its verified release archive.
 /// Fetch the canonical one into this instance, never replace SLH's shared cache.
@@ -271,104 +308,48 @@ pub async fn install(
         "https://piston-meta.mojang.com/v1/packages",
     )
     .await?;
-    download_verified(
-        &state.http,
-        &pinned_download(
-            &value["downloads"]["client"],
-            version_dir.join(format!("{version}.jar")),
-        )?,
-    )
-    .await?;
+    let mut plans = vec![pinned_download(
+        &value["downloads"]["client"],
+        version_dir.join(format!("{version}.jar")),
+    )?];
     let server_path = source.join("server.jar");
-    download_verified(
-        &state.http,
-        &pinned_download(&value["downloads"]["server"], server_path.clone())?,
-    )
-    .await?;
-    let cache = state.paths.cache.join("minecraft");
-    let import = source.clone();
-    let asset_id = value["assetIndex"]["id"]
-        .as_str()
-        .ok_or_else(|| AppError::InvalidInput("Missing asset index".into()))?
-        .to_owned();
-    crate::security::validate_relative_path(Path::new(&asset_id))?;
-    tokio::task::spawn_blocking(move || -> AppResult<()> {
-        let index_path = import
-            .join("assets/indexes")
-            .join(format!("{asset_id}.json"));
-        let index: super::types::AssetIndex = serde_json::from_slice(&std::fs::read(&index_path)?)?;
-        for object in index.objects.values() {
-            if object.hash.len() != 40 || !object.hash.bytes().all(|b| b.is_ascii_hexdigit()) {
-                return Err(AppError::Security("Invalid Minecraft asset hash".into()));
-            }
-            let relative = format!("assets/objects/{}/{}", &object.hash[..2], object.hash);
-            let target = import.join(&relative);
-            let cached = cache.join(&relative);
-            if cached.is_file() {
-                std::fs::create_dir_all(target.parent().unwrap())?;
-                std::fs::copy(cached, target)?;
-            }
-        }
-        Ok(())
-    })
-    .await
-    .map_err(|e| AppError::Process(e.to_string()))??;
-    let mut libraries = Vec::new();
+    plans.push(pinned_download(&value["downloads"]["server"], server_path.clone())?);
     for library in value["libraries"].as_array().into_iter().flatten() {
         let artifact = &library["downloads"]["artifact"];
         if let Some(path) = artifact["path"].as_str() {
             crate::security::validate_relative_path(Path::new(path))?;
-            let target = source.join("libraries").join(path);
-            let cached = state.paths.cache.join("minecraft/libraries").join(path);
-            if !target.exists() && cached.is_file() {
-                tokio::fs::create_dir_all(target.parent().unwrap()).await?;
-                tokio::fs::copy(cached, &target).await?;
-            }
-            libraries.push(pinned_download(artifact, target)?);
+            plans.push(pinned_download(artifact, source.join("libraries").join(path))?);
         }
     }
-    super::download::download_many(
-        &state.http,
-        libraries,
-        super::download::configured_concurrency(&state.database).await,
-        |_, _| {},
-    )
-    .await?;
-    // An older pinned index may contain assets absent from the latest Java install.
     let index: super::types::AssetIndex = serde_json::from_slice(
         &tokio::fs::read(source.join("assets/indexes").join(format!(
-            "{}.json",
-            value["assetIndex"]["id"].as_str().unwrap()
-        )))
-        .await?,
+            "{}.json", value["assetIndex"]["id"].as_str().unwrap()
+        ))).await?,
     )?;
     let mut seen = std::collections::HashSet::new();
-    let plans = index
-        .objects
-        .values()
-        .filter(|object| seen.insert(object.hash.clone()))
-        .map(|object| DownloadPlan {
-            url: format!(
-                "https://resources.download.minecraft.net/{}/{}",
-                &object.hash[..2],
-                object.hash
-            ),
-            destination: source.join(format!(
-                "assets/objects/{}/{}",
-                &object.hash[..2],
-                object.hash
-            )),
-            sha1: Some(object.hash.clone()),
-            max_bytes: None,
-        })
-        .collect();
-    super::download::download_many(
-        &state.http,
-        plans,
+    for object in index.objects.values() {
+        if object.hash.len() != 40 || !object.hash.bytes().all(|b| b.is_ascii_hexdigit()) {
+            return Err(AppError::Security("Invalid Minecraft asset hash".into()));
+        }
+        if seen.insert(object.hash.clone()) {
+            plans.push(DownloadPlan {
+                url: format!("https://resources.download.minecraft.net/{}/{}", &object.hash[..2], object.hash),
+                destination: source.join(format!("assets/objects/{}/{}", &object.hash[..2], object.hash)),
+                sha1: Some(object.hash.clone()),
+                max_bytes: None,
+            });
+        }
+    }
+    // Jars, libraries and assets share one bounded queue. Each verified object
+    // is cached across instances; preparation still receives private copies.
+    download_imports(
+        &state.http, plans, &source, &state.paths.cache.join("minecraft"),
         super::download::configured_concurrency(&state.database).await,
-        |_, _| {},
-    )
-    .await?;
+        |completed, total| super::installer::emit_progress(
+            app, operation, &instance.id, "install", "horizon-downloads",
+            "Downloading Horizon Minecraft resources", completed as u64, Some(total as u64),
+        ),
+    ).await?;
     let minecraft_settings = database::setting(&state.database, "minecraft").await?;
     let configured_java = instance
         .java_path
@@ -584,6 +565,75 @@ pub fn launch_command(
 
 #[cfg(test)]
 mod tests {
+    #[tokio::test]
+    async fn imports_share_verified_downloads_but_keep_private_files_and_pinned_jars() {
+        use super::*;
+        use sha1::{Digest, Sha1};
+        let server = httpmock::MockServer::start_async().await;
+        let artifact = server.mock_async(|when, then| {
+            when.method("GET").path("/artifact");
+            then.body("original");
+        }).await;
+        let temp = tempfile::tempdir().unwrap();
+        let cache = temp.path().join("cache");
+        let client = reqwest::Client::new();
+        let hash = hex::encode(Sha1::digest(b"original"));
+        for name in ["first", "second", "second"] {
+            let source = temp.path().join(name);
+            let target = source.join("server.jar");
+            let plan = DownloadPlan { url: server.url("/artifact"), destination: target.clone(), sha1: Some(hash.clone()), max_bytes: None };
+            download_imports(&client, vec![plan], &source, &cache, 4, |_, _| {}).await.unwrap();
+            assert_eq!(std::fs::read(&target).unwrap(), b"original");
+            // A preparation tool or interrupted copy cannot poison the shared object.
+            std::fs::write(target, b"changed by preparation").unwrap();
+        }
+        artifact.assert_calls_async(1).await;
+        assert_eq!(std::fs::read(cache.join("horizon/objects").join(&hash)).unwrap(), b"original");
+        let other = server.mock_async(|when, then| {
+            when.method("GET").path("/older");
+            then.body("older pinned jar");
+        }).await;
+        let source = temp.path().join("older");
+        download_imports(&client, vec![DownloadPlan {
+            url: server.url("/older"), destination: source.join("server.jar"),
+            sha1: Some(hex::encode(Sha1::digest(b"older pinned jar"))), max_bytes: None,
+        }], &source, &cache, 4, |_, _| {}).await.unwrap();
+        other.assert_calls_async(1).await;
+        assert_eq!(std::fs::read(source.join("server.jar")).unwrap(), b"older pinned jar");
+
+        // A library path may be reused with different contents by two
+        // releases. Installing them together must keep both cached objects.
+        let newer = server.mock_async(|when, then| {
+            when.method("GET").path("/library-new");
+            then.body("new library");
+        }).await;
+        let older = server.mock_async(|when, then| {
+            when.method("GET").path("/library-old");
+            then.body("old library");
+        }).await;
+        let first = temp.path().join("first-library");
+        let second = temp.path().join("second-library");
+        let new_hash = hex::encode(Sha1::digest(b"new library"));
+        let old_hash = hex::encode(Sha1::digest(b"old library"));
+        let relative = "libraries/example/example.jar";
+        let first_install = download_imports(&client, vec![DownloadPlan {
+            url: server.url("/library-new"), destination: first.join(relative),
+            sha1: Some(new_hash.clone()), max_bytes: None,
+        }], &first, &cache, 4, |_, _| {});
+        let second_install = download_imports(&client, vec![DownloadPlan {
+            url: server.url("/library-old"), destination: second.join(relative),
+            sha1: Some(old_hash.clone()), max_bytes: None,
+        }], &second, &cache, 4, |_, _| {});
+        let (first_result, second_result) = tokio::join!(first_install, second_install);
+        first_result.unwrap();
+        second_result.unwrap();
+        newer.assert_calls_async(1).await;
+        older.assert_calls_async(1).await;
+        assert_eq!(std::fs::read(first.join(relative)).unwrap(), b"new library");
+        assert_eq!(std::fs::read(second.join(relative)).unwrap(), b"old library");
+        assert_eq!(std::fs::read(cache.join("horizon/objects").join(new_hash)).unwrap(), b"new library");
+        assert_eq!(std::fs::read(cache.join("horizon/objects").join(old_hash)).unwrap(), b"old library");
+    }
     use super::*;
     #[test]
     fn preparation_cli_accepts_optional_modes_but_rejects_unknown_protocol() {
@@ -681,7 +731,7 @@ mod tests {
             Some(temp.path().to_path_buf()),
         )
         .unwrap();
-        let mut state = AppState::initialize_isolated_at(paths).await.unwrap();
+        let state = AppState::initialize_isolated_at(paths).await.unwrap();
         let versions = horizon_catalog::versions(&state, "26.3").await.unwrap();
         assert!(!versions.is_empty());
         assert!(versions.iter().all(|v| horizon_catalog::valid_tag(&v.id)));
@@ -722,11 +772,8 @@ mod tests {
             release.game.version,
             release.game.java_major
         );
-        // Full installation runs only inside the temporary instance. The optional
-        // external cache is read-only here: installation copies verified objects out.
-        if let Ok(cache) = std::env::var("SLH_HORIZON_TEST_CACHE") {
-            state.paths.cache = cache.into();
-        }
+        // Both installation and the writable download cache stay in the
+        // temporary directory, never in a user's existing launcher data.
         sqlx::query("UPDATE settings SET value_json=json_set(value_json,'$.rustMinecraft',json('true')) WHERE key='general'").execute(&state.database).await.unwrap();
         sqlx::query("INSERT INTO accounts(id,provider,provider_uuid,username,auth_status,active) VALUES ('fixture','microsoft','00000000000000000000000000000001','Fixture','ready',1)").execute(&state.database).await.unwrap();
         if let Ok(java) = std::env::var("SLH_HORIZON_TEST_JAVA") {

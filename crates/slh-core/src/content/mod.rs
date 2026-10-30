@@ -1,6 +1,7 @@
 pub mod curseforge;
 pub(crate) mod curseforge_http;
 pub mod install;
+pub mod local;
 mod mod_identity;
 pub mod modrinth;
 

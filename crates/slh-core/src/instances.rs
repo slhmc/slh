@@ -72,7 +72,7 @@ pub async fn assign_instance_group(
     crate::database::instance(pool, &request.instance_id).await
 }
 
-/// Reserves a readable display name for imported packs without replacing an existing instance.
+/// Finds a readable display name without replacing an existing instance.
 /// Folder allocation already has collision handling; imports also need distinct names in the UI.
 pub async fn allocate_unique_display_name(pool: &SqlitePool, desired: &str) -> AppResult<String> {
     let base = validate_display_name(desired)?;
@@ -208,7 +208,11 @@ pub async fn create_instance(
     paths: &PortablePaths,
     request: CreateInstanceRequest,
 ) -> AppResult<Instance> {
-    let name = validate_display_name(&request.name)?;
+    // Keep allocation and insertion together even when two create commands arrive
+    // at once. Existing instances and their folders are never renamed.
+    static CREATE_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+    let _create_guard = CREATE_LOCK.lock().await;
+    let name = allocate_unique_display_name(pool, &request.name).await?;
     if request.minecraft_version.trim().is_empty() {
         return Err(AppError::InvalidInput(
             "Minecraft version is required".into(),
@@ -586,24 +590,41 @@ pub async fn migrate_legacy_instance_folders(
 }
 
 pub async fn delete_instance(
+    app: &crate::host::Host,
     state: &AppState,
     instance_id: &str,
 ) -> AppResult<DeleteInstanceResult> {
     let instance = crate::database::instance(&state.database, instance_id).await?;
-    if instance.status == "running" || state.running_instances.read().await.contains(instance_id) {
+    let mut running = state.running_instances.write().await;
+    if matches!(
+        instance.status.as_str(),
+        "running" | "launching" | "installing"
+    ) || running.contains(instance_id)
+    {
         return Err(AppError::Conflict(
             "Stop Minecraft before deleting this instance".into(),
         ));
     }
 
+    running.insert(instance_id.to_owned());
+    drop(running);
+    let operation = format!("delete-{instance_id}");
+    let mut claimed = false;
+    let result = async {
+    let count = sqlx::query("UPDATE instances SET status='installing' WHERE id=? AND status NOT IN ('running','launching','installing')")
+        .bind(instance_id).execute(&state.database).await?.rows_affected();
+    if count == 0 { return Err(AppError::Conflict("Wait for the current instance operation to finish".into())); }
+    claimed = true;
     let instance_root =
         validated_instance_root(&state.paths, &instance.folder_name, &instance.game_dir)?;
-    if instance_root.exists() {
-        // Deletion is intentionally immediate and permanent. The user has
-        // explicitly disabled deleted-instance backups, so do not stage the
-        // root under data/backups or insert a backup record.
-        tokio::fs::remove_dir_all(&instance_root).await?;
-    }
+    crate::minecraft::installer::emit_progress(app, &operation, instance_id, "delete", "delete-scanning", "Removing instance files", 0, None);
+    let host = app.clone();
+    let id = instance_id.to_owned();
+    let progress_operation = operation.clone();
+    let removal = tokio::task::spawn_blocking(move || remove_instance_tree(&instance_root, |completed, total| {
+        crate::minecraft::installer::emit_progress(&host, &progress_operation, &id, "delete", "deleting", "Removing instance files", completed, Some(total));
+    })).await.map_err(|error| AppError::Process(error.to_string()))?;
+    removal?;
 
     let mut transaction = state.database.begin().await?;
     sqlx::query("DELETE FROM instances WHERE id = ?")
@@ -612,10 +633,71 @@ pub async fn delete_instance(
         .await?;
     transaction.commit().await?;
 
+
     Ok(DeleteInstanceResult {
         instance_id: instance_id.to_owned(),
         backup_path: None,
     })
+    }.await;
+    if result.is_err() && claimed {
+        let _ =
+            sqlx::query("UPDATE instances SET status='error' WHERE id=? AND status='installing'")
+                .bind(instance_id)
+                .execute(&state.database)
+                .await;
+    }
+    state.running_instances.write().await.remove(instance_id);
+    crate::minecraft::installer::emit_progress(
+        app,
+        &operation,
+        instance_id,
+        "delete",
+        if result.is_ok() { "complete" } else { "failed" },
+        "Removing instance files",
+        0,
+        None,
+    );
+    result
+}
+
+/// Counts removed filesystem entries, never elapsed time. Links are not followed.
+fn remove_instance_tree(root: &Path, mut progress: impl FnMut(u64, u64)) -> AppResult<()> {
+    match std::fs::symlink_metadata(root) {
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+        Err(error) => return Err(error.into()),
+        Ok(metadata) if metadata.file_type().is_symlink() => {
+            return Err(AppError::Security("Instance root is a link".into()));
+        }
+        Ok(_) => {}
+    }
+    let entries = walkdir::WalkDir::new(root)
+        .follow_links(false)
+        .contents_first(true)
+        .into_iter()
+        .map(|entry| entry.map_err(|error| AppError::Process(error.to_string())))
+        .collect::<AppResult<Vec<_>>>()?;
+    let total = entries.len() as u64;
+    progress(0, total);
+    let mut last = std::time::Instant::now();
+    for (index, entry) in entries.into_iter().enumerate() {
+        let result =
+            if entry.file_type().is_dir() || (entry.path_is_symlink() && entry.path().is_dir()) {
+                std::fs::remove_dir(entry.path())
+            } else {
+                std::fs::remove_file(entry.path())
+            };
+        if let Err(error) = result {
+            if error.kind() != std::io::ErrorKind::NotFound {
+                return Err(error.into());
+            }
+        }
+        let completed = index as u64 + 1;
+        if completed == total || last.elapsed().as_millis() >= 100 {
+            progress(completed, total);
+            last = std::time::Instant::now();
+        }
+    }
+    Ok(())
 }
 
 pub(crate) fn validated_instance_root(
@@ -738,6 +820,74 @@ fn paths_match(left: &Path, right: &Path) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn removal_progress_counts_real_entries_and_leaves_other_instances_alone() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("remove");
+        let keep = temp.path().join("keep");
+        std::fs::create_dir_all(root.join("game/mods")).unwrap();
+        std::fs::create_dir_all(&keep).unwrap();
+        std::fs::write(root.join("game/mods/a.jar"), b"a").unwrap();
+        std::fs::write(root.join("game/options.txt"), b"b").unwrap();
+        std::fs::write(keep.join("save.txt"), b"world").unwrap();
+        let mut updates = Vec::new();
+        remove_instance_tree(&root, |done, total| updates.push((done, total))).unwrap();
+        assert_eq!(updates.first(), Some(&(0, 5)));
+        assert_eq!(updates.last(), Some(&(5, 5)));
+        assert!(!root.exists());
+        assert_eq!(std::fs::read(keep.join("save.txt")).unwrap(), b"world");
+    }
+
+    #[tokio::test]
+    async fn delete_cleans_files_and_database_then_releases_the_operation_claim() {
+        let temp = tempfile::tempdir().unwrap();
+        let paths = PortablePaths::from_executable(&temp.path().join("SLH.exe"), Some(temp.path().into())).unwrap();
+        let state = AppState::initialize_isolated_at(paths).await.unwrap();
+        let request = serde_json::from_value(serde_json::json!({"name":"Delete fixture","minecraftVersion":"1.21.8","loaderType":"vanilla","memoryMinMb":512,"memoryMaxMb":2048})).unwrap();
+        let instance = create_instance(&state.database, &state.paths, request).await.unwrap();
+        let root = validated_instance_root(&state.paths, &instance.folder_name, &instance.game_dir).unwrap();
+        state.running_instances.write().await.insert(instance.id.clone());
+        assert!(delete_instance(&crate::host::Host::silent(), &state, &instance.id).await.is_err());
+        assert!(root.exists());
+        state.running_instances.write().await.remove(&instance.id);
+        delete_instance(&crate::host::Host::silent(), &state, &instance.id).await.unwrap();
+        assert!(!root.exists());
+        assert!(crate::database::instance(&state.database, &instance.id).await.is_err());
+        assert!(!state.running_instances.read().await.contains(&instance.id));
+        state.database.close().await;
+    }
+
+    #[tokio::test]
+    async fn repeated_creations_keep_existing_instances_and_allocate_distinct_names() {
+        let temp = tempfile::tempdir().unwrap();
+        let paths = PortablePaths::from_executable(&temp.path().join("SLH.exe"), Some(temp.path().into())).unwrap();
+        let state = AppState::initialize_isolated_at(paths).await.unwrap();
+        sqlx::query("UPDATE settings SET value_json=json_set(value_json,'$.rustMinecraft',json('true')) WHERE key='general'")
+            .execute(&state.database).await.unwrap();
+        let loader = if cfg!(all(target_os = "windows", target_arch = "x86_64")) { "rust" } else { "vanilla" };
+        let request = |tag| serde_json::from_value(serde_json::json!({
+            "name":"Minecraft 26.3", "minecraftVersion":"26.3", "loaderType":loader,
+            "loaderVersion":tag, "memoryMinMb":512, "memoryMaxMb":2048
+        })).unwrap();
+        let original = create_instance(&state.database, &state.paths, request("v0.2.97")).await.unwrap();
+        let save = Path::new(&original.game_dir).join("saves/keep.txt");
+        std::fs::write(&save, b"existing world").unwrap();
+        let (older, another) = tokio::join!(
+            create_instance(&state.database, &state.paths, request("v0.2.96")),
+            create_instance(&state.database, &state.paths, request("v0.2.95")),
+        );
+        let older = older.unwrap();
+        let another = another.unwrap();
+        assert_eq!(older.name, "Minecraft 26.3 (1)");
+        assert_eq!(another.name, "Minecraft 26.3 (2)");
+        assert_eq!(older.loader_version.as_deref(), Some("v0.2.96"));
+        assert_eq!(another.loader_version.as_deref(), Some("v0.2.95"));
+        assert_ne!(original.game_dir, older.game_dir);
+        assert_eq!(crate::database::instance(&state.database, &original.id).await.unwrap().name, original.name);
+        assert_eq!(std::fs::read(save).unwrap(), b"existing world");
+        state.database.close().await;
+    }
 
     #[test]
     fn rejects_windows_reserved_names_and_unsafe_characters() {
