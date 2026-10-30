@@ -64,6 +64,7 @@ pub async fn list_versions(
     loader_type: &str,
     minecraft_version: &str,
 ) -> AppResult<Vec<LoaderVersion>> {
+    if loader_type == "rust" { return crate::minecraft::horizon_catalog::versions(state, minecraft_version).await; }
     let endpoint = match loader_type {
         "fabric" => Some(format!(
             "https://meta.fabricmc.net/v2/versions/loader/{minecraft_version}"
@@ -475,10 +476,7 @@ async fn merge_installed_profile(
     base.main_class = profile.main_class;
     merge_arguments(&mut base.arguments, profile.arguments);
     if let Some(arguments) = profile.minecraft_arguments {
-        base.minecraft_arguments = Some(match base.minecraft_arguments.take() {
-            Some(existing) => format!("{existing} {arguments}"),
-            None => arguments,
-        });
+        base.minecraft_arguments = Some(crate::minecraft::legacy_arguments::merge(base.minecraft_arguments.as_deref(), &arguments)?);
     }
     if profile.java_version.is_some() {
         base.java_version = profile.java_version;
@@ -545,7 +543,7 @@ fn emit_loader_progress(
     );
 }
 
-fn neoforge_prefix(minecraft_version: &str) -> AppResult<String> {
+pub(crate) fn neoforge_prefix(minecraft_version: &str) -> AppResult<String> {
     let parts = minecraft_version.split('.').collect::<Vec<_>>();
     if parts.first() != Some(&"1") {
         return Err(AppError::InvalidInput(format!(

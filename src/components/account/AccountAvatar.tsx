@@ -22,14 +22,14 @@ export function AccountAvatar({ account, className = "" }: { account: Account | 
 
     const loadAvatar = async () => {
       setSkin(null);
-      if (!account || account.provider === "offline") return;
+      if (!account) return;
       try {
         const value = await command<string | null>("get_account_avatar", { accountId: account.id });
         if (!active) return;
         if (value) setSkin(value);
-        else scheduleRetry();
+        else if (account.provider !== "offline") scheduleRetry();
       } catch {
-        if (active) scheduleRetry();
+        if (active && account.provider !== "offline") scheduleRetry();
       }
     };
     const refresh = (event: Event) => {
@@ -49,7 +49,7 @@ export function AccountAvatar({ account, className = "" }: { account: Account | 
 
   return (
     <span className={`${styles.avatar} ${className}`} role="img" aria-label={account ? `${account.username} skin` : uiText("accounts.texts.noAccountSelected", "No account selected")}>
-      {!account || account.provider === "offline" ? (
+      {!account || (account.provider === "offline" && !skin) ? (
         <img className={styles.offlineFallback} src={noAccountAvatar} alt="" aria-hidden="true" />
       ) : skin ? (
         <>

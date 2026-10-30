@@ -43,6 +43,7 @@
 .tileGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 252px), 1fr)); gap: 12px; padding: 16px; border-bottom: 1px solid var(--color-border); }
 .tileGrid > .settingRow { min-height: 162px; grid-template-columns: minmax(0, 1fr); grid-template-rows: 1fr auto; align-items: start; gap: 12px; padding: 16px; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface-2); }
 .tileGrid .settingControl { min-width: 0; justify-content: flex-start; }
+.horizonControls { display: flex; align-items: center; justify-content: space-between; width: 100%; gap: var(--space-3); }
 .tileGrid .settingControl > input, .tileGrid .settingControl > select { width: 100%; }
 .tileGrid .updateControl { justify-content: flex-start; }
 .tileGrid .scaleControl { width: 100%; }
@@ -301,3 +302,15 @@
 .switchRow .toggle { position: static; }
 .switchRow:focus-within { outline: 2px solid var(--color-focus); outline-offset: -2px; }
 @media (hover: hover) { .switchRow:hover { border-color: var(--color-accent); } }
+
+.settingsScope { min-width: 0; container: settings / inline-size; }
+.settingsScope .settingControl > input:not([type="checkbox"]), .settingsScope .settingControl > select, .settingsScope .settingControl > textarea { width: 100%; }
+.settingsScope .tileGrid > .formSettingRow { grid-column: 1 / -1; }
+.settingsScope[data-minimalism="true"]:not(.compactSettings) .tileGrid > .settingRow { min-height: 0; grid-template-rows: auto auto; gap: var(--space-3); padding: var(--space-3); }
+.toggleInput { appearance: none; flex: none; display: block; width: 40px; height: 23px; min-height: 0; margin: 0; padding: 3px; border: 0; border-radius: 12px; background: var(--color-border-strong); cursor: pointer; }
+.toggleInput::before { content: ""; display: block; width: 17px; height: 17px; border-radius: 50%; background: var(--color-text); }
+.toggleInput:checked { background: var(--color-accent); }
+.toggleInput:checked::before { transform: translateX(17px); }
+.toggleInput:disabled { cursor: not-allowed; opacity: .48; }
+.settingsScope .settingControl > .toggleInput { width: 40px; }
+@media (prefers-reduced-motion: no-preference) { .toggleInput { transition: background-color 140ms ease; } .toggleInput::before { transition: transform 140ms ease; } }

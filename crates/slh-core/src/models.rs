@@ -499,6 +499,7 @@ pub struct CreateInstanceVersionCopyResult {
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StorageSummary {
+    pub servers_bytes: u64,
     pub total_bytes: u64,
     pub database_bytes: u64,
     pub instances_bytes: u64,

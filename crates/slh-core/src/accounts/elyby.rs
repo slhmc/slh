@@ -216,7 +216,7 @@ fn normalize_uuid(value: &str) -> String {
         .unwrap_or_else(|_| value.to_owned())
 }
 
-async fn ensure_injector(state: &AppState) -> AppResult<PathBuf> {
+pub(super) async fn ensure_injector(state: &AppState) -> AppResult<PathBuf> {
     let custom_url = configured(
         "SLH_ELY_AUTHLIB_INJECTOR_URL",
         option_env!("SLH_ELY_AUTHLIB_INJECTOR_URL"),

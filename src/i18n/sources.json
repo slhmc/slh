@@ -1398,5 +1398,7 @@
   "Configured Minecraft memory exceeds currently available memory": "progress.memory-warning",
   "Choose a Java executable or enable automatic Java detection": "errors.javaManualRequired",
   "No compatible Java runtime was found; select or install Java in Settings": "errors.javaDownloadDisabled",
-  "This instance needs Java {required} or newer; the selected executable is Java {actual}. Choose compatible Java in Settings.": "errors.javaCompatibility"
+  "This instance needs Java {required} or newer; the selected executable is Java {actual}. Choose compatible Java in Settings.": "errors.javaCompatibility",
+  "Compact navigation (beta)": "settings.texts.compactTopBarExperimental",
+  "Combines navigation with the top bar.": "settings.texts.combineNavigationAccountAndLauncherActionsInOneThin"
 }

@@ -628,6 +628,9 @@ pub async fn set_instance_content_enabled(
 pub async fn summary(state: &AppState) -> AppResult<StorageSummary> {
     let paths = state.paths.clone();
     let managed_java = crate::minecraft::java::managed_root(state).await?;
+    let mut server_roots:Vec<PathBuf>=crate::local_servers::list(state).await?.into_iter().map(|s|PathBuf::from(s.path)).collect();
+    server_roots.sort();let mut unique_roots:Vec<PathBuf>=vec![];
+    for path in server_roots {if !unique_roots.iter().any(|p|path.starts_with(p)){unique_roots.push(path);}}
     tokio::task::spawn_blocking(move || {
         let database_bytes = [
             paths.database(),
@@ -645,7 +648,10 @@ pub async fn summary(state: &AppState) -> AppResult<StorageSummary> {
         let java_bytes = directory_size(&managed_java)?;
         let logs_bytes = directory_size(&paths.logs)?;
         let backups_bytes = directory_size(&paths.backups)?;
-        let total_bytes = database_bytes
+        let mut servers_bytes=directory_size(&paths.data.join("server-runtime"))?+directory_size(&paths.data.join("server-runs"))?;
+        let mut extra_server_bytes=servers_bytes;
+        for path in unique_roots {let bytes=directory_size(&path)?;servers_bytes+=bytes;if ![&paths.instances,&paths.cache,&managed_java,&paths.shared,&paths.downloads,&paths.logs,&paths.backups].iter().any(|p|path.starts_with(p)){extra_server_bytes+=bytes;}}
+        let total_bytes = database_bytes+extra_server_bytes
             + instances_bytes
             + shared_bytes
             + cache_bytes
@@ -654,6 +660,7 @@ pub async fn summary(state: &AppState) -> AppResult<StorageSummary> {
             + logs_bytes
             + backups_bytes;
         Ok(StorageSummary {
+            servers_bytes,
             total_bytes,
             database_bytes,
             instances_bytes,

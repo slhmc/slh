@@ -2,7 +2,7 @@ import {expect,test} from '@playwright/test';
 
 test('whole toggle cards switch exactly once by title, blank area, knob and keyboard',async({page})=>{
  await page.goto('/#/settings/appearance');
- const toggle=page.getByRole('switch',{name:'Compact top bar (beta)',exact:true});
+ const toggle=page.getByRole('switch',{name:'Compact navigation (beta)',exact:true});
  await expect(toggle).toBeVisible();
  const card=toggle.locator('xpath=ancestor::div[contains(@class,"settingRow")]');
  await card.locator('strong').click();await expect(toggle).toHaveAttribute('aria-checked','true');
@@ -19,7 +19,7 @@ test('whole toggle cards switch exactly once by title, blank area, knob and keyb
 
 test('legacy resource preferences cannot restore monitoring controls or status rows',async({page})=>{
  await page.goto('/#/settings/appearance');
- await expect(page.getByRole('switch',{name:'Compact top bar (beta)',exact:true})).toBeVisible();
+ await expect(page.getByRole('switch',{name:'Compact navigation (beta)',exact:true})).toBeVisible();
  await page.evaluate(async()=>{const{command}=await import('/src/lib/tauri.ts');const{useAppStore}=await import('/src/stores/appStore.ts');await command('update_setting',{key:'appearance',value:{...useAppStore.getState().bootstrap.settings.appearance,homeStatusVisible:['launcher','java','downloads','storage','folder','memory','cpu','gpu'],homeStatusOrder:['cpu','gpu','memory','launcher','java','downloads','storage','folder'],homeMetricsScope:'system'}});await useAppStore.getState().refresh();});
  for(const name of ['Memory usage','CPU usage','GPU usage'])await expect(page.getByRole('switch',{name,exact:true})).toHaveCount(0);
  await expect(page.getByRole('combobox',{name:'Resource usage scope'})).toHaveCount(0);

@@ -12,6 +12,8 @@ use crate::models::{
 
 pub mod elyby;
 pub mod microsoft;
+pub mod offline;
+pub(crate) mod offline_skin_server;
 
 #[derive(Clone, Debug)]
 pub struct AccountLaunchCredentials {
@@ -462,16 +464,7 @@ pub async fn appearance(
                 capes: cape.into_iter().map(|data_url| AccountTexture { id: "ely-current-cape".into(), data_url: Some(data_url), thumbnail_data_url: None, variant: None, alias: Some("Current cape".into()), active: true }).collect(),
             })
         }
-        "offline" => Ok(AccountAppearance {
-            account_id: account.id,
-            provider: account.provider,
-            username: account.username,
-            can_change_skin: false,
-            can_change_cape: false,
-            message: Some("Offline accounts do not have a remote skin profile.".into()),
-            skins: Vec::new(),
-            capes: Vec::new(),
-        }),
+        "offline" => offline::appearance(state, &account).await,
         provider => Err(AppError::InvalidInput(format!(
             "Unknown account provider: {provider}"
         ))),
@@ -506,7 +499,11 @@ pub async fn home_skin(
                 _ => Err(AppError::Unavailable("Skin temporarily unavailable".into())),
             }
         }
-        "offline" => return Ok(serde_json::json!({ "dataUrl": null, "model": "classic" })),
+        "offline" => {
+            let value = offline::appearance(state, &account).await?;
+            let skin = value.skins.iter().find(|skin| skin.active);
+            return Ok(serde_json::json!({"dataUrl":skin.and_then(|skin| skin.data_url.clone()),"model":skin.and_then(|skin| skin.variant.clone()).unwrap_or_else(|| "classic".into())}));
+        },
         _ => return Err(AppError::InvalidInput("Unknown account provider".into())),
     };
     let cache_path = state
@@ -596,6 +593,11 @@ pub async fn upload_skin(
     variant: &str,
 ) -> AppResult<AccountAppearance> {
     let account = account_by_id(state, account_id).await?;
+    if account.provider == "offline" {
+        let path = std::path::Path::new(source_path);
+        if tokio::fs::metadata(path).await?.len() > 2 * 1024 * 1024 { return Err(AppError::InvalidInput("Skin must be a PNG file no larger than 2 MB".into())); }
+        return offline::upload(state, &account, tokio::fs::read(path).await?, path.file_name().and_then(|v| v.to_str()).unwrap_or("skin.png"), variant, None).await;
+    }
     if account.provider != "microsoft" {
         return Err(AppError::Unavailable(
             "Skin changes are only available for Microsoft accounts".into(),
@@ -613,6 +615,7 @@ pub async fn upload_skin_bytes(
     existing_skin_id: Option<&str>,
 ) -> AppResult<AccountAppearance> {
     let account = account_by_id(state, account_id).await?;
+    if account.provider == "offline" { return offline::upload(state, &account, bytes, file_name, variant, existing_skin_id).await; }
     if account.provider != "microsoft" {
         return Err(AppError::Unavailable(
             "Skin changes are only available for Microsoft accounts".into(),
@@ -641,6 +644,7 @@ pub async fn delete_saved_skin(
     skin_id: &str,
 ) -> AppResult<AccountAppearance> {
     let account = account_by_id(state, account_id).await?;
+    if account.provider == "offline" { return offline::delete(state, &account, skin_id).await; }
     if account.provider != "microsoft" {
         return Err(AppError::Unavailable(
             "Saved skins are only available for Microsoft accounts".into(),

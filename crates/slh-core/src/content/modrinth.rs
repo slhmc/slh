@@ -140,7 +140,7 @@ pub async fn search(
 ) -> AppResult<ModrinthSearchResult> {
     let limit = limit.clamp(1, 40);
     let project_type = project_type.unwrap_or("modpack");
-    if !["modpack", "mod", "resourcepack", "shader"].contains(&project_type) {
+    if !["modpack", "mod", "resourcepack", "shader", "plugin"].contains(&project_type) {
         return Err(AppError::InvalidInput(format!(
             "Unsupported Modrinth project type: {project_type}"
         )));
@@ -163,7 +163,8 @@ pub async fn search(
         loader.unwrap_or(""),
         query.trim()
     );
-    let mut facet_groups = vec![vec![format!("project_type:{project_type}")]];
+    let mut facet_groups = vec![vec![format!("{}:{project_type}",if project_type=="plugin"{"all_project_types"}else{"project_type"})]];
+    if project_type=="plugin" {if let Some(loader)=loader {let allowed:Vec<_>=loader.split(',').filter(|s|["paper","spigot","bukkit"].contains(s)).map(|s|format!("categories:{s}")).collect();if !allowed.is_empty(){facet_groups.push(allowed);}}}
     if let Some(version) = game_version {
         facet_groups.push(vec![format!("versions:{version}")]);
     }

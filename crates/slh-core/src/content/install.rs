@@ -278,6 +278,7 @@ pub async fn install(
     // transfers themselves are independent and can safely run concurrently;
     // filesystem backups happen before any network work so an interrupted
     // update never destroys the previous content.
+    let mut staging=super::mod_identity::ContentStage::default();
     let mut changed = Vec::new();
     for (index, item) in resolved.iter().enumerate() {
         let destination = PathBuf::from(&item.plan.destination);
@@ -288,6 +289,7 @@ pub async fn install(
                 backup_content_file(state, instance_id, &destination).await?;
                 backups_created += 1;
             }
+            let download_destination=staging.prepare(&destination)?;
             let download_id = Uuid::new_v4().to_string();
             sqlx::query(
                 "INSERT INTO downloads(id, source, url, destination, status, total_bytes) \
@@ -303,7 +305,7 @@ pub async fn install(
                 index,
                 DownloadPlan {
                     url: item.url.clone(),
-                    destination,
+                    destination:download_destination,
                     sha1: Some(item.sha1.clone()),
                     max_bytes: None,
                 },
@@ -389,6 +391,7 @@ pub async fn install(
             .execute(&state.database)
             .await?;
             let destination = PathBuf::from(&item.plan.destination);
+            staging.commit(&changed[batch_index].1.destination,&destination,&item.sha1).await?;
             if let Some(old_path) = &item.old_path {
                 let old_path = PathBuf::from(old_path);
                 if old_path != destination && old_path.exists() {
@@ -398,6 +401,9 @@ pub async fn install(
                 }
             }
             installed_files += 1;
+        }
+        if item.project_type == "mod" {
+            backups_created += super::mod_identity::replace_duplicates(state, instance_id, Path::new(&item.plan.destination)).await?;
         }
         sqlx::query(
             "INSERT INTO installed_content(instance_id, provider, project_id, version_id, \
@@ -488,7 +494,7 @@ pub async fn install_modpack(
     let version = match version_id.map(str::trim).filter(|value| !value.is_empty()) {
         Some(version_id) => {
             let version = version_by_id(state, version_id).await?;
-            if version.project_id != project_id {
+            if version.project_id != project.id {
                 return Err(AppError::InvalidInput(
                     "The selected version belongs to another Modrinth project".into(),
                 ));
@@ -508,7 +514,7 @@ pub async fn install_modpack(
             }
             version
         }
-        None => compatible_version(state, project_id, minecraft_version, loader).await?,
+        None => compatible_version(state, &project.id, minecraft_version, loader).await?,
     };
     let file = choose_modpack_file(&version)?;
     if !file.url.starts_with("https://") {
@@ -566,7 +572,7 @@ pub async fn install_modpack(
             url: file.url.clone(),
             destination: archive_path.clone(),
             sha1: Some(sha1),
-            max_bytes: None,
+            max_bytes: Some(512 * 1024 * 1024),
         },
         move |completed, total| {
             let _ = progress_app.emit(
@@ -663,10 +669,15 @@ pub async fn install_modpack(
             },
         );
     }
+    if let Ok(instance) = &imported {
+        let hash = crate::local_servers::providers::hash_file(&archive_path,None,None)?;
+        sqlx::query("INSERT OR REPLACE INTO managed_artifacts(path,sha256,source,owner_id,completed) VALUES (?,?,'modrinth-pack',?,1)")
+            .bind(archive_path.to_string_lossy().as_ref()).bind(hash).bind(&instance.id).execute(&state.database).await?;
+    }
     imported
 }
 
-fn safe_modpack_name(title: &str) -> String {
+pub(crate) fn safe_modpack_name(title: &str) -> String {
     let mut result = String::with_capacity(title.len());
     for character in title.trim().chars().take(80) {
         if character.is_control()
@@ -755,11 +766,13 @@ async fn resolve(
                     queue.push_back((dependency_version, dependency_project_type));
                 }
                 "incompatible" => {
-                    if let Some(project_id) = &dependency.project_id {
-                        incompatible_projects.insert(project_id.clone());
-                    } else if let Some(version_id) = &dependency.version_id {
-                        incompatible_projects
-                            .insert(version_by_id(state, version_id).await?.project_id);
+                    if let Some(version_id) = &dependency.version_id {
+                        incompatible_projects.insert((
+                            version_by_id(state, version_id).await?.project_id,
+                            Some(version_id.clone()),
+                        ));
+                    } else if let Some(project_id) = &dependency.project_id {
+                        incompatible_projects.insert((project_id.clone(), None));
                     }
                 }
                 _ => {}
@@ -771,22 +784,30 @@ async fn resolve(
     let mut resolved = Vec::new();
     let mut conflicts = Vec::new();
     let mut destinations = HashSet::new();
-    for incompatible in incompatible_projects {
+    for (incompatible, incompatible_version) in incompatible_projects {
         let installed: bool = sqlx::query_scalar(
             "SELECT EXISTS(SELECT 1 FROM installed_content \
-             WHERE instance_id = ? AND provider = 'modrinth' AND project_id = ?)",
+             WHERE instance_id = ? AND provider = 'modrinth' AND project_id = ? \
+             AND (? IS NULL OR version_id = ?))",
         )
         .bind(instance_id)
         .bind(&incompatible)
+        .bind(&incompatible_version)
+        .bind(&incompatible_version)
         .fetch_one(&state.database)
         .await?;
-        if installed {
+        if installed || versions.iter().any(|(version, _)| {
+            version.project_id == incompatible
+                && incompatible_version.as_ref().is_none_or(|id| id == &version.id)
+        }) {
             conflicts.push(format!(
-                "Installed Modrinth project {incompatible} is marked incompatible"
+                "Modrinth project {incompatible} is marked incompatible with this installation"
             ));
         }
     }
+    let mut project_versions=HashMap::new();
     for (version, version_project_type) in versions {
+        if let Some(previous)=project_versions.insert(version.project_id.clone(),version.id.clone()) { if previous!=version.id {conflicts.push(format!("Dependencies require different versions of project {}",version.project_id));} }
         let target_folder = target_folder_for_project(&version_project_type, &instance)?;
         let file = choose_file(&version)?;
         validate_relative_path(Path::new(&file.filename))?;
@@ -996,7 +1017,7 @@ fn ensure_version_compatible(
 
 fn loader_for_project(project_type: &str, instance: &Instance) -> AppResult<Option<String>> {
     match project_type {
-        "mod" if matches!(instance.loader_type.as_str(), "vanilla" | "bedrock") => Err(
+        "mod" if matches!(instance.loader_type.as_str(), "vanilla" | "bedrock" | "rust") => Err(
             AppError::Conflict("Mods require a Fabric, Forge, NeoForge, or Quilt instance".into()),
         ),
         "mod" => Ok(Some(instance.loader_type.clone())),
@@ -1013,7 +1034,7 @@ fn loader_for_project(project_type: &str, instance: &Instance) -> AppResult<Opti
 
 fn target_folder_for_project(project_type: &str, instance: &Instance) -> AppResult<&'static str> {
     match project_type {
-        "mod" if !matches!(instance.loader_type.as_str(), "vanilla" | "bedrock") => Ok("mods"),
+        "mod" if !matches!(instance.loader_type.as_str(), "vanilla" | "bedrock" | "rust") => Ok("mods"),
         "mod" => Err(AppError::Conflict(
             "Mods require a Fabric, Forge, NeoForge, or Quilt instance".into(),
         )),
@@ -1026,7 +1047,7 @@ fn target_folder_for_project(project_type: &str, instance: &Instance) -> AppResu
 }
 
 fn choose_file(version: &ProjectVersion) -> AppResult<&ProjectFile> {
-    version
+    let mut files = version
         .files
         .iter()
         .filter(|file| {
@@ -1034,9 +1055,9 @@ fn choose_file(version: &ProjectVersion) -> AppResult<&ProjectFile> {
                 file.file_type.as_deref(),
                 Some("sources-jar" | "dev-jar" | "javadoc-jar" | "signature")
             )
-        })
-        .find(|file| file.primary)
-        .or_else(|| version.files.first())
+        });
+    files.clone().find(|file| file.primary)
+        .or_else(|| files.next())
         .ok_or_else(|| AppError::NotFound(format!("No downloadable file for {}", version.name)))
 }
 
@@ -1131,6 +1152,23 @@ mod tests {
         assert!(validate_id("../escape").is_err());
         assert!(validate_relative_path(Path::new("sodium.jar")).is_ok());
         assert!(validate_relative_path(Path::new("../sodium.jar")).is_err());
+    }
+
+    #[test]
+    fn executable_file_selection_never_falls_back_to_auxiliary_artifacts() {
+        let mut version: ProjectVersion = serde_json::from_value(serde_json::json!({
+            "id": "version", "project_id": "project", "name": "Test",
+            "version_number": "1", "version_type": "release",
+            "files": [
+                {"hashes": {}, "url": "https://example.com/sources.jar", "filename": "sources.jar", "size": 1, "file_type": "sources-jar", "primary": true},
+                {"hashes": {}, "url": "https://example.com/mod.jar", "filename": "mod.jar", "size": 1}
+            ]
+        })).unwrap();
+        assert_eq!(choose_file(&version).unwrap().filename, "mod.jar");
+        version.files.pop();
+        assert!(choose_file(&version).is_err());
+        version.files.clear();
+        assert!(choose_file(&version).is_err());
     }
 
     #[test]

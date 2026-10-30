@@ -100,10 +100,15 @@ where F: FnOnce(Host) -> Fut, Fut: Future<Output = AppResult<Instance>> {
     let _registration = Registration(key.clone());
     let instance_id = Arc::new(Mutex::new(None::<String>));
     let tracked_id = instance_id.clone();
+    let last_stage = Arc::new(Mutex::new(String::from("metadata")));
+    let tracked_stage = last_stage.clone();
     let destination = host.clone();
     let progress_key = key.clone();
     let tracked = Host::new(move |mut event| {
         if let CoreEvent::Progress(progress) = &mut event {
+            if !matches!(progress.stage.as_str(), "failed" | "cancelled") {
+                *tracked_stage.lock().unwrap_or_else(|e| e.into_inner()) = progress.stage.clone();
+            }
             if let Some(id) = &progress.instance_id {
                 *tracked_id.lock().unwrap_or_else(|error| error.into_inner()) = Some(id.clone());
             }
@@ -112,7 +117,12 @@ where F: FnOnce(Host) -> Fut, Fut: Future<Output = AppResult<Instance>> {
         destination.send(event)
     });
     match Abortable::new(install(tracked), registration).await {
-        Ok(result) => result,
+        Ok(Ok(instance)) => Ok(instance),
+        Ok(Err(error)) => {
+            let id = instance_id.lock().unwrap_or_else(|e| e.into_inner()).clone();
+            let stage = last_stage.lock().unwrap_or_else(|e| e.into_inner()).clone();
+            Err(crate::diagnostics::record(state, error, &format!("modpack:{key}"), &stage, id.as_deref(), None).await)
+        },
         Err(_) => {
             let id = instance_id.lock().unwrap_or_else(|error| error.into_inner()).clone();
             if let Some(id) = &id {

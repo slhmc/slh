@@ -12,7 +12,7 @@ export function StaticHomeCharacter({account}: {account:Account | null}) {
   useEffect(() => {
     let alive = true;
     let url: string | undefined;
-    if (skin.dataUrl) void import("../../lib/homePortrait").then(module => module.homePortrait(skin)).then(blob => {
+    if (skin.dataUrl) void import("../../lib/homePortrait").then(module => module.homePortrait(skin, "standing")).then(blob => {
       if (alive) { url = URL.createObjectURL(blob); setPortrait({source,url}); }
     }).catch(() => { if (alive) setPortrait(null); });
     return () => { alive = false; if (url) URL.revokeObjectURL(url); };

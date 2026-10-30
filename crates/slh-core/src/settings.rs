@@ -17,11 +17,12 @@ const ALLOWED_SETTING_KEYS: &[&str] = &[
     "java",
     "bedrock",
     "onboarding",
+    "servers",
 ];
 
 /// Navigation must not overwrite resource preferences from a newer UI snapshot.
 pub async fn remember_section(pool: &SqlitePool, section: &str) -> AppResult<()> {
-    if !matches!(section, "home" | "library" | "discover" | "servers") {
+    if !matches!(section, "home" | "library" | "discover" | "servers" | "local-servers") {
         return Err(AppError::InvalidInput("Invalid remembered section".into()));
     }
     sqlx::query("UPDATE settings SET value_json = json_set(value_json, '$.lastSection', ?), updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE key = 'general' AND json_extract(value_json, '$.rememberSection') = 1")
@@ -48,6 +49,7 @@ pub async fn update(pool: &SqlitePool, key: &str, value: Value) -> AppResult<Val
         ));
     }
     if key == "general" {
+        validate_optional_booleans(&value, &["rustMinecraft"])?;
         if let Some(policy) = value.get("webview") {
             let policy: crate::webview_settings::WebviewSettings = serde_json::from_value(policy.clone())
                 .map_err(|e| AppError::InvalidInput(format!("Invalid WebView2 settings: {e}")))?;
@@ -76,7 +78,9 @@ pub async fn update(pool: &SqlitePool, key: &str, value: Value) -> AppResult<Val
     if key == "appearance" {
         validate_appearance(&value)?;
     }
+    if key == "servers" { let defaults: crate::local_servers::config::ServerDefaults=serde_json::from_value(value.clone())?; crate::local_servers::config::validate(&defaults.config)?; if let Some(path)=defaults.directory {crate::local_servers::store::plain_path(Path::new(&path))?;} }
     if key == "downloads" {
+        if value.get("concurrency").is_some() && !value["concurrency"].as_u64().is_some_and(|v|(1..=32).contains(&v)) {return Err(AppError::InvalidInput("Parallel downloads must be between 1 and 32".into()));}
         validate_optional_booleans(&value, &["curseforgeImportArchives", "curseforgeDeleteAfterInstall"])?;
         if let Some(directory) = value.get("curseforgeDirectory").filter(|v| !v.is_null()) {
             let directory = directory.as_str().ok_or_else(|| AppError::InvalidInput("Invalid CurseForge downloads folder".into()))?;

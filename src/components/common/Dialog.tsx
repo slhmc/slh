@@ -12,9 +12,11 @@ interface DialogProps {
   footer?: ReactNode;
   onClose: () => void;
   width?: "small" | "medium" | "large" | "xlarge";
+  className?: string;
+  bodyClassName?: string;
 }
 
-export function Dialog({ open, title, description, children, footer, onClose, width = "medium" }: DialogProps) {
+export function Dialog({ open, title, description, children, footer, onClose, width = "medium", className = "", bodyClassName = "" }: DialogProps) {
   const text = useUiText();
   const titleId = useId();
   const descriptionId = useId();
@@ -32,7 +34,7 @@ export function Dialog({ open, title, description, children, footer, onClose, wi
       ref={ref}
       aria-labelledby={titleId}
       aria-describedby={description ? descriptionId : undefined}
-      className={`${styles.dialog} ${styles[width]} ${footer ? styles.withFooter : ""}`}
+      className={`${styles.dialog} ${styles[width]} ${footer ? styles.withFooter : ""} ${className}`}
       onCancel={(event) => {
         event.stopPropagation();
         // File inputs also emit a bubbling `cancel` event when the native
@@ -56,7 +58,7 @@ export function Dialog({ open, title, description, children, footer, onClose, wi
           <X size={18} weight="bold" />
         </button>
       </div>
-      <div className={styles.body}>{children}</div>
+      <div className={`${styles.body} ${bodyClassName}`}>{children}</div>
       {footer ? <footer className={styles.footer}>{footer}</footer> : null}
     </dialog>
   );

@@ -1,14 +1,16 @@
 import { ErrorText } from "../common/ErrorText";
 import { useUiText } from "../../i18n/UiText";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { Button } from "../common/Controls";
 import { Check, Export as UploadIcon, Image, Plus, SpinnerGap, Trash, X } from "../icons";
 import { Dialog } from "../common/Dialog";
-import common from "../common/Common.module.css";
 import { command } from "../../lib/tauri";
 import { useWindowActivity } from "../../lib/windowActivity";
 import type { Account, AccountAppearance, AccountTexture } from "../../lib/types";
 import { MinecraftSkinViewer } from "./MinecraftSkinViewer";
+import { SkinThumbnail } from "./SkinThumbnail";
+import { defaultHomeSkin } from "../../lib/home";
 import styles from "./AccountAppearanceDialog.module.css";
 // Inline bundled textures so the portable Tauri build can use them without a
 // relative asset request being rejected by CSP.
@@ -108,8 +110,8 @@ function SkinCard({ texture, busy, selected, onSelect }: { texture: AccountTextu
 
   const model = skinModel(texture.variant);
   return (
-    <button className={`${styles.skinCard} ${texture.active ? styles.activeSkin : ""} ${selected ? styles.selectedSkin : ""}`} type="button" disabled={busy} onClick={onSelect}>
-      <MinecraftSkinViewer skin={texture.dataUrl} model={model} compact label={texture.alias ?? uiText("accounts.texts.savedSkin", "Saved skin")} />
+    <button aria-pressed={selected} aria-label={texture.alias ?? uiText("accounts.texts.savedSkin", "Saved skin")} title={texture.alias ?? undefined} className={`${styles.skinCard} ${texture.active ? styles.activeSkin : ""} ${selected ? styles.selectedSkin : ""}`} type="button" disabled={busy} onClick={onSelect}>
+      <SkinThumbnail skin={texture.dataUrl} model={model} label={texture.alias ?? uiText("accounts.texts.savedSkin", "Saved skin")} />
       <span>{texture.alias ?? uiText("accounts.texts.savedSkin", "Saved skin")}</span>
       {texture.active ? <i><Check size={14} /> {uiText("accounts.texts.active", "Active")}</i> : null}
     </button>
@@ -120,6 +122,9 @@ export function AccountAppearanceDialog({ account, onClose, onChanged }: Props) 
   const uiText = useUiText();
 
   const fileInput = useRef<HTMLInputElement>(null);
+  const panelId = useId();
+  const [libraryTab, setLibraryTab] = useState<"skin" | "cape">("skin");
+  const [editorTab, setEditorTab] = useState<"skin" | "cape">("skin");
   const [appearance, setAppearance] = useState<AccountAppearance | null>(null);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -153,7 +158,7 @@ export function AccountAppearanceDialog({ account, onClose, onChanged }: Props) 
   const resetEditorDraft = () => {
     const currentSkin = (selectedSavedSkinId ? appearance?.skins.find((skin) => skin.id === selectedSavedSkinId) : undefined) ?? appearance?.skins.find((skin) => skin.active) ?? appearance?.skins[0];
     const currentCape = appearance?.capes.find((cape) => cape.active);
-    setVariant(skinModel(currentSkin?.variant));
+    setVariant(currentSkin ? skinModel(currentSkin.variant) : defaultHomeSkin(account?.providerUuid).model);
     setCapeId(currentCape?.id ?? null);
     setPendingSkin(null);
   };
@@ -164,6 +169,7 @@ export function AccountAppearanceDialog({ account, onClose, onChanged }: Props) 
       setVariant(selectedDefault.model);
       setPendingSkin(inlineTextureToPending(selectedDefault.url, selectedDefault.name));
     }
+    setEditorTab("skin");
     setEditorOpen(true);
   };
 
@@ -213,7 +219,9 @@ export function AccountAppearanceDialog({ account, onClose, onChanged }: Props) 
     setPendingSkin(null);
     setCapeId(null);
     setVariant("classic");
-    if (account?.provider !== "offline") void reload();
+    setLibraryTab("skin");
+    setEditorTab("skin");
+    if (account) void reload();
   }, [account?.id, account?.provider]);
 
   const windowActive = useWindowActivity();
@@ -271,6 +279,7 @@ export function AccountAppearanceDialog({ account, onClose, onChanged }: Props) 
     if (!file) return;
     try {
       setPendingSkin(await fileToPending(file));
+      setEditorTab("skin");
       setEditorOpen(true);
     } catch (reason) {
       setError(uiText(errorMessage(reason)));
@@ -335,17 +344,17 @@ export function AccountAppearanceDialog({ account, onClose, onChanged }: Props) 
 
   const saveEditor = async () => {
     if (!appearance) return;
-    const needsSkinUpload = pendingSkin !== null || variant !== skinModel(editorSkin?.variant);
+    const needsSkinUpload = pendingSkin !== null || variant !== baseEditorModel;
     if (needsSkinUpload && skinChangeCoolingDown) {
       flashCooldown();
       return;
     }
     const saved = await mutate(async () => {
       const snapshots: AccountAppearance[] = [];
-      const activeVariant = skinModel(editorSkin?.variant);
+      const activeVariant = baseEditorModel;
       let skinToUpload = pendingSkin;
-      if (!skinToUpload && variant !== activeVariant && editorSkin?.dataUrl) {
-        const response = await fetch(editorSkin.dataUrl);
+      if (!skinToUpload && variant !== activeVariant) {
+        const response = await fetch(editorSkin?.dataUrl ?? fallbackSkin.dataUrl!);
         const file = new File([await response.blob()], "skin.png", { type: "image/png" });
         skinToUpload = await fileToPending(file);
       }
@@ -362,14 +371,14 @@ export function AccountAppearanceDialog({ account, onClose, onChanged }: Props) 
       }
       const previousCape = appearance.capes.find((cape) => cape.active)?.id ?? null;
       const capeChanged = capeId !== previousCape;
-      if (capeId !== previousCape) {
+      if (appearance.canChangeCape && capeId !== previousCape) {
         snapshots.push(await command<AccountAppearance>("select_account_cape", { accountId: appearance.accountId, capeId }));
       }
       if (snapshots.length === 0) return appearance;
       return mergeAppearanceState(appearance, snapshots, undefined, capeChanged ? capeId : undefined);
     });
     if (saved) {
-      if (pendingSkin || variant !== skinModel(editorSkin?.variant)) startSkinChangeCooldown();
+      if (pendingSkin || variant !== baseEditorModel) startSkinChangeCooldown();
       applyAppearance(saved);
       setPendingSkin(null);
       setSelectedDefault(null);
@@ -377,62 +386,105 @@ export function AccountAppearanceDialog({ account, onClose, onChanged }: Props) 
     }
   };
 
-  if (account?.provider === "offline") return null;
   const activeSkin = appearance?.skins.find((texture) => texture.active) ?? appearance?.skins[0];
   const selectedSavedSkin = selectedSavedSkinId ? appearance?.skins.find((skin) => skin.id === selectedSavedSkinId) : undefined;
   const editorSkin = selectedSavedSkin ?? activeSkin;
+  const fallbackSkin = defaultHomeSkin(account?.providerUuid);
+  const baseEditorModel = editorSkin ? skinModel(editorSkin.variant) : fallbackSkin.model;
   const canApplySelectedSkin = Boolean(selectedDefault || (selectedSavedSkin && !selectedSavedSkin.active));
   const activeCape = appearance?.capes.find((texture) => texture.active) ?? null;
-  const catalogSkin = selectedDefault?.url ?? selectedSavedSkin?.dataUrl ?? activeSkin?.dataUrl ?? null;
-  const catalogModel = selectedDefault?.model ?? skinModel(selectedSavedSkin?.variant ?? activeSkin?.variant);
-  const previewSkin = pendingSkin?.dataUrl ?? editorSkin?.dataUrl ?? null;
+  const catalogSkin = selectedDefault?.url ?? selectedSavedSkin?.dataUrl ?? activeSkin?.dataUrl ?? fallbackSkin.dataUrl;
+  const catalogModel = selectedDefault?.model ?? (selectedSavedSkin || activeSkin ? skinModel(selectedSavedSkin?.variant ?? activeSkin?.variant) : fallbackSkin.model);
+  const previewSkin = pendingSkin?.dataUrl ?? editorSkin?.dataUrl ?? fallbackSkin.dataUrl;
   const previewCape = appearance?.capes.find((cape) => cape.id === capeId)?.dataUrl ?? null;
   const title = editorOpen ? uiText("accounts.texts.skinSettings", "Skin settings") : `${uiText("accounts.texts.skinSelection", "Skin selection")} · ${account?.username ?? ""}`;
 
+  const selectedName = selectedDefault?.name ?? selectedSavedSkin?.alias ?? activeSkin?.alias ?? uiText("accounts.texts.savedSkin", "Saved skin");
+  const editorHasChanges = Boolean(pendingSkin || variant !== baseEditorModel
+    || (appearance?.canChangeCape && capeId !== (activeCape?.id ?? null)));
+  const changeTabWithKeyboard = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+    const tabs = [...event.currentTarget.querySelectorAll<HTMLButtonElement>('button[role="tab"]:not(:disabled)')];
+    const index = tabs.indexOf(document.activeElement as HTMLButtonElement);
+    const next = event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1 : (index + (event.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length;
+    event.preventDefault();
+    tabs[next]?.focus();
+    tabs[next]?.click();
+  };
+  const requestClose = () => {
+    if (busy || filePickerActive.current) return;
+    if (editorOpen) closeEditor(); else onClose();
+  };
+  const capeGallery = appearance ? <div className={styles.capeGrid}>
+              <button className={capeId === null ? styles.selectedCape : ""} aria-pressed={capeId === null} type="button" disabled={busy || !appearance.canChangeCape} onClick={() => setCapeId(null)}><X size={24} /><span>{uiText("accounts.texts.none", "None")}</span></button>
+              {appearance.capes.map(cape => <button className={capeId === cape.id ? styles.selectedCape : ""} aria-pressed={capeId === cape.id} type="button" key={cape.id} disabled={busy || !appearance.canChangeCape} onClick={() => setCapeId(cape.id)} title={cape.alias ?? undefined}>{cape.dataUrl ? <span className={styles.capePreview}><img src={cape.thumbnailDataUrl ?? cape.dataUrl} alt="" /></span> : <Image size={24} />}<span>{cape.alias ?? uiText("accounts.texts.cape", "Cape")}</span></button>)}
+            </div> : null;
+  const catalogCapeOpen = !editorOpen && libraryTab === "cape";
+  const capeChanged = capeId !== (activeCape?.id ?? null);
+  const applySelectedCape = async () => {
+    if (!appearance?.canChangeCape || !capeChanged) return;
+    const next = await mutate(() => command<AccountAppearance>("select_account_cape", { accountId: appearance.accountId, capeId }));
+    if (next) onClose();
+  };
+  const footer = <div className={styles.footerLayout}>
+    <div className={styles.footerContext}>
+      {editorOpen && editorSkin && !selectedDefault ? <Button variant="danger" className={styles.deleteButton} aria-label={uiText("common.delete", "Delete")} title={uiText("common.delete", "Delete")} disabled={busy} onClick={() => void deleteSavedSkin(editorSkin)}><Trash size={16} /><span>{uiText("common.delete", "Delete")}</span></Button>
+        : appearance ? <span title={selectedName}>{selectedName}</span> : null}
+      {skinChangeCoolingDown ? <span role="status" className={`${styles.cooldownBadge} ${cooldownFlashing ? styles.cooldownFlash : ""}`}>{skinChangeWaitSeconds} {uiText("accounts.texts.sec", "sec.")}</span> : null}
+    </div>
+    <div className={styles.footerActions}>
+      <Button disabled={busy} onClick={requestClose}>{editorOpen ? <><span className={styles.fullBack}>{uiText("accounts.appearance.backToSkins", "Back to skins")}</span><span className={styles.shortBack}>{uiText("common.texts.back", "Back")}</span></> : uiText("common.close", "Close")}</Button>
+      {appearance?.provider === "elyby" ? <Button variant="primary" onClick={() => void openUrl("https://ely.by/skins")}>{uiText("accounts.texts.manageOnElyBy", "Manage on Ely.by")}</Button>
+        : editorOpen ? <Button variant="primary" disabled={!editorHasChanges || !appearance?.canChangeSkin} busy={busy} onClick={() => void saveEditor()}><Check size={16} />{uiText("accounts.texts.saveSkin", "Save skin")}</Button>
+        : catalogCapeOpen ? <Button variant="primary" disabled={!capeChanged || !appearance?.canChangeCape} busy={busy} onClick={() => void applySelectedCape()}><Check size={16} />{uiText("accounts.texts.apply", "Apply")}</Button>
+        : appearance ? <><Button disabled={busy || !appearance.canChangeSkin} onClick={openEditor}><Image size={16} />{uiText("accounts.appearance.customize", "Customize")}</Button><Button variant="primary" disabled={!canApplySelectedSkin || !appearance.canChangeSkin} busy={busy} onClick={() => void applySelectedSkin()}><Check size={16} />{uiText("accounts.texts.apply", "Apply")}</Button></> : null}
+    </div>
+  </div>;
+
   return (
-    <Dialog open={Boolean(account)} title={title} description={editorOpen ? uiText("accounts.texts.changeTextureArmTypeAndCape", "Change texture, arm type, and cape.") : uiText("accounts.texts.chooseASavedOrDefaultMinecraftSkin", "Choose a saved or default Minecraft skin.")} onClose={() => { if (filePickerActive.current) return; if (editorOpen) { closeEditor(); return; } onClose(); }} width="xlarge">
+    <Dialog open={Boolean(account)} title={title} description={editorOpen ? uiText("accounts.appearance.editorHint", "Choose the skin model or switch to capes. Save to apply your changes.") : uiText("accounts.appearance.catalogHint", "Select a skin to preview it, then apply it or customize its appearance.")} onClose={requestClose} width="xlarge" className={styles.appearanceDialog} bodyClassName={styles.dialogBody} footer={footer}>
       <input ref={fileInput} className={styles.fileInput} type="file" accept="image/png" onChange={(event) => { filePickerActive.current = false; void chooseFile(event.target.files?.[0]); event.currentTarget.value = ""; }} />
-      {loading && !appearance ? <div className={styles.loading}><SpinnerGap className={styles.spinner} size={28} /> {uiText("accounts.texts.loadingAppearance", "Loading appearance")}</div> : null}
-      {error ? <div className={styles.errorBar}><span><strong>{uiText("accounts.texts.appearanceCouldNotBeLoaded", "Appearance could not be loaded")}</strong><ErrorText message={error} /></span><button type="button" onClick={() => setError(null)}><X size={18} /></button></div> : null}
-      {appearance && !editorOpen ? (
-        <div className={styles.catalogLayout}>
-          <aside className={styles.heroPane}>
-            <h2>{appearance.username}</h2>
-            <div className={styles.heroViewer}><MinecraftSkinViewer skin={catalogSkin} cape={activeCape?.dataUrl} model={catalogModel} interactive label={`${appearance.username} skin`} /></div>
-            <p>↔ {uiText("accounts.texts.dragToRotate", "Drag to rotate")}</p>
-            {appearance.provider === "microsoft" ? <div className={styles.heroActions}><button className={common.button} type="button" disabled={busy || !canApplySelectedSkin} onClick={() => void applySelectedSkin()}><Check size={17} /> {uiText("accounts.texts.apply", "Apply")}</button><button className={common.secondaryButton} type="button" disabled={busy} onClick={openEditor}><Image size={17} /> {uiText("accounts.texts.edit", "Edit")}</button></div> : <button className={common.secondaryButton} type="button" onClick={() => void openUrl("https://ely.by/skins")}>{uiText("accounts.texts.manageOnElyBy", "Manage on Ely.by")}</button>}
-          </aside>
-          <main className={styles.catalogPane}>
-            <section>
-              <header><div><h3>{uiText("accounts.texts.savedSkins", "Saved skins")}</h3><p>{uiText("accounts.texts.chooseAnExistingSkinOrAddAPngFile", "Choose an existing skin or add a PNG file.")}</p></div>{busy ? <SpinnerGap className={styles.spinner} size={20} /> : skinChangeCoolingDown ? <span className={`${styles.cooldownBadge} ${cooldownFlashing ? styles.cooldownFlash : ""}`}>⏳ {skinChangeWaitSeconds} {uiText("accounts.texts.sec", "sec.")}</span> : null}</header>
-              <div className={styles.savedGrid}>
-                <button className={`${styles.skinCard} ${styles.addCard}`} type="button" disabled={!appearance.canChangeSkin || busy} onClick={openFilePicker}><Plus size={34} /><strong>{uiText("accounts.texts.addASkin", "Add a skin")}</strong><span>{uiText("accounts.texts.dropOrChooseAPngFile", "Drop or choose a PNG file")}</span></button>
-                {appearance.skins.map((texture) => <SkinCard key={texture.id} texture={texture} busy={busy} selected={selectedSavedSkinId === texture.id} onSelect={() => chooseSavedSkin(texture)} />)}
-              </div>
+      {loading && !appearance ? <div className={styles.loading}><SpinnerGap className={styles.spinner} size={24} />{uiText("accounts.texts.loadingAppearance", "Loading appearance")}</div> : null}
+      {error ? <div className={styles.errorBar} role="alert"><span><strong>{uiText("accounts.texts.appearanceCouldNotBeLoaded", "Appearance could not be loaded")}</strong><ErrorText message={error} /></span><Button variant="ghost" aria-label={uiText("common.close", "Close")} onClick={() => setError(null)}><X size={16} /></Button></div> : null}
+      {appearance ? <div className={styles.layout}>
+        <aside className={styles.previewPane}>
+          <div className={styles.previewName}><strong title={appearance.username}><bdi>{appearance.username}</bdi></strong><span title={pendingSkin?.name ?? selectedName}>{pendingSkin?.name ?? selectedName}</span></div>
+          <div className={styles.heroViewer}><MinecraftSkinViewer skin={editorOpen ? previewSkin : catalogSkin} cape={previewCape} model={editorOpen ? variant : catalogModel} interactive label={`${appearance.username} skin`} /></div>
+          <p className={styles.rotateHint}>{uiText("accounts.texts.dragToRotate", "Drag to rotate")}</p>
+          {appearance.provider === "offline" ? <details className={styles.skinNote}><summary>{uiText("accounts.appearance.localSkin", "Local skin")}</summary><p>{uiText("accounts.offlineSkinHint", "Saved on this computer. Used in Minecraft 1.7.2 and newer; other players may need a compatible skin system. Restart the game after changing your skin.")}</p></details> : null}
+        </aside>
+        {!editorOpen ? <section className={styles.workspace}>
+          <div className={styles.toolbar}>
+            <div className={styles.tabs} role="tablist" aria-label={uiText("accounts.texts.skinSettings", "Skin settings")} onKeyDown={changeTabWithKeyboard}>
+              <button id={`${panelId}-catalog-skin-tab`} role="tab" aria-selected={libraryTab === "skin"} aria-controls={`${panelId}-library`} tabIndex={libraryTab === "skin" ? 0 : -1} type="button" onClick={() => setLibraryTab("skin")}>{uiText("accounts.appearance.skin", "Skin")}</button>
+              <button id={`${panelId}-catalog-cape-tab`} role="tab" aria-selected={libraryTab === "cape"} aria-controls={`${panelId}-library`} tabIndex={libraryTab === "cape" ? 0 : -1} type="button" disabled={!appearance.canChangeCape} onClick={() => setLibraryTab("cape")}>{uiText("accounts.texts.cape", "Cape")}</button>
+            </div>
+            {libraryTab === "skin" ? <Button disabled={!appearance.canChangeSkin || busy} onClick={openFilePicker}><Plus size={16} />{uiText("accounts.texts.addASkin", "Add a skin")}</Button> : null}
+          </div>
+          <div id={`${panelId}-library`} className={styles.scrollPane} role="tabpanel" aria-labelledby={`${panelId}-catalog-${libraryTab}-tab`} tabIndex={0}>
+            {libraryTab === "skin" ? <><section className={styles.librarySection} aria-labelledby={`${panelId}-saved-heading`}>
+              <h3 id={`${panelId}-saved-heading`}>{uiText("accounts.texts.savedSkins", "Saved skins")}</h3>
+              {appearance.skins.length ? <div className={styles.skinGrid}>{appearance.skins.map(texture => <SkinCard key={texture.id} texture={texture} busy={busy} selected={selectedSavedSkinId === texture.id} onSelect={() => chooseSavedSkin(texture)} />)}</div>
+                : <div className={styles.emptyState}><Image size={30} /><h3>{uiText("accounts.appearance.noSavedSkins", "No saved skins yet")}</h3></div>}
             </section>
-            <section className={styles.defaultsSection}>
-              <header><div><h3>{uiText("accounts.texts.defaultSkins", "Default skins")}</h3><p>{uiText("accounts.texts.officialClassicMinecraftCharacters", "Official classic Minecraft characters.")}</p></div></header>
-              <div className={styles.defaultGrid}>
-                {DEFAULT_SKINS.map((skin) => <button className={`${styles.defaultCard} ${selectedDefault?.name === skin.name ? styles.selectedDefault : ""}`} type="button" key={skin.name} disabled={!appearance.canChangeSkin || busy} onClick={() => chooseDefault(skin)}><MinecraftSkinViewer skin={skin.url} model={skin.model} compact label={skin.name} /><span>{skin.name}</span></button>)}
-              </div>
-            </section>
-          </main>
-        </div>
-      ) : null}
-      {appearance && editorOpen ? (
-        <div className={styles.editorLayout}>
-          <aside className={styles.editorPreview}>
-            <div><MinecraftSkinViewer skin={previewSkin} cape={previewCape} model={variant} interactive label={`${appearance.username} preview`} /></div>
-            <p>↔ {uiText("accounts.texts.dragToRotate", "Drag to rotate")}</p>
-          </aside>
-          <main className={styles.editorControls}>
-            <section><h3>{uiText("accounts.texts.texture", "Texture")}</h3><button className={common.secondaryButton} type="button" disabled={!appearance.canChangeSkin || busy} onClick={openFilePicker}><UploadIcon size={18} /> {uiText("accounts.texts.replaceTexture", "Replace texture")}</button>{pendingSkin ? <small>{pendingSkin.name}</small> : null}</section>
-            <section><h3>{uiText("accounts.texts.arms", "Arms")}</h3><div className={styles.armOptions}><button className={variant === "classic" ? styles.selectedOption : ""} type="button" onClick={() => setVariant("classic")}><i />{uiText("accounts.texts.wide", "Wide")}</button><button className={variant === "slim" ? styles.selectedOption : ""} type="button" onClick={() => setVariant("slim")}><i />{uiText("accounts.texts.slim", "Slim")}</button></div></section>
-            <section><h3>{uiText("accounts.texts.cape", "Cape")}</h3><div className={styles.capeGrid}><button className={capeId === null ? styles.selectedCape : ""} type="button" onClick={() => setCapeId(null)}><X size={30} /><span>{uiText("accounts.texts.none", "None")}</span></button>{appearance.capes.map((cape) => <button className={capeId === cape.id ? styles.selectedCape : ""} type="button" key={cape.id} onClick={() => setCapeId(cape.id)}>{cape.dataUrl ? <span className={styles.capePreview}><img src={cape.thumbnailDataUrl ?? cape.dataUrl} alt="" /></span> : <Image size={30} />}<span>{cape.alias ?? uiText("accounts.texts.cape", "Cape")}</span></button>)}</div></section>
-            <footer>{editorSkin && !selectedDefault ? <button className={styles.deleteButton} type="button" disabled={busy} onClick={() => void deleteSavedSkin(editorSkin)}><Trash size={18} /> {uiText("common.delete", "Delete")}</button> : null}<span className={styles.footerActions}><button className={common.secondaryButton} type="button" disabled={busy} onClick={closeEditor}><X size={17} /> {uiText("common.cancel", "Cancel")}</button><button className={common.button} type="button" disabled={busy || !appearance.canChangeSkin} onClick={() => void saveEditor()}>{busy ? <SpinnerGap className={styles.spinner} size={18} /> : <Check size={18} />} {uiText("accounts.texts.saveSkin", "Save skin")}</button></span></footer>
-          </main>
-        </div>
-      ) : null}
+            <section className={styles.librarySection} aria-labelledby={`${panelId}-default-heading`}>
+              <h3 id={`${panelId}-default-heading`}>{uiText("accounts.texts.defaultSkins", "Default skins")}</h3>
+              <div className={styles.skinGrid}>{DEFAULT_SKINS.map(skin => <button className={`${styles.skinCard} ${selectedDefault?.name === skin.name ? styles.selectedSkin : ""}`} type="button" key={skin.name} aria-label={skin.name} aria-pressed={selectedDefault?.name === skin.name} disabled={!appearance.canChangeSkin || busy} onClick={() => chooseDefault(skin)}><SkinThumbnail skin={skin.url} model={skin.model} label={skin.name} /><span>{skin.name}</span></button>)}</div>
+            </section></> : capeGallery}
+          </div>
+        </section> : <section className={styles.workspace}>
+          <div className={styles.toolbar}><div className={styles.tabs} role="tablist" aria-label={uiText("accounts.texts.skinSettings", "Skin settings")} onKeyDown={changeTabWithKeyboard}>
+            <button id={`${panelId}-skin-tab`} type="button" role="tab" aria-selected={editorTab === "skin"} aria-controls={`${panelId}-editor`} tabIndex={editorTab === "skin" ? 0 : -1} onClick={() => setEditorTab("skin")}>{uiText("accounts.appearance.skin", "Skin")}</button>
+            <button id={`${panelId}-cape-tab`} type="button" role="tab" aria-selected={editorTab === "cape"} aria-controls={`${panelId}-editor`} tabIndex={editorTab === "cape" ? 0 : -1} disabled={!appearance.canChangeCape} onClick={() => setEditorTab("cape")}>{uiText("accounts.texts.cape", "Cape")}</button>
+          </div></div>
+          <div id={`${panelId}-editor`} className={styles.scrollPane} role="tabpanel" aria-labelledby={`${panelId}-${editorTab}-tab`} tabIndex={0}>
+            {editorTab === "skin" ? <div className={styles.skinSettings}>
+              <section><h3>{uiText("accounts.texts.texture", "Texture")}</h3><p>{uiText("accounts.appearance.pngHint", "PNG, 64 × 64 or 64 × 32 pixels, up to 2 MB.")}</p><Button disabled={!appearance.canChangeSkin || busy} onClick={openFilePicker}><UploadIcon size={16} />{uiText("accounts.texts.replaceTexture", "Replace texture")}</Button>{pendingSkin ? <p className={styles.fileName}>{pendingSkin.name}</p> : null}</section>
+              <section><h3>{uiText("accounts.texts.arms", "Arms")}</h3><div className={styles.armOptions} role="group" aria-label={uiText("accounts.texts.arms", "Arms")}><button className={variant === "classic" ? styles.selectedOption : ""} type="button" aria-pressed={variant === "classic"} disabled={busy} onClick={() => setVariant("classic")}><i />{uiText("accounts.texts.wide", "Wide")}</button><button className={variant === "slim" ? styles.selectedOption : ""} type="button" aria-pressed={variant === "slim"} disabled={busy} onClick={() => setVariant("slim")}><i />{uiText("accounts.appearance.slimArms", "Slim")}</button></div></section>
+            </div> : capeGallery}
+          </div>
+        </section>}
+      </div> : null}
     </Dialog>
   );
 }

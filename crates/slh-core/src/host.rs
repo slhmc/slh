@@ -25,6 +25,8 @@ pub struct LaunchState {
     pub exit_code: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub duration_seconds: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub report_path: Option<String>,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -158,6 +160,12 @@ mod tests {
         let event = got.lock().unwrap().clone().unwrap();
         assert_eq!(event.0, "slh-launch-state");
         assert_eq!(event.1, payload);
+    }
+    #[test]
+    fn crash_report_survives_typed_event_conversion() {
+        let payload = serde_json::json!({"instanceId":"pack","state":"crashed","exitCode":1,"reportPath":"E:/SLH/crash/slh-test.txt"});
+        let event = payload.clone().into_event(EventKind::LaunchState).unwrap();
+        assert_eq!(event.wire().unwrap().unwrap().1, payload);
     }
     #[test]
     fn window_requests_do_not_become_frontend_events() {

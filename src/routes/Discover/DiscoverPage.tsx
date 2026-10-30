@@ -1,11 +1,11 @@
+import { ContentProjectCard, ContentProjectSummary, ContentProviders, ContentSearch, ContentLoading, ContentPagination, ContentEmpty } from "../../components/common/ContentCatalog";
 import { ErrorText } from "../../components/common/ErrorText";
 import { formatBytes } from "../../lib/formatters";
-import { AutoFitTitle } from "../../components/common/AutoFitTitle";
 import { useUiText } from "../../i18n/UiText";
 import { MarkdownRenderer } from "../../components/common/ProjectDescription";
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft, ArrowRight, CloudSlash, DownloadSimple, Funnel, MagnifyingGlass, SpinnerGap, Stack, Star, X } from "../../components/icons";
+import { ArrowLeft, ArrowRight, CloudSlash, DownloadSimple, Funnel, SpinnerGap, Stack, Star, X } from "../../components/icons";
 import { command } from "../../lib/tauri";
 import { RequestCache } from "../../lib/requestCache";
 import { openUrl } from "@tauri-apps/plugin-opener";
@@ -16,8 +16,6 @@ import { PackInstallError } from "../../components/common/PackInstallError";
 import { Dialog } from "../../components/common/Dialog";
 import { useAppStore } from "../../stores/appStore";
 import { runPackInstall } from "../../stores/packJobs";
-import modrinthIcon from "../../assets/provider-icons/modrinth.png";
-import curseforgeIcon from "../../assets/provider-icons/curseforge.png";
 import page from "../shared/Page.module.css";
 import styles from "./DiscoverPage.module.css";
 
@@ -632,22 +630,17 @@ export function DiscoverPage({ embeddedInstanceId, initialType, initialSource, o
           <p>{scopedInstance ? `${uiText("discover.texts.onlyContentCompatibleWith", "Only content compatible with")} Minecraft ${scopedInstance.minecraftVersion}${["vanilla", "bedrock"].includes(scopedInstance.loaderType) ? "" : ` · ${scopedInstance.loaderType}`} ${uiText("discover.texts.isShown", "is shown.")}` : uiText("discover.texts.browseCurrentProjectsWithCompatibilityMetadataRequiredDependenciesAnd", "Browse current projects with compatibility metadata, required dependencies, and installation decisions kept explicit.")}</p>
         </div>
         <div className={styles.headerActions}>
-        {!hideProviderTabs ? <div className={styles.sourceStatus} aria-label={uiText("discover.texts.contentProvider", "Content provider")}>
-          {(["modrinth", "curseforge"] as const).map((providerName) => {
-            const availability = providers.find((provider) => provider.provider === providerName);
-            const available = availability?.available ?? providerName === "modrinth";
-            const supportsType = !(projectType === "world" && providerName === "modrinth");
-            return <button type="button" key={providerName} disabled={!supportsType} title={supportsType ? (availability?.message ? tr(availability.message) : undefined) : uiText("discover.texts.worldDownloadsAreProvidedByCurseforge", "World downloads are provided by CurseForge")} className={`${source === providerName ? styles.sourceActive : ""} ${available ? styles.sourceAvailable : styles.sourceUnavailable}`} onClick={() => { if (supportsType) { setSource(providerName); setSelectedProject(null); } }}><img className={styles.providerIcon} src={providerName === "modrinth" ? modrinthIcon : curseforgeIcon} alt="" /><span />{providerName === "modrinth" ? "Modrinth" : "CurseForge"}{available ? "" : ` (${uiText("discover.texts.keyRequired", "key required")})`}</button>;
-          })}
-        </div> : null}
+        {!hideProviderTabs ? <ContentProviders value={source} onChange={provider => { setSource(provider); setSelectedProject(null); }} options={providerName => {
+          const availability = providers.find(provider => provider.provider === providerName);
+          const available = availability?.available ?? providerName === "modrinth";
+          const supportsType = !(projectType === "world" && providerName === "modrinth");
+          return { disabled: !supportsType, available, title: supportsType ? availability?.message ? tr(availability.message) : undefined : uiText("discover.texts.worldDownloadsAreProvidedByCurseforge"), suffix: available ? "" : ` (${uiText("discover.texts.keyRequired")})` };
+        }} /> : null}
         {onClose ? <button className={common.secondaryButton} type="button" onClick={onClose}><X size={16} /> {uiText("installation.texts.backToFiles", "Back to files")}</button> : null}
         </div>
       </header>
       <div className={styles.searchRow}>
-        <label className={styles.searchBox}>
-          <MagnifyingGlass size={19} weight="bold" />
-          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={`${uiText("installation.texts.search", "Search")} ${tr(types.find((type) => type.id === projectType)?.label.toLowerCase() ?? "")}`} />
-        </label>
+        <ContentSearch value={query} onChange={setQuery} label={`${uiText("installation.texts.search")} ${tr(types.find(type => type.id === projectType)?.label.toLowerCase() ?? "")}`} />
         <div className={styles.types}>
           {scoped ? types.filter((type) => type.id !== "modpack").map((type) => <button type="button" className={projectType === type.id ? styles.active : ""} key={type.id} onClick={() => setProjectType(type.id)}>{tr(type.label)}</button>) : null}
         </div>
@@ -663,7 +656,7 @@ export function DiscoverPage({ embeddedInstanceId, initialType, initialSource, o
       {scopedInstance && ["vanilla", "bedrock"].includes(scopedInstance.loaderType) && projectType === "mod" ? <div className={styles.scopedNotice}>{uiText("discover.texts.modsRequireFabricForgeNeoforgeOrQuiltChangeThis", "Mods require Fabric, Forge, NeoForge, or Quilt. Change this instance loader in Settings first.")}</div> : null}
       {!scoped && source === "curseforge" ? <div className={styles.curseforgeWip}>{uiText("discover.texts.wIP", "W.I.P.")}</div> : null}
       {scopedInstance && ["vanilla", "bedrock"].includes(scopedInstance.loaderType) && projectType === "mod" ? null : loading ? (
-        <div className={styles.loading}><SpinnerGap size={25} className={styles.spin} /> {uiText("installation.texts.loadingProjectsFrom", "Loading projects from")} {source === "modrinth" ? "Modrinth" : "CurseForge"}</div>
+        <ContentLoading>{uiText("installation.texts.loadingProjectsFrom")} {source === "modrinth" ? "Modrinth" : "CurseForge"}</ContentLoading>
       ) : error ? (
         <div className={page.emptyState}><div><CloudSlash size={35} /><h2>{uiText("discover.texts.discoverIsOffline", "Discover is offline")}</h2><p><ErrorText message={error} /></p></div></div>
       ) : result ? (
@@ -673,6 +666,7 @@ export function DiscoverPage({ embeddedInstanceId, initialType, initialSource, o
             <span><strong>{batchInstalling ? `${batchProgress.current} / ${batchProgress.total}` : queuedItems.length}</strong><small>{batchInstalling ? uiText("discover.texts.installingSelectedContent", "Installing selected content") : uiText("discover.texts.contentItemsSelected", "content items selected")}</small></span>
             <div><button className={common.secondaryButton} type="button" disabled={batchInstalling} onClick={() => setQueuedInstalls({})}>{uiText("discover.texts.clearSelection", "Clear selection")}</button><button className={common.button} type="button" disabled={batchInstalling} onClick={() => void installQueued()}>{batchInstalling ? <SpinnerGap className={styles.spin} size={16} /> : <DownloadSimple size={16} />} {uiText("discover.texts.installSelected", "Install selected")}</button></div>
           </div> : null}
+          {!result.hits.length ? <ContentEmpty /> : null}
           <div className={styles.projectGrid}>
             {result.hits.map((project) => {
               const installed = scoped && isInstalled(project);
@@ -682,14 +676,8 @@ export function DiscoverPage({ embeddedInstanceId, initialType, initialSource, o
               const canInstallIntoScoped = Boolean(scoped && project.projectType !== "modpack" && compatibleInstances(project).length > 0);
               const queued = Boolean(queuedInstalls[queueKey(source, project)]);
               return (
-              <article className={`${styles.projectCard} ${styles.clickableCard} ${alreadyCurrent ? styles.installedCard : updateAvailable ? styles.updateAvailableCard : ""}`} key={`${source}-${project.projectId}`} role="button" tabIndex={0} onClick={() => openDetails(project)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openDetails(project); } }}>
-                <div className={styles.artwork}>
-                  <ProjectArtwork iconUrl={project.iconUrl} />
-                </div>
-                <div className={styles.projectBody} data-content-provider="true">
-                  <div className={styles.projectTitle}><div><AutoFitTitle text={project.title} enabled={bootstrap?.settings.appearance.fitProjectTitles === true} /><span>{uiText("installation.texts.by", "by")} {project.author}</span></div><span className={common.badge}>{tr(contentTypeLabels[project.projectType] ?? project.projectType)}</span></div>
-                  <p>{project.description}</p>
-                  <div className={styles.projectMeta}><span><DownloadSimple size={14} /> {compact(project.downloads)}</span><span><Star size={14} /> {compact(project.follows)}</span><span>{project.versions[0] ?? uiText("installation.texts.multipleVersions", "Multiple versions")}</span></div>
+              <ContentProjectCard className={`${styles.clickableCard} ${alreadyCurrent ? styles.installedCard : updateAvailable ? styles.updateAvailableCard : ""}`} key={`${source}-${project.projectId}`} role="button" tabIndex={0} onClick={() => openDetails(project)} onKeyDown={(event) => { if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); openDetails(project); } }}>
+                <ContentProjectSummary project={project} fitTitle={bootstrap?.settings.appearance.fitProjectTitles} typeLabel={tr(contentTypeLabels[project.projectType] ?? project.projectType)}>
                   {(() => {
                     const hasTarget = project.projectType === "modpack" || compatibleInstances(project).length > 0;
                     const label = installedStatus === "checking" ? uiText("discover.texts.checking", "Checking") : installedStatus === "current" ? uiText("discover.texts.installedf8b32f", "Installed") : installedStatus === "update" ? uiText("discover.texts.update", "Update") : installedStatus === "error" ? uiText("discover.texts.couldNotCheck", "Could not check") : scoped && project.projectType !== "modpack" ? uiText("installation.texts.install", "Install") : project.projectType === "modpack" ? uiText("installation.texts.install", "Install") : uiText("discover.texts.chooseTargetInstance", "Choose target instance");
@@ -702,17 +690,17 @@ export function DiscoverPage({ embeddedInstanceId, initialType, initialSource, o
                       <button className={`${common.secondaryButton} ${alreadyCurrent ? styles.installedButton : updateAvailable ? styles.updateButton : ""}`} type="button" disabled={!hasTarget || batchInstalling || !actionable} title={updateAvailable ? uiText("discover.texts.updateThisContent", "Update this content") : title} onClick={(event) => { event.stopPropagation(); selectTarget(project); }}>{label}</button>
                     </div>;
                   })()}
-                </div>
-              </article>
+                </ContentProjectSummary>
+              </ContentProjectCard>
             );})}
           </div>
           {hasMore ? (
-            <div className={styles.loadMore}>
+            <ContentPagination>
               <button className={common.secondaryButton} type="button" disabled={loadingMore} onClick={() => void loadMore()}>
                 {loadingMore ? <SpinnerGap className={styles.spin} size={16} /> : null}
                 {tr(loadingMore ? uiText("common.texts.loading", "Loading") : uiText("installation.texts.loadMore", "Load more"))}
               </button>
-            </div>
+            </ContentPagination>
           ) : null}
         </>
       ) : null}

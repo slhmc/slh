@@ -1,9 +1,11 @@
+import { LogViewer } from "../../components/common/LogViewer";
+import { DetailFrame, DetailTabs } from "../../components/common/LibraryChrome";
 import { ErrorText } from "../../components/common/ErrorText";
 import { useUiText } from "../../i18n/UiText";
 import { subscribeWindowActivity } from "../../lib/windowActivity";
 import launchStyles from "../../components/instance/InstanceSidePanel.module.css";
 import { launchOrInstallInstance } from "../../lib/instanceLaunch";
-import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { ArrowClockwise, Check, Clock, DownloadSimple, Export, File, FileText, FolderOpen, Funnel, GearSix, Image as ImageIcon, Info, Palette, Play, PuzzlePiece, SpinnerGap, Square, Stack, Trash, WarningCircle, Worlds, Wrench, X } from "../../components/icons";
 import { open as openDialog, save as saveDialog } from "@tauri-apps/plugin-dialog";
@@ -123,9 +125,6 @@ export function InstancePage() {
   const [tabDragPreview, setTabDragPreview] = useState<{ label: string; x: number; y: number } | null>(null);
   const [consoleLines, setConsoleLines] = useState<ConsoleLine[]>([]);
   const [consoleLoading, setConsoleLoading] = useState(false);
-  const [consoleQuery, setConsoleQuery] = useState("");
-  const visibleConsoleLines = useMemo(() => filteredConsoleLines(consoleLines, consoleQuery), [consoleLines, consoleQuery]);
-  const consoleScrollRef = useRef<HTMLDivElement>(null);
   const contentContextMenuRef = useRef<HTMLDivElement>(null);
   const tabContextMenuRef = useRef<HTMLDivElement>(null);
   const tabMenuMoveRef = useRef<{ lastX: number; lastY: number } | null>(null);
@@ -312,7 +311,7 @@ export function InstancePage() {
     setMemoryMaxMb(instance.memoryMaxMb);
     setSettingsLoader(instance.loaderType);
     setSettingsMinecraftVersion(instance.minecraftVersion);
-    setSettingsLoaderVersion(instance.loaderVersion);
+    setSettingsLoaderVersion(instance.loaderVersion ?? (instance.loaderType === "rust" ? "v0.2.96" : null));
     setBedrockProfileMode(instance.bedrockProfileMode ?? "shared");
   }, [instance?.id, instance?.name, instance?.iconKey, instance?.iconBackground, instance?.iconForeground, instance?.memoryMinMb, instance?.memoryMaxMb, instance?.minecraftVersion, instance?.loaderType, instance?.loaderVersion, instance?.bedrockProfileMode]);
   useEffect(() => {
@@ -345,6 +344,7 @@ export function InstancePage() {
   }, [settingsLoader, tab]);
   useEffect(() => {
     if (!instance || tab !== "settings" || settingsLoader === "vanilla" || settingsLoader === "bedrock") {
+      setLoaderLoading(false);
       setSettingsLoaderVersions([]);
       setLoaderError(null);
       return;
@@ -355,19 +355,21 @@ export function InstancePage() {
     command<LoaderVersion[]>("list_loader_versions", { loaderType: settingsLoader, minecraftVersion: settingsMinecraftVersion })
       .then((versions) => {
         if (!active) return;
-        setSettingsLoaderVersions(versions);
-        setSettingsLoaderVersion((current) => current && versions.some((version) => version.id === current) ? current : versions[0]?.id ?? null);
+        const installed = instance.loaderVersion ?? (instance.loaderType === "rust" ? "v0.2.96" : null);
+        setSettingsLoaderVersions(settingsLoader === "rust" && installed && !versions.some(v => v.id === installed) ? [...versions, { id: installed, stable: true, recommended: false }] : versions);
+        setSettingsLoaderVersion((current) => settingsLoader === "rust" && current ? current : current && versions.some((version) => version.id === current) ? current : versions[0]?.id ?? null);
       })
       .catch((error) => {
         if (active) {
-          setSettingsLoaderVersions([]);
-          setSettingsLoaderVersion(null);
+          const installed = instance.loaderVersion ?? (instance.loaderType === "rust" ? "v0.2.96" : null);
+          setSettingsLoaderVersions(settingsLoader === "rust" && installed ? [{ id: installed, stable: true, recommended: false }] : []);
+          setSettingsLoaderVersion(settingsLoader === "rust" ? installed : null);
           setLoaderError(String((error as { message?: string }).message ?? error));
         }
       })
       .finally(() => { if (active) setLoaderLoading(false); });
     return () => { active = false; };
-  }, [settingsMinecraftVersion, settingsLoader, tab]);
+  }, [settingsMinecraftVersion, settingsLoader, tab, instance?.id]);
   useEffect(() => {
     const fileCategories = isBedrock
       ? ["mods", "resourcepacks", "worlds", "logs"]
@@ -423,11 +425,7 @@ export function InstancePage() {
       void launchSubscription.then((unlisten) => unlisten());
     };
   }, [bootstrap?.settings.console.maxLines, id, instance?.loaderType, isBedrock, pushToast, tab]);
-  useEffect(() => {
-    if (tab !== "logs" || !bootstrap?.settings.console.autoScroll) return;
-    const target = consoleScrollRef.current;
-    if (target) target.scrollTop = target.scrollHeight;
-  }, [bootstrap?.settings.console.autoScroll, consoleLines, tab]);
+
 
   const saveInstanceTabSettings = useCallback(async (order: InstanceTab[], visible: Set<InstanceTab>) => {
     if (!bootstrap) return;
@@ -884,14 +882,7 @@ export function InstancePage() {
     }
   };
 
-  const copyConsole = async () => {
-    try {
-      await navigator.clipboard.writeText(consoleLines.map((line) => line.text).join("\n"));
-      pushToast({ tone: "success", title: uiText("instance.texts.consoleCopied", "Console copied"), message: `${consoleLines.length} ${uiText("instance.texts.visibleLinesWereCopied", "visible lines were copied.")}` });
-    } catch {
-      pushToast({ tone: "error", title: uiText("instance.texts.consoleCouldNotBeCopied", "Console could not be copied"), message: uiText("instance.texts.windowsDidNotGrantClipboardAccess", "Windows did not grant clipboard access.") });
-    }
-  };
+
 
   const updateTrackedContent = async () => {
     if (!instance) return;
@@ -1101,7 +1092,7 @@ export function InstancePage() {
   ] : [];
 
   return (
-    <div className={`${styles.page} ${tabsPositionClass}`}>
+    <DetailFrame position="" className={tabsPositionClass}>
       <header className={styles.header}>
         <InstanceArtwork instance={instance} size="small" />
         <div className={styles.identity}><h1>{instance.name}</h1><p>{uiText("settings.minecraft", "Minecraft")}{" "}{instance.minecraftVersion} · {instance.loaderType === "bedrock" ? uiText("installation.texts.bedrock", "Bedrock") : instance.loaderType}</p></div>
@@ -1109,7 +1100,7 @@ export function InstancePage() {
         <button className={common.secondaryButton} type="button" onClick={() => void revealInstancePath(instance.id, undefined, tab).catch((error) => pushToast({ tone: "error", title: uiText("installation.texts.folderCouldNotBeOpened", "Folder could not be opened"), message: String((error as { message?: string }).message ?? error) }))}><FolderActionIcon size={17} /> {tr(isBedrock ? uiText("instance.texts.gameData", "Game data") : uiText("common.folder", "Folder"))}</button>
         <button className={instance.status === "running" ? `${launchStyles.playButton} ${launchStyles.killButton}` : common.button} type="button" disabled={busy || instanceOperationIds.includes(instance.id) || instance.status === "installing" || instance.status === "launching" || (isBedrock && bootstrap?.settings.bedrock.enabled === false && instance.status !== "running")} title={isBedrock && bootstrap?.settings.bedrock.enabled === false ? uiText("installation.texts.enableBedrockInSettingsFirst", "Enable Bedrock in Settings first") : undefined} onClick={() => void (instance.status === "running" ? kill() : launch())}>{busy || instanceOperationIds.includes(instance.id) || instance.status === "launching" ? <SpinnerGap className={styles.spin} size={17} /> : instance.status === "running" ? <X size={20} weight="bold" /> : <Play size={17} weight="fill" />} {instance.status === "running" ? uiText("installation.texts.kill", "Kill") : instance.status === "launching" ? uiText("installation.texts.launching", "Launching") : instance.status === "installed" ? uiText("common.play", "Play") : instance.status === "error" ? uiText("instance.texts.repair", "Repair") : uiText("installation.texts.install", "Install")}</button>
       </header>
-      <nav className={styles.tabs} data-slh-context-menu="true" onContextMenu={openTabContextMenu}>
+      <DetailTabs data-slh-context-menu="true" onContextMenu={openTabContextMenu}>
         {orderedVisibleTabs.map((item) => {
           const Icon = tabIcons[item];
           return <button
@@ -1130,7 +1121,7 @@ export function InstancePage() {
             }}
           ><Icon size={15} /><span data-minimal-text>{tr(isBedrock && item === "mods" ? uiText("installation.texts.addOns", "Add-ons") : tabLabels[item])}</span></button>;
         })}
-      </nav>
+      </DetailTabs>
       <main className={styles.content}>
         {tab === "overview" ? (
           <div className={styles.overview}>
@@ -1164,9 +1155,9 @@ export function InstancePage() {
           </div>
         ) : tab === "logs" ? (
           <div className={styles.consolePanel}>
-            <header><h2>{uiText("instance.texts.minecraftLog", "Minecraft log")}</h2><div className={styles.fileActions}><button className={common.secondaryButton} type="button" aria-pressed={bootstrap.settings.console.autoScroll} onClick={() => void updateConsole({ autoScroll: !bootstrap.settings.console.autoScroll })}>{uiText("instance.texts.follow", "Follow")}: {bootstrap.settings.console.autoScroll ? uiText("instance.texts.on", "on") : uiText("instance.texts.off", "off")}</button><button className={common.secondaryButton} type="button" aria-pressed={bootstrap.settings.console.wrapLines} onClick={() => void updateConsole({ wrapLines: !bootstrap.settings.console.wrapLines })}>{uiText("instance.texts.wrap", "Wrap")}: {bootstrap.settings.console.wrapLines ? uiText("instance.texts.on", "on") : uiText("instance.texts.off", "off")}</button><button className={common.secondaryButton} type="button" onClick={() => void copyConsole()}>{uiText("installation.texts.copy", "Copy")}</button><button className={common.secondaryButton} type="button" onClick={() => setConsoleLines([])}>{uiText("instance.texts.clearView", "Clear view")}</button><button className={common.secondaryButton} type="button" onClick={() => void revealInstancePath(instance.id, instanceLogDirectory(instance.gameDir)).catch((error) => pushToast({ tone: "error", title: uiText("instance.texts.logFolderCouldNotBeOpened", "Log folder could not be opened"), message: String((error as { message?: string }).message ?? error) }))}><FolderOpen size={16} /> {uiText("instance.texts.logFolder", "Log folder")}</button></div></header>
-            <div className={styles.consoleSearch}><input className={common.input} value={consoleQuery} onChange={(event) => setConsoleQuery(event.target.value)} placeholder={uiText("instance.texts.findInLog", "Find in log")} /><span>{visibleConsoleLines.length} {uiText("instance.texts.shown", "shown")}</span><button className={common.secondaryButton} type="button" onClick={() => { const target = consoleScrollRef.current; if (target) target.scrollTop = target.scrollHeight; }}>{uiText("instance.texts.bottom", "Bottom")}</button></div>
-            {consoleLoading ? <div className={styles.tabEmpty}><SpinnerGap className={styles.spin} size={30} /><p>{uiText("instance.texts.loadingConsole", "Loading console")}</p></div> : <div ref={consoleScrollRef} className={`${styles.consoleOutput} ${bootstrap.settings.console.wrapLines ? styles.consoleWrap : ""}`} style={{ background: bootstrap.settings.console.background, color: bootstrap.settings.console.foreground, fontSize: `${bootstrap.settings.console.fontSize}px` }}>{consoleLines.length === 0 ? <div className={styles.consoleEmpty}>{uiText("instance.texts.minecraftOutputWillAppearHereWhenTheGameStarts", "Minecraft output will appear here when the game starts.")}</div> : visibleConsoleLines.map((line, index) => <div className={styles.consoleLine} key={`${line.timestamp ?? "line"}-${index}`}><span style={{ color: consoleLineColor(line.level, bootstrap.settings.console) }}>{formatConsoleText(line.text, bootstrap.settings.console.showTimestamps)}</span></div>)}</div>}
+            <header><h2>{uiText("instance.texts.minecraftLog")}</h2></header>
+            {consoleLoading ? <div className={styles.tabEmpty}><SpinnerGap className={styles.spin} size={30} /><p>{uiText("instance.texts.loadingConsole")}</p></div> : <LogViewer lines={consoleLines} settings={bootstrap.settings.console} onSettingsChange={patch => void updateConsole(patch)} onClear={() => setConsoleLines([])} label={uiText("instance.texts.minecraftLog")} emptyText={uiText("instance.texts.minecraftOutputWillAppearHereWhenTheGameStarts")} actions={<button className={common.secondaryButton} type="button" onClick={() => void revealInstancePath(instance.id, instanceLogDirectory(instance.gameDir)).catch(error => pushToast({ tone: "error", title: uiText("instance.texts.logFolderCouldNotBeOpened"), message: String(error.message ?? error) }))}><FolderOpen size={16} />{uiText("instance.texts.logFolder")}</button>} />}
+
           </div>
         ) : tab === "settings" ? (
           <div className={styles.instanceSettings}>
@@ -1201,7 +1192,14 @@ export function InstancePage() {
             </section>
             <section>
               <header><h2>{tr(isBedrock ? uiText("installation.texts.bedrockVersion", "Bedrock version") : uiText("instance.texts.minecraftVersionAndLoader", "Minecraft version and loader"))}</h2></header>
-              {isBedrock ? <div className={styles.loaderEditor}>
+              {instance.loaderType === "rust" ? <div className={styles.loaderEditor}>
+                <p>{uiText("installation.horizonDescription", "Experimental Horizon. Choose a release compatible with this Minecraft version. Microsoft account required; Java mods are incompatible.")}</p>
+                <label className={common.field}><span className={common.label}>{uiText("installation.horizonRelease", "Horizon release")}</span><select className={common.select} value={settingsLoaderVersion ?? ""} disabled={loaderLoading || loaderBusy || ["running", "launching", "installing"].includes(instance.status)} onChange={event => setSettingsLoaderVersion(event.target.value || null)}>
+                  {settingsLoaderVersions.map(item => <option key={item.id} value={item.id}>{item.id}{item.recommended ? ` (${uiText("installation.texts.recommended", "recommended")})` : ""}</option>)}
+                </select></label>
+                {loaderError ? <p className={styles.loaderError}><ErrorText message={loaderError} /></p> : null}
+                <div className={styles.memoryActions}><button className={common.button} type="button" disabled={loaderBusy || loaderLoading || !settingsLoaderVersion || settingsLoaderVersion === (instance.loaderVersion ?? "v0.2.96") || ["running", "launching", "installing"].includes(instance.status)} onClick={() => void saveLoader()}>{uiText("installation.horizonApply", "Apply release")}</button></div>
+              </div> : isBedrock ? <div className={styles.loaderEditor}>
                 <label className={common.field}><span className={common.label}>{uiText("installation.texts.bedrockVersion", "Bedrock version")}</span><select className={common.select} value={settingsMinecraftVersion} onChange={(event) => setSettingsMinecraftVersion(event.target.value)}>{settingsMinecraftVersions.map((version) => <option value={version.id} key={version.id}>{version.id}</option>)}</select></label>
                 {loaderError ? <p className={styles.loaderError}><ErrorText message={loaderError} /></p> : null}
                 <div className={styles.memoryActions}><span>{uiText("instance.texts.chooseTheBedrockReleaseUsedByThisLauncherProfile", "Choose the Bedrock release used by this launcher profile.")}</span><button className={common.button} type="button" disabled={loaderBusy || loaderLoading || !settingsMinecraftVersion} onClick={() => void saveLoader()}>{loaderBusy ? <SpinnerGap className={styles.spin} size={16} /> : <Check size={16} />} {uiText("instance.texts.saveBedrockVersion", "Save Bedrock version")}</button></div>
@@ -1363,7 +1361,7 @@ export function InstancePage() {
           navigate(`/instance/${result.instance.id}`);
         }}
       /> : null}
-    </div>
+    </DetailFrame>
   );
 }
 
@@ -1407,20 +1405,4 @@ function ScreenshotPreview({ instanceId, entry }: { instanceId: string; entry: I
 
 function instanceLogDirectory(gameDirectory: string) {
   return gameDirectory.replace(/[\\/]game$/, (match) => `${match[0]}logs`);
-}
-
-function filteredConsoleLines(lines: ConsoleLine[], query: string) {
-  const normalized = query.trim().toLocaleLowerCase();
-  return normalized ? lines.filter((line) => line.text.toLocaleLowerCase().includes(normalized)) : lines;
-}
-
-function formatConsoleText(text: string, showTimestamps: boolean) {
-  return showTimestamps ? text : text.replace(/^\[[^\]]+\]\s*/, "");
-}
-
-function consoleLineColor(level: ConsoleLine["level"], settings: ConsoleSettings) {
-  if (level === "error") return settings.error;
-  if (level === "warning") return settings.warning;
-  if (level === "debug") return settings.debug;
-  return settings.info;
 }

@@ -1,3 +1,4 @@
+import { LibraryArtwork } from "../common/LibraryChrome";
 import type { ComponentType } from "react";
 import {
   Coffee,
@@ -33,6 +34,7 @@ export const instanceIconChoices: { key: string; label: string; Icon: ComponentT
 ];
 
 const fallbackColors: Record<Instance["loaderType"], { background: string; foreground: string }> = {
+  rust: { background: "#51352f", foreground: "#f3dfd9" },
   vanilla: { background: "#3f493c", foreground: "#f0f4ed" },
   fabric: { background: "#4d4033", foreground: "#f1e8dd" },
   forge: { background: "#503d34", foreground: "#f2e5dc" },
@@ -53,8 +55,8 @@ export function InstanceArtwork({ instance, size = "card" }: { instance: Instanc
   const colors = instanceArtworkColors(instance);
   const Icon = choice.Icon;
   return (
-    <div className={`${styles.artwork} ${styles[size]} ${styles[instance.loaderType]}`} style={{ background: colors.background, color: colors.foreground }} aria-hidden="true">
+    <LibraryArtwork size={size} className={styles[instance.loaderType]} style={{ background: colors.background, color: colors.foreground }} aria-hidden="true">
       <Icon size={size === "large" ? 48 : size === "small" ? 19 : 30} />
-    </div>
+    </LibraryArtwork>
   );
 }

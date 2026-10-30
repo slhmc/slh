@@ -1,4 +1,5 @@
 use std::path::{Path, PathBuf};
+use std::{collections::HashMap, sync::{Arc, Mutex, OnceLock, Weak}};
 
 use futures_util::StreamExt;
 use sha1::{Digest, Sha1};
@@ -16,6 +17,17 @@ const MAX_DOWNLOAD_BYTES: u64 = 16 * 1024 * 1024 * 1024;
 /// raise it from Settings (the value is capped by `MAX_DOWNLOAD_CONCURRENCY`).
 pub const DEFAULT_DOWNLOAD_CONCURRENCY: usize = 16;
 pub const MAX_DOWNLOAD_CONCURRENCY: usize = 32;
+
+fn destination_lock(path: &Path) -> Arc<tokio::sync::Mutex<()>> {
+    static LOCKS: OnceLock<Mutex<HashMap<PathBuf, Weak<tokio::sync::Mutex<()>>>>> = OnceLock::new();
+    let mut locks = LOCKS.get_or_init(|| Mutex::new(HashMap::new())).lock().unwrap_or_else(|e| e.into_inner());
+    locks.retain(|_, lock| lock.strong_count() > 0);
+    locks.get(path).and_then(Weak::upgrade).unwrap_or_else(|| {
+        let lock = Arc::new(tokio::sync::Mutex::new(()));
+        locks.insert(path.to_path_buf(), Arc::downgrade(&lock));
+        lock
+    })
+}
 
 #[derive(Clone, Debug)]
 pub struct DownloadPlan {
@@ -39,6 +51,19 @@ pub struct ResumableDownloadPlan {
 
 pub async fn download_verified(client: &reqwest::Client, plan: &DownloadPlan) -> AppResult<u64> {
     download_verified_inner(client, plan, |_completed, _total| {}).await
+}
+
+/// Alternative URLs describe the same artifact; each still uses the expected
+/// hash. A broken first CDN must not make a valid pack impossible to install.
+pub async fn download_from_mirrors(client: &reqwest::Client, plans: &[DownloadPlan]) -> AppResult<u64> {
+    let mut last = None;
+    for plan in plans {
+        match download_verified(client, plan).await {
+            Ok(bytes) => return Ok(bytes),
+            Err(error) => last = Some(error),
+        }
+    }
+    Err(last.unwrap_or_else(|| AppError::InvalidInput("File has no download URLs".into())))
 }
 
 /// Downloads a verified file and reports byte progress after each received chunk.
@@ -114,6 +139,10 @@ async fn download_verified_inner<F>(
 where
     F: FnMut(u64, Option<u64>) + Send,
 {
+    // Different instances share libraries/assets. Serialize writes to one
+    // destination so simultaneous installs cannot truncate each other's .part.
+    let lock = destination_lock(&plan.destination);
+    let _guard = lock.lock().await;
     if plan.destination.is_file() {
         if let Some(expected) = &plan.sha1 {
             if verify_sha1(&plan.destination, expected).await? {
@@ -151,8 +180,11 @@ where
             }
         }
     }
-    Err(last_error
-        .unwrap_or_else(|| AppError::Process("Download failed without a detailed error".into())))
+    Err(AppError::Download {
+        path: plan.destination.to_string_lossy().into_owned(),
+        url: crate::security::redact_diagnostic(&plan.url),
+        source: Box::new(last_error.unwrap_or_else(|| AppError::Process("Download failed without a detailed error".into()))),
+    })
 }
 
 async fn download_once(
@@ -438,6 +470,45 @@ fn temporary_path(destination: &Path) -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn mirrors_verify_hashes_and_concurrent_installs_share_one_transfer() {
+        use httpmock::prelude::*;
+        let server = MockServer::start_async().await;
+        let bad = server.mock_async(|when, then| { when.method(GET).path("/bad.jar"); then.status(200).body("wrong file"); }).await;
+        let good = server.mock_async(|when, then| { when.method(GET).path("/good.jar"); then.status(200).body("hello world"); }).await;
+        let temp = tempfile::tempdir().unwrap();
+        let plans = vec![DownloadPlan { url: server.url("/bad.jar"), destination: temp.path().join("mod.jar"),
+            sha1: Some("2aae6c35c94fcfb415dbe95f408b9ce91ee846ed".into()), max_bytes: None },
+            DownloadPlan { url: server.url("/good.jar"), destination: temp.path().join("mod.jar"),
+            sha1: Some("2aae6c35c94fcfb415dbe95f408b9ce91ee846ed".into()), max_bytes: None }];
+        let client = reqwest::Client::new();
+        assert_eq!(download_from_mirrors(&client, &plans).await.unwrap(), 11);
+        bad.assert_calls_async(3).await;
+        good.assert_calls_async(1).await;
+        std::fs::remove_file(&plans[1].destination).unwrap();
+        let (a, b) = tokio::join!(download_verified(&client, &plans[1]), download_verified(&client, &plans[1]));
+        assert_eq!(a.unwrap(), 11);
+        assert_eq!(b.unwrap(), 11);
+        good.assert_calls_async(2).await; // One transfer for both concurrent callers.
+        assert_eq!(std::fs::read(&plans[1].destination).unwrap(), b"hello world");
+        assert!(!temporary_path(&plans[1].destination).exists());
+    }
+
+    #[tokio::test]
+    async fn failed_download_reports_the_file_and_http_reason_without_a_signed_query() {
+        use httpmock::prelude::*;
+        let server = MockServer::start_async().await;
+        server.mock_async(|when, then| { when.method(GET).path("/missing.jar"); then.status(404); }).await;
+        let temp = tempfile::tempdir().unwrap();
+        let error = download_verified(&reqwest::Client::new(), &DownloadPlan {
+            url: format!("{}?signature=private-value", server.url("/missing.jar")), destination: temp.path().join("needed-mod.jar"), sha1: None, max_bytes: None,
+        }).await.unwrap_err();
+        assert!(error.to_string().contains("needed-mod.jar"));
+        let command: crate::error::CommandError = error.into();
+        assert_eq!(command.message_key.as_deref(), Some("errors.downloadMissing"));
+        assert!(!command.message.contains("private-value"));
+    }
 
     #[tokio::test]
     async fn retries_an_interrupted_response_and_verifies_the_completed_file() {

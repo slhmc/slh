@@ -100,6 +100,13 @@ pub async fn install_instance(
     instance_id: &str,
     bedrock_mirror_url: Option<&str>,
 ) -> AppResult<Instance> {
+    match install_instance_inner(app, state, instance_id, bedrock_mirror_url).await {
+        Ok(instance) => Ok(instance),
+        Err(error) => Err(crate::diagnostics::record(state, error, "install-or-resume", "installation", Some(instance_id), None).await),
+    }
+}
+
+async fn install_instance_inner(app: &Host, state: &AppState, instance_id: &str, bedrock_mirror_url: Option<&str>) -> AppResult<Instance> {
     let current = database::instance(&state.database, instance_id).await?;
     if current.loader_type == "bedrock" {
         crate::settings::ensure_bedrock_enabled(&state.database).await?;
@@ -119,13 +126,18 @@ pub async fn install_instance(
     // including after the launcher has restarted and lost its in-memory jobs.
     if matches!(current.status.as_str(), "created" | "error") {
         let pending: Option<String> = sqlx::query_scalar(
-            "SELECT value_json FROM settings WHERE key LIKE 'curseforge-import:%' \
+            "SELECT value_json FROM settings WHERE (key LIKE 'curseforge-import:%' OR key LIKE 'modrinth-import:%') \
              AND json_extract(value_json, '$.instanceId') = ? \
              AND json_extract(value_json, '$.pending') = 1 LIMIT 1",
         ).bind(instance_id).fetch_optional(&state.database).await?;
         if let Some(pending) = pending {
             let value: serde_json::Value = serde_json::from_str(&pending)?;
             if let Some(path) = value.get("archivePath").and_then(serde_json::Value::as_str) {
+                if value.get("provider").and_then(serde_json::Value::as_str) == Some("modrinth") {
+                    return Box::pin(crate::archives::import_modrinth_pack(app, state, crate::models::ImportSlhRequest {
+                        archive_path: path.to_owned(), name: None,
+                    })).await;
+                }
                 return Box::pin(crate::archives::import_curseforge_pack(
                     app, state, crate::models::ImportSlhRequest {
                         archive_path: path.to_owned(), name: None,
@@ -194,7 +206,12 @@ pub(crate) async fn install_instance_claimed_with_mirror(
         None,
     );
     let result = async {
-        if instance.loader_type == "bedrock" {
+        if instance.loader_type == "rust" {
+            super::horizon::ensure_enabled(&state.database).await?;
+            super::horizon::require_microsoft(state).await?;
+            super::horizon::validate(&instance.minecraft_version)?;
+            super::horizon::install(app, state, &instance, &operation_id).await?;
+        } else if instance.loader_type == "bedrock" {
             let outcome = crate::minecraft::bedrock::install_instance(
                 app,
                 state,
@@ -212,7 +229,7 @@ pub(crate) async fn install_instance_claimed_with_mirror(
         } else {
             install_vanilla(app, state, &instance, &operation_id).await?;
         }
-        if !matches!(instance.loader_type.as_str(), "vanilla" | "bedrock") {
+        if !matches!(instance.loader_type.as_str(), "vanilla" | "bedrock" | "rust") {
             crate::loaders::install_profile(app, state, &instance, &operation_id).await?;
         }
         Ok::<(), AppError>(())
@@ -237,6 +254,7 @@ pub(crate) async fn install_instance_claimed_with_mirror(
             database::instance(&state.database, instance_id).await
         }
         Err(error) => {
+            let error = crate::diagnostics::record(state, error, "install", "minecraft-or-loader", Some(instance_id), None).await;
             let _ = sqlx::query("UPDATE instances SET status = 'error' WHERE id = ?")
                 .bind(instance_id)
                 .execute(&state.database)
@@ -464,7 +482,7 @@ async fn install_vanilla(
     let index: AssetIndex = serde_json::from_slice(&tokio::fs::read(&asset_index_path).await?)?;
     let mut seen = HashSet::new();
     let mut asset_plans = Vec::new();
-    for object in index.objects.into_values() {
+    for object in index.objects.values() {
         if object.hash.len() < 2 || !seen.insert(object.hash.clone()) {
             continue;
         }
@@ -478,7 +496,7 @@ async fn install_vanilla(
                 .join("objects")
                 .join(&object.hash[..2])
                 .join(&object.hash),
-            sha1: Some(object.hash),
+            sha1: Some(object.hash.clone()),
             max_bytes: None,
         });
     }
@@ -501,6 +519,8 @@ async fn install_vanilla(
         asset_plans,
     )
     .await?;
+
+    materialize_legacy_assets(&index, &assets_root, &details.asset_index.id, Path::new(&instance.game_dir)).await?;
 
     let natives_root = instance_root.join("natives").join(&details.id);
     if natives_root.exists() {
@@ -567,6 +587,48 @@ async fn download_batch(
     Ok(())
 }
 
+async fn materialize_legacy_assets(index: &AssetIndex, assets_root: &Path, index_id: &str, game_dir: &Path) -> AppResult<()> {
+    if !index.virtual_ && !index.map_to_resources { return Ok(()); }
+    crate::security::validate_relative_path(Path::new(index_id))?;
+    for (name, object) in &index.objects {
+        crate::security::validate_relative_path(Path::new(name))?;
+        if object.hash.len() != 40 || !object.hash.bytes().all(|c| c.is_ascii_hexdigit()) {
+            return Err(AppError::InvalidInput("Invalid legacy asset hash".into()));
+        }
+        let source = assets_root.join("objects").join(&object.hash[..2]).join(&object.hash);
+        let mut roots = vec![assets_root.join("virtual").join(index_id)];
+        if index.map_to_resources { roots.push(game_dir.join("resources")); }
+        for root in roots {
+            let destination = root.join(name);
+            if let Some(parent) = destination.parent() { tokio::fs::create_dir_all(parent).await?; }
+            tokio::fs::copy(&source, &destination).await?;
+        }
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod legacy_asset_tests {
+    use super::*;
+    #[tokio::test]
+    async fn legacy_assets_are_mapped_and_unsafe_names_are_rejected() {
+        let temp = tempfile::tempdir().unwrap();
+        let assets = temp.path().join("assets");
+        let game = temp.path().join("game");
+        let hash = "0123456789012345678901234567890123456789";
+        tokio::fs::create_dir_all(assets.join("objects/01")).await.unwrap();
+        tokio::fs::write(assets.join("objects/01").join(hash), b"sound").await.unwrap();
+        let mut index: AssetIndex = serde_json::from_value(serde_json::json!({"map_to_resources":true,"objects":{"sound/test.ogg":{"hash":hash,"size":5}}})).unwrap();
+        materialize_legacy_assets(&index, &assets, "pre-1.6", &game).await.unwrap();
+        assert_eq!(tokio::fs::read(game.join("resources/sound/test.ogg")).await.unwrap(), b"sound");
+        assert_eq!(tokio::fs::read(assets.join("virtual/pre-1.6/sound/test.ogg")).await.unwrap(), b"sound");
+        let object = index.objects.remove("sound/test.ogg").unwrap();
+        index.objects.insert("../escape".into(), object);
+        assert!(materialize_legacy_assets(&index, &assets, "pre-1.6", &game).await.is_err());
+        assert!(!temp.path().join("escape").exists());
+    }
+}
+
 fn extract_native_archives(archives: &[(PathBuf, Vec<String>)], output: &Path) -> AppResult<()> {
     for (archive_path, excludes) in archives {
         let file = File::open(archive_path)?;
@@ -611,7 +673,7 @@ fn extract_native_archives(archives: &[(PathBuf, Vec<String>)], output: &Path) -
     Ok(())
 }
 
-fn emit_progress(
+pub(crate) fn emit_progress(
     app: &Host,
     operation_id: &str,
     instance_id: &str,

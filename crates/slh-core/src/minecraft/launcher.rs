@@ -66,12 +66,29 @@ pub async fn launch_instance(
     instance_id: &str,
     offline_username: Option<&str>,
 ) -> AppResult<LaunchResponse> {
+    let result = launch_instance_inner(app, state, instance_id, offline_username).await;
+    match result {
+        Ok(response) => Ok(response),
+        Err(error) => Err(crate::diagnostics::record(state, error, "launch", "prepare", Some(instance_id), None).await),
+    }
+}
+
+async fn launch_instance_inner(
+    app: &Host, state: &AppState, instance_id: &str, offline_username: Option<&str>,
+) -> AppResult<LaunchResponse> {
+    let preparation_started = std::time::Instant::now();
     let instance = database::instance(&state.database, instance_id).await?;
     if instance.loader_type == "bedrock" {
         crate::settings::ensure_bedrock_enabled(&state.database).await?;
         return super::bedrock_runtime::launch_instance(app, state, instance_id).await;
     }
-    crate::sync::run_for_instance(state, &instance, crate::sync::SyncPhase::Pull).await?;
+    crate::sync::run_for_instance(state, &instance, crate::sync::SyncPhase::Pull).await.map_err(|error| {
+        tracing::error!(%instance_id, error = %crate::security::redact_secrets(&error.to_string()), "pre-launch synchronization failed");
+        error
+    })?;
+    tracing::info!(%instance_id, minecraft_version = %instance.minecraft_version,
+        elapsed_ms = preparation_started.elapsed().as_millis() as u64,
+        phase = "sync", "Minecraft launch preparation timing");
     {
         let mut running = state.running_instances.write().await;
         if !running.insert(instance_id.to_owned()) {
@@ -95,7 +112,10 @@ pub async fn launch_instance(
         }),
     );
     let result = prepare_and_spawn(app, state, instance_id, offline_username).await;
-    if result.is_err() {
+    tracing::info!(%instance_id, elapsed_ms = preparation_started.elapsed().as_millis() as u64,
+        success = result.is_ok(), phase = "total", "Minecraft launch preparation timing");
+    if let Err(error) = &result {
+        tracing::error!(%instance_id, error = %crate::security::redact_secrets(&error.to_string()), "Minecraft launch preparation failed");
         state.running_instances.write().await.remove(instance_id);
         state.launch_processes.write().await.remove(instance_id);
         state.kill_requested.write().await.remove(instance_id);
@@ -265,6 +285,7 @@ async fn prepare_and_spawn(
     instance_id: &str,
     offline_username: Option<&str>,
 ) -> AppResult<LaunchResponse> {
+    let credentials_started = std::time::Instant::now();
     let instance = database::instance(&state.database, instance_id).await?;
     if instance.status != "installed" && instance.status != "launching" {
         return Err(AppError::Conflict(format!(
@@ -299,8 +320,12 @@ async fn prepare_and_spawn(
         .get("restoreOnExit")
         .and_then(serde_json::Value::as_bool)
         .unwrap_or(true);
-    let use_offline_fallback = account.provider != "offline" && !internet_available(state).await;
-    let credentials = if use_offline_fallback {
+    if instance.loader_type == "rust" {
+        super::horizon::ensure_enabled(&state.database).await?;
+        super::horizon::require_microsoft(state).await?;
+    }
+    let use_offline_fallback = instance.loader_type != "rust" && account.provider != "offline" && !internet_available(state).await;
+    let mut credentials = if use_offline_fallback {
         let automatic = general
             .get("offlineFallbackWhenOffline")
             .and_then(serde_json::Value::as_bool)
@@ -319,15 +344,32 @@ async fn prepare_and_spawn(
     } else {
         crate::accounts::launch_credentials(state, &account).await?
     };
+    tracing::info!(%instance_id, elapsed_ms = credentials_started.elapsed().as_millis() as u64,
+        phase = "credentials", "Minecraft launch preparation timing");
+    let runtime_started = std::time::Instant::now();
     let instance_root = PathBuf::from(&instance.game_dir)
         .parent()
         .ok_or_else(|| AppError::InvalidInput("Instance game directory has no parent".into()))?
         .to_path_buf();
+    let minecraft_settings = database::setting(&state.database, "minecraft").await?;
+    let (mut command, horizon_session) = if instance.loader_type == "rust" {
+        let (command, session) = super::horizon::launch_command(&instance, &credentials)?;
+        (command, Some(session))
+    } else {
     let version_root = instance_root
         .join("versions")
         .join(&instance.minecraft_version);
     let details: VersionDetails =
         serde_json::from_slice(&tokio::fs::read(version_root.join("version.json")).await?)?;
+    if account.provider == "offline"
+        && details.libraries.iter().any(|library| library.name.starts_with("com.mojang:authlib:"))
+        && crate::accounts::offline::appearance(state, &account).await?.skins.iter().any(|skin| skin.active)
+    {
+        match crate::accounts::offline_skin_server::launch_arguments(state).await {
+            Ok(arguments) => credentials.extra_jvm_arguments.extend(arguments),
+            Err(error) => tracing::warn!(%error, "Local skin support is unavailable; starting offline Minecraft with its default skin"),
+        }
+    }
     let required_java = details
         .java_version
         .as_ref()
@@ -382,6 +424,12 @@ async fn prepare_and_spawn(
             let _ = app.emit(crate::host::EventKind::OperationProgress, serde_json::json!({ "operationId": instance.id, "instanceId": instance.id, "operation": "launch", "stage": "memory-warning", "message": "Configured Minecraft memory exceeds currently available memory", "messageKey": "progress.memoryWarning", "completed": 0, "total": null }));
         }
     }
+    let mut command = Command::new(&selected_java.path);
+    command.args(&arguments);
+    (command, None)
+    };
+    tracing::info!(%instance_id, elapsed_ms = runtime_started.elapsed().as_millis() as u64,
+        phase = "runtime-and-arguments", "Minecraft launch preparation timing");
     let close_launcher_on_exit = minecraft_settings["closeLauncherOnExit"].as_bool() == Some(true);
     let launch_id = Uuid::new_v4().to_string();
     let log_path = instance_root
@@ -395,9 +443,7 @@ async fn prepare_and_spawn(
     let log = Arc::new(Mutex::new(log));
     let started_at = Utc::now();
 
-    let mut command = Command::new(&selected_java.path);
     command
-        .args(&arguments)
         .current_dir(&instance.game_dir)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -410,8 +456,7 @@ async fn prepare_and_spawn(
     }
     let mut child = command.spawn().map_err(|error| {
         AppError::Process(format!(
-            "Could not start Java {}: {error}",
-            selected_java.path
+            "Could not start Minecraft: {error}"
         ))
     })?;
     let stdout = child
@@ -496,6 +541,7 @@ async fn prepare_and_spawn(
     let state = state.clone();
     let instance_id = instance.id.clone();
     tokio::spawn(async move {
+        let _horizon_session = horizon_session;
         let status = child.wait().await;
         for pump in [stdout_pump, stderr_pump] {
             match pump.await {
@@ -513,6 +559,11 @@ async fn prepare_and_spawn(
         };
         let was_killed = state.kill_requested.write().await.remove(&instance_id);
         let result = if was_killed { "killed" } else { result };
+        let crash_report = if result == "crashed" {
+            let error = AppError::Process(format!("Minecraft exited with code {exit_code:?}"));
+            crate::diagnostics::record(&state, error, "launch", "game-process", Some(&instance_id), Some(&log_path))
+                .await.report_path().map(str::to_owned)
+        } else { None };
         let completion = match exit_code {
             Some(code) => format!("Process exited with code {code}."),
             None => "Process ended without an exit code.".into(),
@@ -561,6 +612,7 @@ async fn prepare_and_spawn(
                 "launchId": launch_id,
                 "instanceId": instance_id,
                 "state": result,
+                "reportPath": crash_report,
                 "exitCode": exit_code,
                 "durationSeconds": duration
             }),
@@ -638,6 +690,9 @@ fn build_launch_arguments(
         libraries_root.to_string_lossy().into_owned(),
     );
     values.insert("${auth_player_name}".into(), credentials.username.clone());
+    values.insert("${auth_session}".into(), if credentials.access_token.is_empty() { "-".into() } else { format!("token:{}:{}", credentials.access_token, uuid_no_hyphens) });
+    values.insert("${user_properties}".into(), "{}".into());
+    values.insert("${game_assets}".into(), assets_root.join("virtual").join(&details.asset_index.id).to_string_lossy().into_owned());
     values.insert("${version_name}".into(), details.id.clone());
     values.insert("${game_directory}".into(), instance.game_dir.clone());
     values.insert(
@@ -692,9 +747,9 @@ fn build_launch_arguments(
     if let Some(version_arguments) = &details.arguments {
         arguments.extend(expand_arguments(&version_arguments.game, &values, target));
     } else if let Some(legacy) = &details.minecraft_arguments {
-        let parsed = shlex::split(legacy).ok_or_else(|| {
-            AppError::InvalidInput("Legacy Minecraft arguments contain invalid quoting".into())
-        })?;
+        // Also repair profiles written by older SLH builds in memory. This
+        // leaves installed modpacks and their saved metadata untouched.
+        let parsed = super::legacy_arguments::parse(legacy)?;
         arguments.extend(
             parsed
                 .into_iter()
@@ -747,9 +802,8 @@ fn replace_values(mut input: String, values: &HashMap<String, String>) -> String
 mod preference_tests {
     use super::*;
 
-    #[test]
-    fn window_and_jvm_preferences_reach_modern_and_legacy_launch_commands() {
-        let instance = Instance {
+    fn fixture_instance() -> Instance {
+        Instance {
             id: "fixture".into(), name: "Fixture".into(), group_id: None, icon_path: None,
             folder_name: "fixture".into(), icon_key: "cube".into(), icon_background: None,
             icon_foreground: None, minecraft_version: "fixture".into(), loader_type: "vanilla".into(),
@@ -757,7 +811,12 @@ mod preference_tests {
             last_played_at: None, last_launched_at: None, playtime_seconds: 0, java_path: None,
             memory_min_mb: 1024, memory_max_mb: 8192, game_dir: "/instances/fixture/game".into(),
             config_schema_version: 1, bedrock_profile_mode: "shared".into(),
-        };
+        }
+    }
+
+    #[test]
+    fn window_and_jvm_preferences_reach_modern_and_legacy_launch_commands() {
+        let instance = fixture_instance();
         let credentials = AccountLaunchCredentials { username: "Player".into(), uuid: "test-uuid".into(),
             access_token: "fixture-token".into(), user_type: "legacy".into(), extra_jvm_arguments: vec![] };
         for modern in [true, false] {
@@ -765,14 +824,26 @@ mod preference_tests {
                 "id":"fixture", "type":"release", "mainClass":"net.minecraft.Main", "assets":"fixture",
                 "assetIndex":{"id":"fixture", "sha1":"", "url":"https://example.test/assets"},
                 "downloads":{"client":{"url":"https://example.test/client"}},
-                "minecraftArguments":"--username ${auth_player_name}"
+                "minecraftArguments":"--username ${auth_player_name} --session ${auth_session} --assetsDir ${game_assets} --userProperties ${user_properties}"
             })).unwrap();
+            if !modern {
+                details.version_type = "old_beta".into();
+                details.minecraft_arguments = Some(format!("{} --gameDir ${{game_directory}} --gameDir ${{game_directory}} --tweakClass fixture.FMLTweaker", details.minecraft_arguments.unwrap()));
+            }
             if modern { details.arguments = Some(serde_json::from_value(serde_json::json!({
                 "jvm":["-cp","${classpath}"], "game":["--username","${auth_player_name}","--width","${resolution_width}","--height","${resolution_height}"]
             })).unwrap()); }
             let settings = serde_json::json!({ "fullscreen":true,"resolutionWidth":854,"resolutionHeight":480,
                 "jvmArgs":["-Dfixture=a value with spaces","-XX:+UseG1GC"] });
             let args = build_launch_arguments(Path::new("/cache"), &instance, &credentials, &details, Path::new("/version"), &settings, crate::platform::RuntimeTarget::host()).unwrap();
+            assert!(!args.iter().any(|v| v.contains("${")));
+            if !modern {
+                assert_eq!(args.iter().filter(|v| *v == "--gameDir").count(), 1);
+                assert!(args.windows(2).any(|v| v == ["--gameDir", instance.game_dir.as_str()]));
+                assert!(args.windows(2).any(|v| v == ["--tweakClass", "fixture.FMLTweaker"]));
+                assert!(args.windows(2).any(|v| v == ["--session", "token:fixture-token:testuuid"]));
+                assert!(args.windows(2).any(|v| v[0] == "--assetsDir" && v[1].replace('\\', "/").ends_with("assets/virtual/fixture")));
+            }
             let main = args.iter().position(|v| v == "net.minecraft.Main").unwrap();
             assert!(args[..main].contains(&"-Dfixture=a value with spaces".into()));
             assert!(args[..main].contains(&"-Xms1024M".into()));
@@ -782,5 +853,65 @@ mod preference_tests {
             assert!(args.windows(2).any(|v| v == ["--height", "480"]));
             assert!(args[main..].contains(&"--fullscreen".into()));
         }
+    }
+
+    #[tokio::test]
+    #[ignore = "requires SLH_LEGACY_PROFILE, SLH_LEGACY_CACHE, SLH_LEGACY_JAVA8 and SLH_LEGACY_JAVAC; no game is launched"]
+    async fn actual_parasites_profile_passes_launchwrapper_option_parsing_on_java8() {
+        let profile = std::env::var("SLH_LEGACY_PROFILE").unwrap();
+        let cache = PathBuf::from(std::env::var("SLH_LEGACY_CACHE").unwrap());
+        let java = std::env::var("SLH_LEGACY_JAVA8").unwrap();
+        let javac = std::env::var("SLH_LEGACY_JAVAC").unwrap();
+        assert_eq!(super::java::inspect(Path::new(&java)).await.unwrap().major_version, 8);
+        let details: VersionDetails = serde_json::from_slice(&std::fs::read(profile).unwrap()).unwrap();
+        let jopt = details.libraries.iter().find(|lib| lib.name.starts_with("net.sf.jopt-simple:jopt-simple:"))
+            .and_then(|lib| lib.downloads.artifact.as_ref()).and_then(|artifact| artifact.path.as_ref()).unwrap();
+        let jopt = cache.join("minecraft/libraries").join(jopt);
+        let root = tempfile::tempdir().unwrap();
+        let source = root.path().join("Probe.java");
+        std::fs::write(&source, r#"
+import joptsimple.*;
+public class Probe {
+  public static void main(String[] args) {
+    OptionParser p = new OptionParser(); p.allowsUnrecognizedOptions();
+    OptionSpec<String> version = p.accepts("version").withRequiredArg();
+    OptionSpec<String> game = p.accepts("gameDir").withRequiredArg();
+    OptionSpec<String> assets = p.accepts("assetsDir").withRequiredArg();
+    OptionSpec<String> tweaks = p.accepts("tweakClass").withRequiredArg();
+    OptionSet o = p.parse(args);
+    System.out.println("OK gameDir=" + o.valueOf(game));
+    System.out.println("version=" + o.valueOf(version) + " assets=" + o.valueOf(assets));
+    System.out.println("tweakers=" + o.valuesOf(tweaks).size() + " java=" + System.getProperty("java.version"));
+  }
+}"#).unwrap();
+        let quiet = |executable: &str| {
+            let mut command = Command::new(executable);
+            command.kill_on_drop(true);
+            #[cfg(windows)] {
+                use std::os::windows::process::CommandExt;
+                command.as_std_mut().creation_flags(0x08000000);
+            }
+            command
+        };
+        let compiled = quiet(&javac).args(["--release", "8", "-cp"]).arg(&jopt).arg("-d").arg(root.path()).arg(&source).output().await.unwrap();
+        assert!(compiled.status.success(), "{}", String::from_utf8_lossy(&compiled.stderr));
+        let classpath = std::env::join_paths([root.path(), jopt.as_path()]).unwrap();
+        let baseline = quiet(&java).arg("-cp").arg(&classpath).arg("Probe")
+            .args(shlex::split(details.minecraft_arguments.as_ref().unwrap()).unwrap()).output().await.unwrap();
+        assert!(!baseline.status.success());
+        assert!(String::from_utf8_lossy(&baseline.stderr).contains("MultipleArgumentsForOptionException"));
+        let mut instance = fixture_instance();
+        instance.game_dir = root.path().join("Parasites Pack/game").to_string_lossy().into_owned();
+        let credentials = AccountLaunchCredentials { username: "TestPlayer".into(), uuid: "00000000000000000000000000000001".into(),
+            access_token: "test-only".into(), user_type: "legacy".into(), extra_jvm_arguments: vec![] };
+        let arguments = build_launch_arguments(&cache, &instance, &credentials, &details, root.path(), &serde_json::json!({}), crate::platform::RuntimeTarget::host()).unwrap();
+        let main = arguments.iter().position(|v| v == &details.main_class).unwrap();
+        let verified = quiet(&java).arg("-cp").arg(&classpath).arg("Probe").args(&arguments[main+1..]).output().await.unwrap();
+        assert!(verified.status.success(), "{}", String::from_utf8_lossy(&verified.stderr));
+        let stdout = String::from_utf8_lossy(&verified.stdout);
+        assert!(stdout.contains(&format!("OK gameDir={}", instance.game_dir)));
+        assert!(stdout.contains("java=1.8."));
+        assert!(stdout.contains("tweakers=1"));
+        eprintln!("Original profile reproduces the duplicate-option crash; corrected launch arguments pass the actual jopt-simple parser on Java 8. Minecraft/mods were not started.");
     }
 }

@@ -97,3 +97,18 @@ it("ignores a stale release request while the preview is visible", async () => {
   act(() => window.dispatchEvent(new CustomEvent("slh-release-scenes")));
   expect(mocks.viewers[0].dispose).not.toHaveBeenCalled();
 });
+
+
+it("preserves the user's camera when selecting a different skin and arm model", async () => {
+  const view = render(<MinecraftSkinViewer skin="first" model="classic" label="Preview" interactive />);
+  await waitFor(() => expect(mocks.viewers[0]?.loadSkin).toHaveBeenCalled());
+  const first = mocks.viewers[0];
+  first.camera.position.x = -35;
+  first.camera.position.y = 0;
+  first.camera.position.z = -25;
+  view.rerender(<MinecraftSkinViewer skin="second" model="slim" label="Preview" interactive />);
+  await waitFor(() => expect(mocks.viewers[1]?.loadSkin).toHaveBeenCalled());
+  expect(mocks.viewers[1].camera.position.set).toHaveBeenCalledWith(-35,0,-25);
+  expect(mocks.viewers[1].playerObject.skin.modelType).toBe("slim");
+  expect(first.dispose).toHaveBeenCalledOnce();
+});

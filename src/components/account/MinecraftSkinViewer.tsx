@@ -103,7 +103,7 @@ export function MinecraftSkinViewer({ skin, cape = null, model = "classic", inte
       // Keep its final compositor enabled: besides edge processing it performs
       // the correct final colour output for the WebGL canvas.
       viewer.setSize(Math.max(1, host.clientWidth), Math.max(1, host.clientHeight));
-      viewer.playerWrapper.rotation.y = 0.28;
+      viewer.playerWrapper.rotation.y = 0.22;
       viewer.controls.enablePan = false;
       viewer.controls.enableZoom = false;
       viewer.controls.enableRotate = interactive;
@@ -143,6 +143,11 @@ export function MinecraftSkinViewer({ skin, cape = null, model = "classic", inte
       }
     });
     return () => {
+      // A skin or arm-model change replaces this scene. Retain the user's view.
+      if (viewer && !viewer.disposed) {
+        const { x, y, z } = viewer.camera.position;
+        cameraPosition.current = { x, y, z };
+      }
       alive = false;
       unsubscribe();
       window.removeEventListener("slh-release-scenes", release);

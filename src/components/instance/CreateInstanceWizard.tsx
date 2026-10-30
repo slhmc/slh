@@ -36,6 +36,8 @@ import curseforgeIcon from "../../assets/provider-icons/curseforge.png";
 
 type Loader = CreateInstanceRequest["loaderType"];
 type Edition = "java" | "bedrock";
+const defaultVersionTypes = { release: true, snapshot: false, old_beta: false, old_alpha: false };
+const versionTypeLabels = { release: "Releases", snapshot: "Snapshots", old_beta: "Beta", old_alpha: "Alpha" } as const;
 
 const instanceArtworkPalette = [
   { background: "#3f493c", foreground: "#f0f4ed" }, { background: "#4d4033", foreground: "#f1e8dd" },
@@ -77,6 +79,7 @@ export function CreateInstanceWizard() {
   const [versionRequest, setVersionRequest] = useState(0);
   const [versionSearch, setVersionSearch] = useState("");
   const [showSnapshots, setShowSnapshots] = useState(false);
+  const [versionTypes, setVersionTypes] = useState(defaultVersionTypes);
   const [version, setVersion] = useState("");
   const [loader, setLoader] = useState<Loader>("vanilla");
   const [loaderVersions, setLoaderVersions] = useState<LoaderVersion[]>([]);
@@ -161,6 +164,7 @@ export function CreateInstanceWizard() {
   useEffect(() => {
     if (!open) return;
     if (loader === "vanilla" || loader === "bedrock" || !version) {
+      setLoaderLoading(false);
       setLoaderVersions([]);
       setLoaderVersion("");
       return;
@@ -198,10 +202,10 @@ export function CreateInstanceWizard() {
     const term = versionSearch.trim().toLowerCase();
     return versions.filter((item) => {
       const installedStoreVersion = edition === "bedrock" && item.installMethod === "registered_store";
-      if (!showSnapshots && item.versionType !== "release" && !installedStoreVersion) return false;
+      if (edition === "java" ? !versionTypes[item.versionType] : !showSnapshots && item.versionType !== "release" && !installedStoreVersion) return false;
       return !term || item.id.toLowerCase().includes(term);
-    }).slice(0, 160);
-  }, [edition, showSnapshots, versionSearch, versions]);
+    });
+  }, [edition, showSnapshots, versionTypes, versionSearch, versions]);
 
   const reset = () => {
     setVersionSearch("");
@@ -210,6 +214,7 @@ export function CreateInstanceWizard() {
     setVersions([]);
     setLoadedEdition(null);
     setShowSnapshots(false);
+    setVersionTypes(defaultVersionTypes);
     setLoader("vanilla");
     setLoaderVersions([]);
     setLoaderVersion("");
@@ -234,6 +239,8 @@ export function CreateInstanceWizard() {
 
   const chooseVersion = (item: MinecraftVersionSummary) => {
     setVersion(item.id);
+
+    if (item.versionType === "old_alpha" || item.versionType === "old_beta") setLoader("vanilla");
     if (!name || /^Minecraft\s/.test(name)) setName(`Minecraft ${item.id}`);
   };
 
@@ -271,13 +278,16 @@ export function CreateInstanceWizard() {
 
   const selectedVersion = versions.find((item) => item.id === version);
   const canCreate = Boolean(version)
+    && (edition !== "java" || Boolean(selectedVersion && versionTypes[selectedVersion.versionType]))
     && name.trim().length > 0
     && memory >= 256
     && !groupBusy
     && !creatingGroup
+    && (loader !== "rust" || (bootstrap?.settings.general.rustMinecraft === true))
     && (loader === "vanilla" || loader === "bedrock" || Boolean(loaderVersion))
     && (edition === "bedrock" || javaMode === "auto" || Boolean(javaPath));
-  const loaders = edition === "java" ? javaLoaders : bedrockLoaders;
+  const rustEnabled = bootstrap?.settings.general.rustMinecraft === true;
+  const loaders = edition === "java" ? [...javaLoaders, ...(rustEnabled ? [{ id: "rust" as Loader, name: "Rust", description: tr(uiText("installation.horizonDescription", "Experimental Horizon. Choose a release compatible with this Minecraft version. Microsoft account required; Java mods are incompatible.")), enabled: Boolean(version) }] : [])].map(item => ({ ...item, enabled: item.enabled && (item.id === "vanilla" || !selectedVersion?.versionType.startsWith("old_")) })) : bedrockLoaders;
 
   const openBedrockStore = async () => {
     try {
@@ -383,7 +393,12 @@ export function CreateInstanceWizard() {
                       <button className={edition === "java" ? styles.activeEdition : ""} type="button" role="tab" aria-selected={edition === "java"} onClick={() => chooseEdition("java")}>{uiText("settings.java", "Java")}</button>
                       <button className={edition === "bedrock" ? styles.activeEdition : ""} type="button" role="tab" aria-selected={edition === "bedrock"} disabled={!bootstrap?.settings.bedrock.enabled} title={!bootstrap?.settings.bedrock.enabled ? uiText("installation.texts.enableBedrockInSettingsFirst", "Enable Bedrock in Settings first") : undefined} onClick={() => chooseEdition("bedrock")}>{uiText("installation.texts.bedrock", "Bedrock")}</button>
                     </div>
-                    <label className={styles.checkLabel}><input type="checkbox" checked={showSnapshots} onChange={(event) => setShowSnapshots(event.target.checked)} /> {tr(edition === "bedrock" ? uiText("installation.texts.includePreviewBuilds", "Include preview builds") : uiText("installation.texts.includeSnapshots", "Include snapshots"))}</label>
+                    {edition === "java" ? <div className={styles.versionTypes} role="group" aria-label={uiText("installation.versionTypes.label", "Version types")}>
+                      {(Object.keys(defaultVersionTypes) as Array<keyof typeof defaultVersionTypes>).map(type => <label className={styles.versionTypeChoice} key={type}>
+                        <span>{uiText(`installation.versionTypes.${type}`, versionTypeLabels[type])}</span>
+                        <input type="checkbox" checked={versionTypes[type]} onChange={event => setVersionTypes(current => ({ ...current, [type]: event.target.checked }))} />
+                      </label>)}
+                    </div> : <label className={styles.checkLabel}><input type="checkbox" checked={showSnapshots} onChange={event => setShowSnapshots(event.target.checked)} />{uiText("installation.texts.includePreviewBuilds", "Include preview builds")}</label>}
                   </div>
                 </div>
                 <input className={common.input} value={versionSearch} onChange={(event) => setVersionSearch(event.target.value)} placeholder={uiText("installation.texts.searchVersions", "Search versions")} aria-label={uiText("installation.texts.searchMinecraftVersions", "Search Minecraft versions")} />
@@ -405,7 +420,7 @@ export function CreateInstanceWizard() {
                     <button className={`${styles.versionRow} ${version === item.id ? styles.selected : ""}`} type="button" key={item.id} onClick={() => chooseVersion(item)}>
                       {edition === "bedrock" ? <img className={styles.versionIcon} src={bedrockIcon} alt="" /> : <Cube size={18} weight="duotone" />}
                       <span className={styles.versionDetails}><strong>{item.id}</strong><small>{item.installMethod === "registered_store" ? uiText("installation.texts.alreadyInstalledFromMicrosoftStore", "Already installed from Microsoft Store") : item.status === "downloaded" ? uiText("installation.texts.downloadedInstallationCanResume", "Downloaded; installation can resume") : item.releaseTime ? new Date(item.releaseTime).toLocaleDateString(locale) : uiText("installation.texts.availableFromMicrosoftCdn", "Available from Microsoft CDN")}</small></span>
-                      <span className={`${styles.versionBadge} ${item.versionType === "release" ? common.successBadge : common.warningBadge}`}>{tr(item.versionType)}</span>
+                      <span className={`${styles.versionBadge} ${item.versionType === "release" ? common.successBadge : common.warningBadge}`}>{edition === "java" ? uiText(`installation.versionTypes.${item.versionType}`, versionTypeLabels[item.versionType]) : tr(item.versionType)}</span>
                       {version === item.id ? <Check size={17} weight="bold" /> : null}
                     </button>
                   )) : null}
@@ -433,9 +448,9 @@ export function CreateInstanceWizard() {
                 </div>
                 {loader !== "vanilla" && loader !== "bedrock" && loaders.find((item) => item.id === loader)?.enabled ? (
                   <label className={`${common.field} ${styles.loaderVersionField}`}>
-                    <span className={common.label}>{loaders.find((item) => item.id === loader)?.name ?? loader} {uiText("installation.texts.version", "version")}</span>
+                    <span className={common.label}>{loader === "rust" ? uiText("installation.horizonRelease", "Horizon release") : <>{loaders.find((item) => item.id === loader)?.name ?? loader} {uiText("installation.texts.version", "version")}</>}</span>
                     <select className={common.select} value={loaderVersion} onChange={(event) => setLoaderVersion(event.target.value)} disabled={loaderLoading || loaderVersions.length === 0}>
-                      {loaderLoading ? <option>{uiText("installation.texts.loadingCompatibleVersions", "Loading compatible versions")}</option> : loaderVersions.map((item) => <option value={item.id} key={item.id}>{item.id}{item.recommended ? ` (${uiText("installation.texts.recommended", "recommended")})` : ""}</option>)}
+                      {loaderLoading ? <option>{uiText("installation.texts.loadingCompatibleVersions", "Loading compatible versions")}</option> : loader === "rust" && loaderVersions.length === 0 ? <option value="">{uiText("installation.horizonNoReleases", "No compatible Horizon releases for this Minecraft version")}</option> : loaderVersions.map((item) => <option value={item.id} key={item.id}>{item.id}{item.recommended ? ` (${uiText("installation.texts.recommended", "recommended")})` : ""}</option>)}
                     </select>
                     {formError ? <span className={common.hint}><ErrorText message={formError} /></span> : null}
                   </label>

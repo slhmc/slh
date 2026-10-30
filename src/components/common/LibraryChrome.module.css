@@ -1,0 +1,55 @@
+.frame {
+  min-width: 0;
+  min-height: 0;
+}
+.detailFrame {
+  min-width: 0;
+  min-height: 0;
+}
+@media (max-width: 720px) {
+  .frame.frame {
+    display: block;
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
+  .frame.frame > section {
+    display: block;
+    height: auto;
+  }
+  .frame.frame [data-library-scroll] {
+    overflow: visible;
+  }
+  .frame.frame > div {
+    height: auto;
+  }
+  .detailFrame.detailFrame {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr);
+    grid-template-areas: "header" "tabs" "content";
+  }
+  .detailFrame.detailFrame > header {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    padding: var(--space-3);
+  }
+  .detailFrame.detailFrame > nav {
+    width: auto;
+    flex-direction: row;
+    flex-wrap: wrap;
+    padding: var(--space-2);
+    min-height: 0;
+    align-items: center;
+  }
+  .detailFrame.detailFrame > section,
+  .detailFrame.detailFrame > main {
+    padding: var(--space-3);
+  }
+}
+
+@media (max-width: 720px) {
+  .detailFrame.detailFrame { display:flex;flex-direction:column;overflow:auto;overscroll-behavior:contain; }
+  .detailFrame.detailFrame > header,.detailFrame.detailFrame > nav { flex-shrink:0; }
+  .detailFrame.detailFrame > section,.detailFrame.detailFrame > main { flex:none;min-height:280px;overflow:visible; }
+  .detailFrame.detailFrame > [data-server-console="true"] { height:auto;min-height:400px;overflow:visible; }
+}

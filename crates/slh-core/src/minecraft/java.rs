@@ -592,9 +592,24 @@ pub async fn install_managed(
     major_version: u32,
 ) -> AppResult<JavaInstallation> {
     let operation_id = Uuid::new_v4().to_string();
-    let result = install_managed_inner(app, state, major_version, &operation_id).await;
+    let result = install_managed_inner(app, state, major_version, &operation_id, "jre").await;
     finish_java_install(app, &operation_id, &result);
     result
+}
+
+pub async fn install_managed_kind(app: &Host, state: &AppState, major_version: u32, kind: &str) -> AppResult<JavaInstallation> {
+    if !["jdk","server-jre"].contains(&kind) { return Err(AppError::InvalidInput("Invalid server Java package kind".into())); }
+    let root = managed_root(state).await?;
+    let candidates_root = if kind=="jdk" {root.join("server-jdk")} else {root};
+    for path in managed_candidates(&candidates_root) {
+        if let Ok(java)=inspect(&path).await {
+            let javac = path.with_file_name(if cfg!(windows) {"javac.exe"} else {"javac"});
+            if java.major_version==major_version && (kind!="jdk" || javac.is_file()) { return Ok(java); }
+        }
+    }
+    let operation_id=Uuid::new_v4().to_string();
+    let result=install_managed_inner(app,state,major_version,&operation_id,kind).await;
+    finish_java_install(app,&operation_id,&result);result
 }
 
 fn finish_java_install(app: &Host, operation_id: &str, result: &AppResult<JavaInstallation>) {
@@ -609,13 +624,14 @@ async fn install_managed_inner(
     state: &AppState,
     major_version: u32,
     operation_id: &str,
+    kind: &str,
 ) -> AppResult<JavaInstallation> {
-    if ![8, 17, 21, 25].contains(&major_version) {
+    if ![8, 16, 17, 21, 25].contains(&major_version) && !(26..=100).contains(&major_version) {
         return Err(AppError::InvalidInput(
             "Managed Java supports the Minecraft runtime lines 8, 17, 21, and 25".into(),
         ));
     }
-    let managed_root = managed_root(state).await?;
+    let managed_root = if kind=="jdk" {managed_root(state).await?.join("server-jdk")} else {managed_root(state).await?};
     emit_java_progress(
         app,
         operation_id,
@@ -630,7 +646,7 @@ async fn install_managed_inner(
         .get(endpoint)
         .query(&[
             ("architecture", managed_architecture()),
-            ("image_type", "jre"),
+            ("image_type", if kind=="server-jre" {"jre"} else {kind}),
             (
                 "os",
                 crate::platform::OperatingSystem::current().adoptium_name(),
@@ -730,7 +746,7 @@ async fn install_managed_inner(
             let _ = tokio::fs::remove_file(&archive_path).await;
             let mut java = inspect(&existing).await?;
             java.source = "managed".into();
-            remember_detected_path(state, &java).await?;
+            if kind=="jre" {remember_detected_path(state, &java).await?;}
             emit_java_progress(
                 app,
                 operation_id,
@@ -754,7 +770,7 @@ async fn install_managed_inner(
     )
     .await?;
     installed.source = "managed".into();
-    remember_detected_path(state, &installed).await?;
+    if kind=="jre" {remember_detected_path(state, &installed).await?;}
     Ok(installed)
 }
 

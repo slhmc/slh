@@ -15,6 +15,7 @@ mod minecraft;
 mod models;
 mod portable;
 mod servers;
+mod local_servers;
 mod settings;
 mod state;
 mod storage;
@@ -102,6 +103,7 @@ pub fn run() {
             let state = tauri::async_runtime::block_on(async {
                 let mut paths = crate::portable::PortablePaths::resolve()?;
                 paths.bundled_resources = app.path().resource_dir().ok();
+                slh_core::diagnostics::install_panic_hook(&paths);
                 if std::env::args().any(|arg| arg == "--isolated") {
                     if !std::env::args().any(|arg| arg == "--data-dir") {
                         return Err(crate::error::AppError::Unavailable("--isolated requires an explicit --data-dir copy".into()));
@@ -180,6 +182,52 @@ pub fn run() {
             window_activity::get_window_activity,
             ui_events::get_ui_snapshot,
             commands::exit_app,
+            local_servers::preview_server_launch,
+            local_servers::sync_server_library,
+            local_servers::open_server_collection_folder,
+            local_servers::edit_server_collection,
+            local_servers::organize_server_library,
+            local_servers::reorder_server_collections,
+            local_servers::save_server_library_view,
+            local_servers::save_server_artwork,
+            local_servers::get_local_servers,
+            local_servers::discover_local_servers,
+            local_servers::connect_local_server,
+            local_servers::search_server_plugins,
+            local_servers::server_plugin_versions,
+            local_servers::plan_server_plugin,
+            local_servers::install_server_plugin,
+            local_servers::list_server_plugins,
+            local_servers::manage_server_plugin,
+            local_servers::get_local_server_icon,
+            local_servers::set_local_server_icon,
+            local_servers::get_local_server_config,
+            local_servers::get_server_players,
+            local_servers::edit_server_players,
+            local_servers::delete_local_server,
+            local_servers::local_server_catalog,
+            local_servers::create_local_server,
+            local_servers::update_local_server,
+            local_servers::install_local_server,
+            local_servers::start_local_server,
+            local_servers::control_local_server,
+            local_servers::get_local_server_console,
+            local_servers::get_local_server_metrics,
+            local_servers::open_local_server_console,
+            local_servers::export_local_server_script,
+            local_servers::create_server_group,
+            local_servers::rename_server_group,
+            local_servers::move_server_group,
+            local_servers::move_local_server,
+            local_servers::save_server_defaults,
+            local_servers::open_local_server_folder,
+            local_servers::check_local_server_launch,
+            local_servers::inspect_local_server_core_candidate,
+            local_servers::repair_local_server_core,
+            local_servers::scan_storage_cleanup,
+            local_servers::execute_storage_cleanup,
+            local_servers::optimize_storage_database,
+
             commands::save_window_state,
             commands::get_bootstrap,
             commands::check_launcher_updates,
@@ -194,6 +242,8 @@ pub fn run() {
             commands::prepare_windows_notifications,
             commands::send_windows_notification,
             commands::open_bedrock_content_file,
+            commands::record_command_failure,
+            commands::open_crash_report,
             commands::import_local_font,
             commands::get_local_font_data,
             commands::create_group,

@@ -41,3 +41,20 @@ it("disposes a failed scene and allows retrying the same skin",async () => {
   expect((await homePortrait(skin)).type).toBe("image/png");
   expect(mocks.engines[1].dispose).toHaveBeenCalledOnce();
 });
+
+
+it("uses a separate upright gallery pose without changing the Home portrait", async () => {
+  const skin = {model:"classic" as const,dataUrl:"pose-skin"};
+  await homePortrait(skin);
+  await homePortrait(skin, "standing");
+  expect(mocks.engines).toHaveLength(2);
+  const part = () => ({rotation:{set:vi.fn()},position:{x:0}});
+  const player = {rotation:{set:vi.fn()},skin:{head:part(),body:part(),leftArm:part(),rightArm:part(),leftLeg:part(),rightLeg:part()}};
+  mocks.engines[1].options.idleAnimation.update(player);
+  expect(player.rotation.set).toHaveBeenLastCalledWith(0,.22,0);
+  for (const limb of Object.values(player.skin)) expect(limb.rotation.set).toHaveBeenLastCalledWith(0,0,0);
+  expect(player.skin.leftLeg.position.x).toBe(2);
+  expect(player.skin.rightLeg.position.x).toBe(-2);
+  mocks.engines[0].options.idleAnimation.update(player);
+  expect(player.rotation.set).toHaveBeenLastCalledWith(.3,.25,0);
+});

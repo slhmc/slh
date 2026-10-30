@@ -18,7 +18,7 @@ export interface Instance {
   iconBackground: string | null;
   iconForeground: string | null;
   minecraftVersion: string;
-  loaderType: "vanilla" | "fabric" | "forge" | "neoforge" | "quilt" | "bedrock";
+  loaderType: "vanilla" | "fabric" | "forge" | "neoforge" | "quilt" | "bedrock" | "rust";
   loaderVersion: string | null;
   status: "created" | "installing" | "launching" | "installed" | "running" | "error";
   createdAt: string;
@@ -128,6 +128,7 @@ export interface GeneralSettings {
   ungroupedCollapsed?: boolean;
   /** Position of the non-deletable Ungrouped section among regular groups. */
   ungroupedPosition?: number;
+  rustMinecraft?: boolean;
   checkUpdatesAutomatically?: boolean;
   /** Dock the selected instance details panel to either side of the library. */
   instancePanelPosition?: "left" | "right";
@@ -152,7 +153,7 @@ export interface GeneralSettings {
   };
 }
 
-export type SidebarNavigationItem = "home" | "library" | "discover" | "settings";
+export type SidebarNavigationItem = "home" | "library" | "discover" | "localServers" | "settings";
 
 export interface AppearanceColors {
   background: string;
@@ -497,6 +498,7 @@ export interface CreateInstanceVersionCopyResult {
 }
 
 export interface StorageSummary {
+  serversBytes?: number;
   totalBytes: number;
   databaseBytes: number;
   instancesBytes: number;
@@ -571,6 +573,7 @@ export interface LaunchStateEvent {
   state: "running" | "exited" | "crashed";
   exitCode?: number | null;
   durationSeconds?: number;
+  reportPath?: string | null;
 }
 
 export interface CreateInstanceRequest {
@@ -679,7 +682,7 @@ export interface CommandFailure {
   message: string;
   messageKey?: string;
   params?: Record<string, string | number>;
-  details?: { files?: ManualDownloadFile[]; directory?: string };
+  details?: { files?: ManualDownloadFile[]; directory?: string; reportPath?: string };
 }
 
 export interface ManualDownloadFile { name: string; fileName: string; url: string }

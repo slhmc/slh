@@ -108,6 +108,7 @@ pub struct AppState {
     /// lock for the complete launch lifetime so two profiles can never swap
     /// the same Windows package data concurrently.
     pub bedrock_profile_lock: Arc<Mutex<()>>,
+    pub(crate) offline_skin_server: Arc<Mutex<Option<crate::accounts::offline_skin_server::SkinServer>>>,
     _log_guard: Arc<WorkerGuard>,
 }
 
@@ -140,6 +141,10 @@ impl AppState {
         // crash can otherwise leave an instance permanently stuck on the
         // Install button even though no worker is still downloading it.
         crate::database::recover_interrupted_installations(&database).await?;
+        sqlx::query("UPDATE local_servers SET status='failed' WHERE status='installing'").execute(&database).await?;
+        let starting:Vec<String>=sqlx::query_scalar("SELECT id FROM local_servers WHERE status IN ('starting','running','stopping','unmanaged')").fetch_all(&database).await?;
+        for id in starting {if !paths.data.join("server-runs").join(format!("{id}.json")).is_file() {sqlx::query("UPDATE local_servers SET status='failed' WHERE id=?").bind(id).execute(&database).await?;}}
+
         crate::instances::migrate_legacy_instance_folders(&database, &paths).await?;
         let mut headers = HeaderMap::new();
         headers.insert(
@@ -191,6 +196,7 @@ impl AppState {
             java_scan_cancelled: Arc::new(AtomicBool::new(false)),
             java_scan_lock: Arc::new(Mutex::new(())),
             bedrock_profile_lock: Arc::new(Mutex::new(())),
+            offline_skin_server: Arc::new(Mutex::new(None)),
             _log_guard: log_guard,
         };
         if external_recovery

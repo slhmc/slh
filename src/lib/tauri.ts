@@ -13,7 +13,7 @@ export const isTauri =
   typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
 const previewBootstrap: BootstrapData = {
-  version: "0.2.1-dev",
+  version: "0.2.2-dev",
   buildUnix: 0,
   portableRoot: "E:\\SLH-Portable",
   firstRun: false,
@@ -45,11 +45,11 @@ const previewBootstrap: BootstrapData = {
       restoreOnExit: true,
       offlineFallbackWhenOffline: true,
       keyboardZoom: true,
-      visibleNavigation: ["home", "library", "discover", "settings"],
-      navigationOrder: ["home", "library", "discover", "settings"],
+      visibleNavigation: ["home", "library", "discover", "localServers", "settings"],
+      navigationOrder: ["home", "library", "discover", "localServers", "settings"],
       accountOrder: ["preview-account"],
-      settingsNavigationVisible: ["general", "appearance", "minecraft", "java", "bedrock", "accounts", "storage", "downloads", "notifications", "sync", "console", "privacy", "advanced"],
-      settingsNavigationOrder: ["general", "appearance", "minecraft", "java", "bedrock", "accounts", "storage", "downloads", "notifications", "sync", "console", "privacy", "advanced"],
+      settingsNavigationVisible: ["general", "appearance", "minecraft", "java", "bedrock", "accounts", "servers", "storage", "downloads", "notifications", "sync", "console", "privacy", "advanced"],
+      settingsNavigationOrder: ["general", "appearance", "minecraft", "java", "bedrock", "accounts", "servers", "storage", "downloads", "notifications", "sync", "console", "privacy", "advanced"],
       hideUngrouped: false,
       ungroupedCollapsed: false,
       ungroupedPosition: 999,
@@ -93,7 +93,7 @@ const previewBootstrap: BootstrapData = {
     },
     java: { installDirectory: null, detectedPath: null },
     bedrock: { enabled: true, defaultProfileMode: "shared", showPreviewVersions: false, cardClickAction: "summary" },
-    downloads: { concurrency: 6, retries: 3, bandwidthLimitKbps: null },
+    downloads: { concurrency: 16, retries: 3, bandwidthLimitKbps: null },
     privacy: { telemetry: false, crashReporting: false },
     sync: { backupRetention: 10, worldsEnabled: false },
     notifications: { enabled: true, destination: "launcher", maxVisible: 3, durationMs: 5000, showInfo: true, showSuccess: true, showErrors: true },
@@ -207,7 +207,7 @@ function normalizeFailure(error: unknown): CommandFailure {
   if (typeof error === "object" && error !== null) {
     const candidate = error as Partial<CommandFailure>;
     if (typeof candidate.message === "string") {
-      if (candidate.messageKey) engine.rememberDiagnostic(candidate.message, candidate.messageKey, candidate.params);
+      if (candidate.messageKey) engine.rememberDiagnostic(candidate.message, candidate.messageKey, candidate.params, candidate.details?.reportPath);
       return {
         code: typeof candidate.code === "string" ? candidate.code : "command_error",
         message: candidate.message,
@@ -225,6 +225,7 @@ function normalizeFailure(error: unknown): CommandFailure {
 
 export async function command<T>(name: string, args?: Record<string, unknown>): Promise<T> {
   if (!isTauri) {
+    if (["get_local_server_metrics","get_server_players","edit_server_players","sync_server_library","edit_server_collection","organize_server_library","reorder_server_collections","save_server_library_view","save_server_artwork","open_server_collection_folder","discover_local_servers","connect_local_server","get_local_server_icon","set_local_server_icon","list_server_plugins","search_server_plugins","server_plugin_versions","plan_server_plugin","install_server_plugin","manage_server_plugin","check_local_server_launch","inspect_local_server_core_candidate","repair_local_server_core","get_local_servers","get_local_server_config","delete_local_server","local_server_catalog","preview_server_launch","create_local_server","update_local_server","install_local_server","start_local_server","control_local_server","get_local_server_console","open_local_server_console","export_local_server_script","create_server_group","rename_server_group","move_server_group","move_local_server","save_server_defaults","open_local_server_folder","scan_storage_cleanup","execute_storage_cleanup","optimize_storage_database"].includes(name)) return (await import("./localServersPreview")).localServersPreview(name,args) as T;
     if (name === "run_pack_install") return command<T>(String(args?.commandName), args?.args as Record<string, unknown>);
     if (name === "scan_curseforge_downloads") return [] as T;
     if (name === "get_locale_revision") return String(args?.code ?? "en-US") as T;
@@ -284,7 +285,7 @@ export async function command<T>(name: string, args?: Record<string, unknown>): 
       return args?.value as T;
     }
     if (name === "remember_section") {
-      if (previewBootstrap.settings.general.rememberSection && ["home", "library", "discover", "servers"].includes(String(args?.section))) {
+      if (previewBootstrap.settings.general.rememberSection && ["home", "library", "discover", "servers", "local-servers"].includes(String(args?.section))) {
         previewBootstrap.settings.general.lastSection = String(args?.section);
       }
       return undefined as T;
@@ -299,9 +300,9 @@ export async function command<T>(name: string, args?: Record<string, unknown>): 
         accountId: account.id,
         provider: account.provider,
         username: account.username,
-        canChangeSkin: account.provider === "microsoft",
+        canChangeSkin: account.provider === "microsoft" || account.provider === "offline",
         canChangeCape: account.provider === "microsoft",
-        message: account.provider === "offline" ? "Skin and cape controls are unavailable for offline accounts." : null,
+        message: null,
         skins: [],
         capes: [],
       } as T;
@@ -313,7 +314,7 @@ export async function command<T>(name: string, args?: Record<string, unknown>): 
         accountId: account.id,
         provider: account.provider,
         username: account.username,
-        canChangeSkin: account.provider === "microsoft",
+        canChangeSkin: account.provider === "microsoft" || account.provider === "offline",
         canChangeCape: account.provider === "microsoft",
         message: null,
         skins: [],
@@ -334,6 +335,10 @@ export async function command<T>(name: string, args?: Record<string, unknown>): 
     }
     if (name === "list_minecraft_versions") {
       return [
+        { id: "26.4", versionType: "release", releaseTime: "2026-11-01T00:00:00Z", url: "", sha1: "" },
+        { id: "26.3", versionType: "release", releaseTime: "2026-09-01T00:00:00Z", url: "", sha1: "" },
+        { id: "b1.7.3", versionType: "old_beta", releaseTime: "2011-07-08T00:00:00Z", url: "", sha1: "" },
+        { id: "a1.2.6", versionType: "old_alpha", releaseTime: "2010-12-03T00:00:00Z", url: "", sha1: "" },
         { id: "1.21.8", versionType: "release", releaseTime: "2026-07-17T10:00:00Z", url: "", sha1: "" },
         { id: "1.21.7", versionType: "release", releaseTime: "2026-06-30T10:00:00Z", url: "", sha1: "" },
         { id: "26w32a", versionType: "snapshot", releaseTime: "2026-08-05T10:00:00Z", url: "", sha1: "" },
@@ -380,6 +385,9 @@ export async function command<T>(name: string, args?: Record<string, unknown>): 
       ] as T;
     }
     if (name === "list_loader_versions") {
+      if (args?.loaderType === "rust") return (args?.minecraftVersion === "26.3" ? [
+        { id: "v0.2.97", stable: true, recommended: true }, { id: "v0.2.96", stable: true, recommended: false }, { id: "v0.2.95", stable: true, recommended: false },
+      ] : args?.minecraftVersion === "26.4" ? [{ id: "v0.3.0", stable: true, recommended: true }] : []) as T;
       return [
         { id: "0.16.14", stable: true, recommended: true },
         { id: "0.16.13", stable: true, recommended: false },
@@ -505,7 +513,18 @@ export async function command<T>(name: string, args?: Record<string, unknown>): 
     }
     return result;
   } catch (error) {
-    throw normalizeFailure(error);
+    const failure = normalizeFailure(error);
+    if (!failure.details?.reportPath && /^(run_pack_install|install_|import_|download_|repair_instance|launch_instance)/.test(name)
+      && !["cancelled", "manual_downloads_required", "offline_account_name_required", "two_factor_required"].includes(failure.code)) {
+      try {
+        const reportPath = await invoke<string | null>("record_command_failure", { operation: name, code: failure.code, message: failure.message });
+        if (reportPath) {
+          failure.details = { ...failure.details, reportPath };
+          if (failure.messageKey) engine.rememberDiagnostic(failure.message, failure.messageKey, failure.params, reportPath);
+        }
+      } catch { /* Failure reporting must never replace the original error. */ }
+    }
+    throw failure;
   }
 }
 

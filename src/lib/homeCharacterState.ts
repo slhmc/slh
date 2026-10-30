@@ -4,10 +4,10 @@ import type { Account } from "./types";
 
 export const homeSkinCache = new RequestCache<HomeSkin>(5 * 60_000, 20);
 export const homeSkinKey = (account: Account) => `${account.provider}:${account.id}:${account.providerUuid}`;
-export const initialHomeSkin = (account: Account | null) =>
-  account && account.provider !== "offline"
-    ? homeSkinCache.peek(homeSkinKey(account), true) ?? defaultHomeSkin(account.providerUuid)
-    : defaultHomeSkin(account?.providerUuid);
+export function initialHomeSkin(account: Account | null): HomeSkin {
+  const cached = account ? homeSkinCache.peek(homeSkinKey(account), true) : undefined;
+  return cached?.dataUrl ? cached : defaultHomeSkin(account?.providerUuid);
+}
 
 export interface HomeView { scale: number; yaw?: number }
 const key = "slh.home.character.view";

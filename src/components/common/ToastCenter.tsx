@@ -1,4 +1,5 @@
 import { ErrorText } from "./ErrorText";
+import { engine } from "../../i18n/engine";
 import { useUiText } from "../../i18n/UiText";
 import { useEffect, useRef, useState } from "react";
 import { CheckCircle, Info, WarningCircle, X } from "../icons";
@@ -29,7 +30,7 @@ export function ToastCenter() {
   useEffect(() => {
     if (destination !== "windows") return;
     for (const toast of toasts) {
-      if (toast.brief || attempted.current.has(toast.id)) continue;
+      if (toast.brief || toast.reportPath || engine.diagnosticReportPath(toast.message) || attempted.current.has(toast.id)) continue;
       attempted.current.add(toast.id);
       const message = toast.message.trim();
       const body = toast.tone === "success"
@@ -44,7 +45,7 @@ export function ToastCenter() {
   }, [destination, dismiss, isLocalized, toasts, tr]);
 
   const visibleToasts = destination === "windows"
-    ? toasts.filter((toast) => toast.brief || fallbackIds.has(toast.id))
+    ? toasts.filter((toast) => toast.brief || toast.reportPath || engine.diagnosticReportPath(toast.message) || fallbackIds.has(toast.id))
     : toasts;
   if (visibleToasts.length === 0) return null;
   return (
@@ -62,7 +63,7 @@ export function ToastCenter() {
             <Icon size={toast.brief ? 16 : 20} weight="fill" />
             <div>
               <strong>{tr(toast.title, toast.params)}</strong>
-              {toast.tone === "error" && message ? <ErrorText message={message} /> : visibleMessage ? <p>{visibleMessage}</p> : null}
+              {toast.tone === "error" && message ? <ErrorText message={message} reportPath={toast.reportPath} /> : visibleMessage ? <p>{visibleMessage}</p> : null}
               {toast.action ? <button className={styles.action} type="button" onClick={() => {
                 if (toast.action?.message) {
                   pushToast({

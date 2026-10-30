@@ -33,3 +33,14 @@ it("waits for stable downloads, imports only CurseForge ZIPs and avoids repeated
   await vi.advanceTimersByTimeAsync(5000);
   expect(mocks.command).toHaveBeenCalledTimes(calls);
 });
+
+it("ignores a stable Chrome extension ZIP without creating an install job or retry popup", async () => {
+  vi.useFakeTimers();
+  mocks.command.mockImplementation(async (name: string) => name === "scan_curseforge_archives"
+    ? [["forogtten-extension-chrome.zip", "chrome-extension-regression-v1"]]
+    : { canImport: false, archiveType: "unknown", name: null });
+  renderHook(() => useCurseForgeArchiveImport(true));
+  await act(async () => { await vi.advanceTimersByTimeAsync(20000); });
+  expect(mocks.install).not.toHaveBeenCalled();
+  expect(mocks.command.mock.calls.filter(([name]) => name === "inspect_archive")).toHaveLength(1);
+});

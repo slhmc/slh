@@ -8,6 +8,7 @@ test("portable shell and library navigation render in the required order", async
     "Home",
     "Library",
     "Discover",
+    "Local servers",
   ]);
   await expect(page.getByText("No active downloads")).toBeVisible();
   await expect(page.getByAltText("Smile LauncHer logo")).toBeVisible();
@@ -144,6 +145,8 @@ test("Servers and diagnostics routes expose real controls and honest empty histo
 
   await page.goto("/#/settings/downloads");
   await expect(page.getByText("Recent verified transfers")).toBeVisible();
+  const history=page.locator("details").filter({has:page.getByText("Recent verified transfers",{exact:true})});
+  await expect(history).not.toHaveAttribute("open");await history.locator("summary").click();
   await expect(page.getByText("No queued or completed content downloads.")).toBeVisible();
   await expect(page.getByText("SLH relay", { exact: true })).toBeVisible();
   await expect(page.getByText("Available", { exact: true }).last()).toBeVisible();

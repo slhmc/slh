@@ -15,13 +15,14 @@ test("wide settings use tiles, retain dock preference and group working switches
   await expect(automatic).toHaveAttribute("aria-checked", "true");
   await automatic.click();
   await expect(automatic).toHaveAttribute("aria-checked", "false");
-  await expect(page.getByRole("switch", { name: "Compact top bar (beta)" })).toHaveCount(0);
+  await expect(page.getByRole("switch", { name: "Compact navigation (beta)" })).toHaveCount(0);
   await page.screenshot({ path: "artifacts/ui/settings-advanced-wide.png" });
   for (const section of ["general", "appearance"]) {
     await page.evaluate(section => location.hash = `/settings/${section}`, section);
+    await expect(page.getByRole("heading", { name: section === "general" ? "General" : "Appearance", exact: true })).toBeVisible();
     const panel = page.locator('[class*="sectionBody"]').first();
     await expect(panel).toBeVisible();
-    expect((await panel.boundingBox())!.width).toBeGreaterThan(1200);
+    await expect.poll(async () => (await panel.boundingBox())?.width ?? 0).toBeGreaterThan(1200);
     await page.screenshot({ path: `artifacts/ui/settings-${section}-wide.png` });
   }
   for (const code of ["ru-RU", "de-DE"]) {

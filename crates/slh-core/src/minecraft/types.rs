@@ -61,6 +61,11 @@ pub struct AssetIndexReference {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct AssetIndex {
+    #[serde(default)]
+    #[serde(rename = "virtual")]
+    pub virtual_: bool,
+    #[serde(default)]
+    pub map_to_resources: bool,
     pub objects: HashMap<String, AssetObject>,
 }
 

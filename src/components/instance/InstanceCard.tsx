@@ -1,3 +1,4 @@
+import { LibraryCardSurface } from "../common/LibraryChrome";
 import { useUiText } from "../../i18n/UiText";
 import { Check, DotsThreeVertical, FolderOpen, Trash, Wrench } from "../icons";
 import type { Instance, ViewMode } from "../../lib/types";
@@ -34,11 +35,11 @@ export function InstanceCard({ instance, selected, view, groupName, insertPositi
     event.preventDefault();
     onSelect();
   };
-  const actionMenu = instance.id.startsWith("pack-job:") ? (onCancel ? <details name="slh-action-menu" data-action-menu className={styles.actionMenu} onClick={(event) => event.stopPropagation()}>
+  const actionMenu = instance.id.startsWith("pack-job:") ? (onCancel ? <details name="slh-action-menu" data-action-menu data-card-action-menu className={styles.actionMenu} onClick={(event) => event.stopPropagation()}>
     <summary role="button" aria-label={`${uiText("installation.texts.actionsFor", "Actions for")} ${instance.name}`}><DotsThreeVertical size={17} /></summary>
     <div><button type="button" onClick={onCancel}>{uiText("installation.texts.cancelDownload", "Cancel download")}</button></div>
   </details> : null) : (
-    <details name="slh-action-menu" data-action-menu className={styles.actionMenu} onClick={(event) => event.stopPropagation()}>
+    <details name="slh-action-menu" data-action-menu data-card-action-menu className={styles.actionMenu} onClick={(event) => event.stopPropagation()}>
       <summary role="button" aria-label={uiText("installation.actionsNamed", "Actions for {name}", { name: instance.name })}><DotsThreeVertical size={17} /></summary>
       <div>
         <button type="button" onClick={onOpenFolder}><FolderOpen size={16} /> {uiText("installation.texts.openFolder", "Open folder")}</button>
@@ -49,7 +50,7 @@ export function InstanceCard({ instance, selected, view, groupName, insertPositi
   );
   if (view === "list") {
     return (
-      <div
+      <LibraryCardSurface view={view} selected={selected}
         role="button"
         data-slh-instance={instance.id}
         data-insert-position={insertPosition}
@@ -71,11 +72,11 @@ export function InstanceCard({ instance, selected, view, groupName, insertPositi
         {progress ? <span role="status">{progress.message}</span> : null}
         {selected ? <Check className={styles.check} size={16} weight="bold" /> : null}
         {actionMenu}
-      </div>
+      </LibraryCardSurface>
     );
   }
   return (
-    <article
+    <LibraryCardSurface view={view} selected={selected}
       role="button"
       data-slh-instance={instance.id}
       data-insert-position={insertPosition}
@@ -98,6 +99,6 @@ export function InstanceCard({ instance, selected, view, groupName, insertPositi
       {selected ? <span className={styles.selection}><Check size={12} weight="bold" /></span> : null}
       {progress ? <span className={styles.progress} title={progress.message}><span style={{ width: `${progress.percentage ?? 8}%` }} /><strong>{instance.id.startsWith("pack-job:") ? progress.message : progress.percentage === null ? uiText("installation.texts.importing", "Importing") : `${progress.percentage}%`}</strong></span> : null}
       {actionMenu}
-    </article>
+    </LibraryCardSurface>
   );
 }

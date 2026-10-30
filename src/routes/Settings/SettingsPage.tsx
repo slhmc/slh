@@ -1,8 +1,13 @@
+import { SettingsSection, SettingRow, Toggle } from "../../components/settings/SettingControls";
+import { ServerDefaultsPanel } from "../../components/server/ServerDefaultsPanel";
+import { StorageCleanup } from "../../components/settings/StorageCleanup";
+import { DownloadHistory, ParallelDownloadsControl } from "../../components/settings/DownloadControls";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { requestLauncherUpdate } from "../../components/common/LauncherUpdateDialog";
 import { formatBytes } from "../../lib/formatters";
 import { useUiText } from "../../i18n/UiText";
 import { normalizeColors, contrastRatio } from "../../lib/theme";
-import { Children, Fragment, isValidElement, createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   ArrowRight,
   Check,
@@ -25,9 +30,8 @@ import {
 import { NavLink, useParams } from "react-router-dom";
 import { open as openDialog, save as saveDialog } from "@tauri-apps/plugin-dialog";
 import { isPermissionGranted, requestPermission } from "@tauri-apps/plugin-notification";
-import { openUrl } from "@tauri-apps/plugin-opener";
 import { command } from "../../lib/tauri";
-import type { Account, AppearanceColors, AppearancePreset, AppearanceSettings, BedrockSettings, ConsoleSettings, CurseForgeKeyStatus, DownloadRecord, GeneralSettings, JavaInstallation, JavaSettings, LauncherUpdateInfo, NotificationSettings, ProviderAvailability, StorageSummary, SyncMapping, SyncRunResult } from "../../lib/types";
+import type { Account, AppearanceColors, AppearancePreset, AppearanceSettings, BedrockSettings, ConsoleSettings, CurseForgeKeyStatus, GeneralSettings, JavaInstallation, JavaSettings, LauncherUpdateInfo, NotificationSettings, ProviderAvailability, StorageSummary, SyncMapping, SyncRunResult } from "../../lib/types";
 import { useAppStore } from "../../stores/appStore";
 import common from "../../components/common/Common.module.css";
 import styles from "./SettingsPage.module.css";
@@ -49,6 +53,7 @@ const sections = [
   { id: "java", label: "Java", labelKey: "settings.java", icon: Coffee },
   { id: "bedrock", label: "Bedrock", labelKey: "settings.bedrock", icon: GameController },
   { id: "accounts", label: "Accounts", labelKey: "settings.accounts", icon: UserCircle },
+  { id: "servers", label: "Servers", labelKey: "settings.servers", icon: HardDrives },
   { id: "storage", label: "Storage", labelKey: "settings.storage", icon: HardDrives },
   { id: "downloads", label: "Downloads", labelKey: "settings.downloads", icon: DownloadSimple },
   { id: "notifications", label: "Notifications", labelKey: "settings.notifications", icon: BellSimple },
@@ -187,7 +192,6 @@ export function SettingsPage() {
   const [syncSources, setSyncSources] = useState<Record<string, string>>({});
   const [syncBusy, setSyncBusy] = useState(false);
   const [storageSummary, setStorageSummary] = useState<StorageSummary | null>(null);
-  const [downloads, setDownloads] = useState<DownloadRecord[]>([]);
   const [diagnosticsLoading, setDiagnosticsLoading] = useState(false);
   const [contentProviders, setContentProviders] = useState<ProviderAvailability[]>([]);
   const [curseForgeKey, setCurseForgeKey] = useState("");
@@ -303,10 +307,9 @@ export function SettingsPage() {
     const request = section === "storage"
       ? command<StorageSummary>("get_storage_summary").then((value) => { if (active) setStorageSummary(value); })
       : Promise.all([
-          command<DownloadRecord[]>("list_downloads", { limit: 50 }),
           command<ProviderAvailability[]>("list_content_providers"),
           command<CurseForgeKeyStatus>("get_curseforge_key_status"),
-        ]).then(([history, providers, keyStatus]) => { if (active) { setDownloads(history); setContentProviders(providers); setCurseForgeKeyStatus(keyStatus); } });
+        ]).then(([providers, keyStatus]) => { if (active) { setContentProviders(providers); setCurseForgeKeyStatus(keyStatus); } });
     request
       .catch((error) => {
         if (active) pushToast({ tone: "error", title: uiText("settings.texts.diagnosticsCouldNotBeLoaded", "Diagnostics could not be loaded"), message: String((error as { message?: string }).message ?? error) });
@@ -800,8 +803,8 @@ export function SettingsPage() {
             <SettingRow title={uiText("settings.texts.compactMenuBeta", "Compact settings menu (beta)")} description={uiText("settings.texts.compactMenuDescription", "Show settings as tiles. Turn off to use rows. Text size stays the same.")}>
               <Toggle checked={bootstrap.settings.general.compactSettings !== true} onChange={(checked) => updateGeneral({ compactSettings: !checked })} />
             </SettingRow>
-            <SettingRow title={uiText("settings.texts.compactTopBarExperimental", "Compact top bar (beta)")} description={uiText("settings.texts.combineNavigationAccountAndLauncherActionsInOneThin", "Combine navigation, account, and launcher actions in one thin top bar.")}>
-              <Toggle checked={bootstrap.settings.general.compactHeader === true} onChange={(checked) => updateGeneral({ compactHeader: checked })} label={uiText("settings.texts.compactTopBarExperimental", "Compact top bar (beta)")} />
+            <SettingRow title={uiText("settings.texts.compactTopBarExperimental", "Compact navigation (beta)")} description={uiText("settings.texts.combineNavigationAccountAndLauncherActionsInOneThin", "Combines navigation with the top bar.")}>
+              <Toggle checked={bootstrap.settings.general.compactHeader === true} onChange={(checked) => updateGeneral({ compactHeader: checked })} label={uiText("settings.texts.compactTopBarExperimental", "Compact navigation (beta)")} />
             </SettingRow>
             </div>
             <SettingRow title={uiText("settings.fitTitles", "Fit project names")} description={uiText("settings.fitTitlesHint", "Reduce the font by one pixel at a time to keep complete words on a line in Discover.")}><Toggle checked={appearance.fitProjectTitles === true} onChange={fitProjectTitles => { const next={...appearance,fitProjectTitles}; setAppearance(next); void save("appearance",next); }} /></SettingRow>
@@ -912,7 +915,7 @@ export function SettingsPage() {
           <SettingsSection title={uiText("settings.accounts", "Accounts")} description={uiText("settings.texts.accountMetadataIsStoredInSqliteTokenMaterialBelongs", "Account metadata is stored in SQLite; token material belongs only in DPAPI-encrypted files.")}>
             <div className={styles.accountList}>
               {bootstrap.accounts.length === 0 ? <div className={styles.inlineEmpty}><UserCircle size={28} /><p>{uiText("settings.texts.addAnOfflineAccountFromTheSidebarAccountSwitcher", "Add an Offline account from the sidebar account switcher.")}</p></div> : orderedAccounts(bootstrap.accounts, bootstrap.settings.general.accountOrder).map((account, index, accounts) => (
-                <div className={styles.accountRow} key={account.id}><AccountAvatar account={account} className={styles.accountAvatar} /><span><strong>{account.username}</strong><small>{account.provider} · {account.providerUuid}</small></span><span className={account.active ? common.successBadge : common.badge}>{account.active ? uiText("accounts.texts.active", "Active") : account.authStatus}</span><span className={styles.accountActions}><button className={`${common.iconButton} ${account.provider === "offline" ? styles.disabledAppearanceAction : ""}`} type="button" aria-label={`${uiText("settings.texts.manageSkinAndCape", "Manage skin and cape")} ${account.username}`} disabled={account.provider === "offline"} onClick={() => { if (account.provider === "elyby") { void openUrl("https://ely.by/skins"); } else if (account.provider !== "offline") { setAppearanceAccount(account); } }}><Palette size={16} /></button><button className={common.iconButton} type="button" aria-label={`Move ${account.username} up`} disabled={index === 0} onClick={() => void moveAccount(account, -1)}>↑</button><button className={common.iconButton} type="button" aria-label={`Move ${account.username} down`} disabled={index === accounts.length - 1} onClick={() => void moveAccount(account, 1)}>↓</button><button className={`${common.iconButton} ${styles.removeAccount}`} type="button" aria-label={`Remove ${account.username}`} onClick={() => void deleteAccount(account)}><Trash size={16} /></button></span></div>
+                <div className={styles.accountRow} key={account.id}><AccountAvatar account={account} className={styles.accountAvatar} /><span><strong>{account.username}</strong><small>{account.provider} · {account.providerUuid}</small></span><span className={account.active ? common.successBadge : common.badge}>{account.active ? uiText("accounts.texts.active", "Active") : account.authStatus}</span><span className={styles.accountActions}><button className={common.iconButton} type="button" aria-label={`${uiText("settings.texts.manageSkinAndCape", "Manage skin and cape")} ${account.username}`} onClick={() => { if (account.provider === "elyby") void openUrl("https://ely.by/skins"); else setAppearanceAccount(account); }}><Palette size={16} /></button><button className={common.iconButton} type="button" aria-label={`Move ${account.username} up`} disabled={index === 0} onClick={() => void moveAccount(account, -1)}>↑</button><button className={common.iconButton} type="button" aria-label={`Move ${account.username} down`} disabled={index === accounts.length - 1} onClick={() => void moveAccount(account, 1)}>↓</button><button className={`${common.iconButton} ${styles.removeAccount}`} type="button" aria-label={`Remove ${account.username}`} onClick={() => void deleteAccount(account)}><Trash size={16} /></button></span></div>
               ))}
             </div>
             <div className={styles.providerGrid}>
@@ -920,6 +923,8 @@ export function SettingsPage() {
             </div>
           </SettingsSection>
         ) : null}
+
+        {section === "servers" ? <SettingsSection title={uiText("settings.servers", "Servers")} description={uiText("localServers.defaultsHint")}><ServerDefaultsPanel /></SettingsSection> : null}
 
         {section === "storage" ? (
           <SettingsSection title={uiText("settings.storage", "Storage")} description={uiText("settings.texts.everyMutableSlhFileStaysBesideTheExecutable", "Every mutable SLH file stays beside the executable.")}>
@@ -930,6 +935,7 @@ export function SettingsPage() {
                 <div className={styles.storageGrid}>
                   <StorageCell label={uiText("settings.texts.instancesaa8c18", "Instances")} bytes={storageSummary.instancesBytes} />
                   <StorageCell label={uiText("settings.texts.runtimeCache", "Runtime cache")} bytes={storageSummary.cacheBytes} />
+                  <StorageCell label={uiText("navigation.localServers")} bytes={storageSummary.serversBytes ?? 0} />
                   <StorageCell label={uiText("settings.texts.managedJava", "Managed Java")} bytes={storageSummary.javaBytes} />
                   <StorageCell label={uiText("settings.texts.shared", "Shared")} bytes={storageSummary.sharedBytes} />
                   <StorageCell label={uiText("settings.texts.backups", "Backups")} bytes={storageSummary.backupsBytes} />
@@ -940,12 +946,13 @@ export function SettingsPage() {
               </div>
             ) : <div className={styles.inlineEmpty}><HardDrives size={28} /><p>{diagnosticsLoading ? uiText("settings.texts.calculatingStorage", "Calculating storage…") : uiText("settings.texts.storageSummaryIsUnavailable", "Storage summary is unavailable.")}</p></div>}
             <p className={styles.notice}>{uiText("settings.texts.runtimeCacheIsRetainedBecauseInstalledInstancesCanDepend", "Runtime cache is retained because installed instances can depend on its verified assets and libraries. Worlds, accounts, and shared files are never treated as disposable cache.")}</p>
+            <StorageCleanup />
           </SettingsSection>
         ) : null}
 
         {section === "downloads" ? (
           <SettingsSection title={uiText("settings.downloads", "Downloads")} description={uiText("settings.texts.verifiedDownloadsUseRetryTemporaryFilesAndAtomicRename", "Verified downloads use retry, temporary files, and atomic rename.")}>
-            <SettingRow title={uiText("settings.texts.concurrentDownloads", "Concurrent downloads")} description={uiText("settings.texts.appliedToLibraryAssetLoaderAndModpackBatches", "Applied to library, asset, loader, and modpack batches.")}><input className={common.input} type="number" min={1} max={32} value={bootstrap.settings.downloads.concurrency} onChange={(event) => void save("downloads", { ...bootstrap.settings.downloads, concurrency: Number(event.target.value) })} /></SettingRow>
+            <SettingRow title={uiText("settings.texts.concurrentDownloads", "Concurrent downloads")} description={uiText("settings.texts.appliedToLibraryAssetLoaderAndModpackBatches", "Applied to library, asset, loader, and modpack batches.")}><ParallelDownloadsControl value={bootstrap.settings.downloads.concurrency} onChange={concurrency => save("downloads", { ...bootstrap.settings.downloads, concurrency })} /></SettingRow>
             <SettingRow title={uiText("settings.texts.retryCount", "Retry count")} description={uiText("settings.texts.transientFailuresUseExponentialBackoff", "Transient failures use exponential backoff.")}><input className={common.input} type="number" min={0} max={8} value={bootstrap.settings.downloads.retries} onChange={(event) => void save("downloads", { ...bootstrap.settings.downloads, retries: Number(event.target.value) })} /></SettingRow>
             <SettingRow className={styles.formSettingRow} title={uiText("settings.curseforge.folder", "CurseForge downloads folder")} description={uiText("settings.curseforge.folderHint", "SLH looks here for files downloaded from CurseForge in your browser.")}>
               <div className={styles.javaLocation}><code>{bootstrap.settings.downloads.curseforgeDirectory ?? uiText("settings.curseforge.defaultFolder", "Windows Downloads folder")}</code><button className={common.secondaryButton} type="button" onClick={() => void (async () => {
@@ -961,15 +968,7 @@ export function SettingsPage() {
               <p>{uiText("settings.texts.theValueNeverEntersSqliteLogsExportsOrUi", "The value never enters SQLite, logs, exports, or UI state after saving. Windows DPAPI ties it to your current Windows profile.")}</p>
             </div>
             {contentProviders.map((provider) => <SettingRow key={provider.provider} title={provider.provider === "modrinth" ? "Modrinth" : "CurseForge"} description={provider.message ?? uiText("settings.texts.contentProviderIsConfigured", "Content provider is configured.")}><span className={provider.available ? common.successBadge : common.warningBadge}>{provider.available ? uiText("instance.texts.available", "Available") : uiText("settings.texts.apiKeyRequired", "API key required")}</span></SettingRow>)}
-            <div className={styles.downloadList}>
-              <div className={styles.listHeading}><strong>{uiText("settings.texts.recentVerifiedTransfers", "Recent verified transfers")}</strong><span>{downloads.length}{" "}{uiText("settings.texts.records", "records")}</span></div>
-              {downloads.length === 0 ? <div className={styles.inlineEmpty}>{diagnosticsLoading ? <BusyIndicator size={28} /> : <DownloadSimple size={28} />}<p>{diagnosticsLoading ? uiText("settings.texts.loadingDownloadHistory", "Loading download history…") : uiText("settings.texts.noQueuedOrCompletedContentDownloads", "No queued or completed content downloads.")}</p></div> : downloads.map((download) => (
-                <div className={styles.downloadRow} key={download.id}>
-                  <span><strong>{download.destination.split(/[\\/]/).filter(Boolean).pop() ?? uiText("installation.texts.download", "Download")}</strong><small>{download.source} · {new Date(download.updatedAt).toLocaleString(locale)}</small>{download.errorMessage ? <em>{download.errorMessage}</em> : null}</span>
-                  <span><small>{formatBytes(download.downloadedBytes)}{download.totalBytes ? ` / ${formatBytes(download.totalBytes)}` : ""}</small><b className={download.status === "complete" ? common.successBadge : download.status === "failed" ? common.errorBadge : common.warningBadge}>{download.status}</b></span>
-                </div>
-              ))}
-            </div>
+            <DownloadHistory />
           </SettingsSection>
         ) : null}
 
@@ -1046,12 +1045,21 @@ export function SettingsPage() {
 
         {section === "advanced" ? (
           <SettingsSection title={uiText("settings.advanced", "Advanced")} description={uiText("settings.texts.diagnosticsAndDeveloperControlsRemainExplicitAndNonDestructive", "Diagnostics and developer controls remain explicit and non-destructive.")}>
+            <SettingRow title={uiText("settings.errorReports", "Error reports")} description={uiText("settings.errorReportsDescription", "Local reports for installation failures, downloads and game crashes are saved in the crash folder.")}>
+              <button className={common.secondaryButton} type="button" onClick={() => void command("open_crash_report", { path: null }).catch(error => pushToast({ tone: "error", title: uiText("settings.errorReports", "Error reports"), message: error.message }))}>{uiText("settings.openCrashFolder", "Open crash folder")}</button>
+            </SettingRow>
             <div className={styles.tileGrid}>
             <SettingRow title={uiText("settings.texts.checkForLauncherUpdatesAutomatically", "Check for launcher updates automatically")} description={uiText("settings.texts.checkGithubForANewerSlhReleaseOnceWhen", "Check GitHub for a newer SLH release once when the launcher starts.")}>
               <Toggle checked={bootstrap.settings.general.checkUpdatesAutomatically !== false} onChange={(checked) => updateGeneral({ checkUpdatesAutomatically: checked })} />
             </SettingRow>
             </div>
             <div className={styles.tileGrid}>
+            <SettingRow title={uiText("settings.rustMinecraft", "Minecraft on Rust")} description={uiText("settings.rustMinecraftDescription", "Show compatible Horizon releases from GitHub. Requires Windows x64, Vulkan and a Microsoft account with Minecraft. Java is selected for preparation according to the release.")}>
+              <div className={styles.horizonControls}>
+                <Toggle checked={bootstrap.settings.general.rustMinecraft === true} onChange={(checked) => updateGeneral({ rustMinecraft: checked })} />
+                <button className={common.iconButton} type="button" aria-label={uiText("settings.horizonFaq", "FAQ?")} title={uiText("settings.horizonFaq", "FAQ?")} onClick={() => void openUrl("https://github.com/horizon-rust/horizon").catch(error => pushToast({ tone: "error", title: uiText("settings.horizonFaq", "FAQ?"), message: String(error) }))}>?</button>
+              </div>
+            </SettingRow>
             <SettingRow title={uiText("settings.texts.launcherVersion", "Launcher version")} description={uiText("settings.texts.clickTheVersionToViewThisBuildSLocal", "Click the version to view this build's local date and time.")}><button className={styles.buildVersion} type="button" onClick={() => setShowBuildTime((value) => !value)} title={uiText("settings.texts.showBuildTime", "Show build time")}>{showBuildTime && bootstrap.buildUnix > 0 ? new Date(bootstrap.buildUnix * 1000).toLocaleString(locale) : `SLH ${bootstrap.version}`}</button></SettingRow>
             <SettingRow title={uiText("settings.texts.launcherUpdates", "Launcher updates")} description={uiText("settings.texts.checkTheOfficialGithubReleasesPageForANewer", "Check the official GitHub releases page for a newer launcher build.")}>
               <div className={styles.updateControl}>
@@ -1081,38 +1089,6 @@ export function SettingsPage() {
       <AccountAppearanceDialog account={appearanceAccount} onClose={() => setAppearanceAccount(null)} onChanged={refresh} />
     </div>
   );
-}
-
-function SettingsSection({ title, description, children }: { title: string; description: string; children: React.ReactNode }) {
-  const { tr } = useI18n();
-  const layout: React.ReactNode[] = [];
-  let rows: React.ReactNode[] = [];
-  const flush = () => { if (rows.length) { layout.push(<div className={styles.tileGrid} key={layout.length}>{rows}</div>); rows=[]; } };
-  const flatten = (nodes: React.ReactNode): React.ReactNode[] => Children.toArray(nodes).flatMap(child =>
-    isValidElement<{children?: React.ReactNode}>(child) && child.type === Fragment ? flatten(child.props.children) : [child]);
-  flatten(children).forEach(child => {
-    if (isValidElement<{ className?: string }>(child) && child.type === SettingRow && !child.props.className) rows.push(child);
-    else { flush(); layout.push(child); }
-  });
-  flush();
-  return <div className={styles.section}><header><h2>{tr(title)}</h2><p data-minimal-text>{tr(description)}</p></header><div className={styles.sectionBody}>{layout}</div></div>;
-}
-
-const SettingLabel = createContext<string | undefined>(undefined);
-
-function SettingRow({ title, description, children, className = "" }: { title: string; description: string; children: React.ReactNode; className?: string }) {
-  const { tr } = useI18n();
-  const toggle = Children.toArray(children).find(child => isValidElement(child) && child.type === Toggle);
-  const clickable = Children.toArray(children).length === 1 && isValidElement<{disabled?:boolean}>(toggle) && !toggle.props.disabled;
-  return <div className={`${styles.settingRow} ${className} ${clickable ? styles.switchRow : ""}`} onClick={clickable ? event => {
-    if ((event.target as HTMLElement).closest('button,input,select,textarea,a,label,[role="button"],[role="switch"]')) return;
-    if (isValidElement<{checked:boolean;onChange:(checked:boolean)=>void}>(toggle)) toggle.props.onChange(!toggle.props.checked);
-  } : undefined}><div><strong data-minimal-title>{tr(title)}</strong><p data-minimal-text>{tr(description)}</p></div><div className={styles.settingControl}><SettingLabel.Provider value={tr(title)}>{children}</SettingLabel.Provider></div></div>;
-}
-
-function Toggle({ checked, onChange, disabled, label }: { checked: boolean; onChange: (checked: boolean) => void; disabled?: boolean; label?: string }) {
-  const settingLabel = useContext(SettingLabel);
-  return <button type="button" role="switch" aria-label={label ?? settingLabel} aria-checked={checked} disabled={disabled} className={`${styles.toggle} ${checked ? styles.checked : ""}`} onClick={() => onChange(!checked)}><span /></button>;
 }
 
 function StorageCell({ label, bytes }: { label: string; bytes: number }) {

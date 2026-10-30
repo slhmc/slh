@@ -1,17 +1,15 @@
+import { LibraryFrame, LibraryToolbar, LibraryGroupHeader, LibraryViews, LibraryMenuSurface } from "../../components/common/LibraryChrome";
 import { useUiText } from "../../i18n/UiText";
 import {
   ArrowRight,
   Check,
-  Cube,
   Export,
   FileText,
   FolderOpen,
   Image,
   Info,
-  ListBullets,
   Plus,
   PuzzlePiece,
-  SquaresFour,
   Stack,
   Trash,
   Worlds,
@@ -632,7 +630,7 @@ export function LibraryPage() {
   );
 
   return (
-    <div className={`${styles.layout} ${selected ? `${styles.withPanel} ${panelPositionClass}` : ""}`}>
+    <LibraryFrame className={`${selected ? `${styles.withPanel} ${panelPositionClass}` : ""}`}>
       <section className={`${styles.library} ${draggedInstanceId || draggedGroupId ? styles.dragging : ""}`}>
         <div className={styles.pageHeader}>
           <div>
@@ -640,7 +638,7 @@ export function LibraryPage() {
             <h1>{t("library.heading", "Your Minecraft worlds, separated and ready")}</h1>
             <span>{uiText("library.instanceCount", "{count} instances in this library", { count: bootstrap.instances.filter((instance) => !packJobs.some((job) => job.progress?.instanceId === instance.id)).length + pendingInstances.length })}</span>
           </div>
-          <div className={styles.toolbar}>
+          <LibraryToolbar>
             <details name="slh-action-menu" data-action-menu className={styles.groupMenu}>
               <summary className={common.ghostButton}><Plus size={16} weight="bold" /> {t("library.group", "Group")}</summary>
               <form onSubmit={(event) => { event.preventDefault(); void createGroup(); }}>
@@ -651,12 +649,8 @@ export function LibraryPage() {
             </details>
             {hideUngrouped ? <button className={common.ghostButton} type="button" onClick={() => void setUngroupedVisible(true)}>{t("library.showUngrouped", "Show ungrouped")}</button> : null}
 
-            <div className={styles.viewSwitch} aria-label={t("library.libraryView", "Library view")}>
-              <button className={viewMode === "grid" ? styles.active : ""} type="button" onClick={() => void setViewMode("grid")} aria-pressed={viewMode === "grid"} aria-label={t("library.gridView", "Grid view")} title={t("library.gridView", "Grid view")}><SquaresFour size={17} weight="bold" /></button>
-              <button className={viewMode === "icons" ? styles.active : ""} type="button" onClick={() => void setViewMode("icons")} aria-pressed={viewMode === "icons"} aria-label={uiText("library.iconView", "Grouped icons")} title={uiText("library.iconView", "Grouped icons")}><Cube size={18} weight="bold" /></button>
-              <button className={viewMode === "list" ? styles.active : ""} type="button" onClick={() => void setViewMode("list")} aria-pressed={viewMode === "list"} aria-label={t("library.listView", "List view")} title={t("library.listView", "List view")}><ListBullets size={18} weight="bold" /></button>
-            </div>
-          </div>
+            <LibraryViews value={viewMode} onChange={view=>void setViewMode(view as typeof viewMode)}/>
+          </LibraryToolbar>
         </div>
 
         {filtered.length === 0 && bootstrap.groups.length === 0 && pendingInstances.length === 0 ? (
@@ -669,7 +663,7 @@ export function LibraryPage() {
             ) : null}
           </div>
         ) : (
-          <div className={styles.scrollArea}>
+          <div data-library-scroll className={styles.scrollArea}>
             {viewMode === "list" ? (
               <div className={styles.listHeader}>
                 <span />
@@ -678,26 +672,26 @@ export function LibraryPage() {
             ) : null}
             {orderedSections.map((section) => section.kind === "group" ? (
               <section className={`${styles.group} ${dropGroupId === section.group.id ? styles.dropTarget : ""}`} key={section.group.id} data-slh-group-drop={section.group.id} {...dropHandlers(section.group.id)}>
-                <div className={`${styles.groupHeader} ${groupReorderTarget?.id === section.group.id ? (groupReorderTarget.after ? styles.groupInsertAfter : styles.groupInsertBefore) : ""}`} data-slh-group-drop={section.group.id} data-slh-group-order={section.group.id} {...dropHandlers(section.group.id)} onPointerDown={(event) => { if (event.button !== 0 || (event.target as HTMLElement).closest("button, input")) return; event.preventDefault(); groupPointerDragRef.current = { groupId: section.group.id, label: section.group.name, startX: event.clientX, startY: event.clientY, dragging: false }; }} data-slh-context-menu="true" onContextMenu={(event) => openContextMenu(event, { kind: "group", group: section.group })}>
+                <LibraryGroupHeader className={`${styles.groupHeader} ${groupReorderTarget?.id === section.group.id ? (groupReorderTarget.after ? styles.groupInsertAfter : styles.groupInsertBefore) : ""}`} data-slh-group-drop={section.group.id} data-slh-group-order={section.group.id} {...dropHandlers(section.group.id)} onPointerDown={(event) => { if (event.button !== 0 || (event.target as HTMLElement).closest("button, input")) return; event.preventDefault(); groupPointerDragRef.current = { groupId: section.group.id, label: section.group.name, startX: event.clientX, startY: event.clientY, dragging: false }; }} data-slh-context-menu="true" onContextMenu={(event) => openContextMenu(event, { kind: "group", group: section.group })}>
                   <button type="button" onClick={() => void toggleGroup(section.group.id, !section.group.collapsed)} aria-expanded={!section.group.collapsed} aria-label={`${section.group.collapsed ? uiText("installation.texts.expand", "Expand") : uiText("installation.texts.collapse", "Collapse")} ${section.group.name}`}>
                     <ArrowRight className={section.group.collapsed ? styles.collapsedArrow : styles.expandedArrow} size={15} weight="bold" />
                   </button>
                   <h2 data-minimal-title>{section.group.name}</h2>
                   <span>{section.instances.length}</span>
-                </div>
+                </LibraryGroupHeader>
                 {!section.group.collapsed ? <div className={viewMode === "icons" ? styles.iconsGrid : viewMode === "grid" ? styles.grid : styles.list}>
                   {section.instances.length > 0 ? section.instances.map((instance) => renderInstance(instance, section.group.name)) : <p className={styles.emptyGroup}>{t("library.emptyGroup", "Drop or create an instance in this group.")}</p>}
                 </div> : null}
               </section>
             ) : (
               <section className={`${styles.group} ${dropGroupId === null ? styles.dropTarget : ""}`} key="ungrouped" data-slh-group-drop="ungrouped" {...dropHandlers(null)}>
-                <div className={`${styles.groupHeader} ${groupReorderTarget?.id === "ungrouped" ? (groupReorderTarget.after ? styles.groupInsertAfter : styles.groupInsertBefore) : ""}`} data-slh-group-drop="ungrouped" data-slh-group-order="ungrouped" {...dropHandlers(null)} onPointerDown={(event) => { if (event.button !== 0 || (event.target as HTMLElement).closest("button, input")) return; event.preventDefault(); groupPointerDragRef.current = { groupId: "ungrouped", label: t("library.ungrouped", "Ungrouped"), startX: event.clientX, startY: event.clientY, dragging: false }; }} data-slh-context-menu="true" onContextMenu={(event) => openContextMenu(event, { kind: "ungrouped" })}>
+                <LibraryGroupHeader className={`${styles.groupHeader} ${groupReorderTarget?.id === "ungrouped" ? (groupReorderTarget.after ? styles.groupInsertAfter : styles.groupInsertBefore) : ""}`} data-slh-group-drop="ungrouped" data-slh-group-order="ungrouped" {...dropHandlers(null)} onPointerDown={(event) => { if (event.button !== 0 || (event.target as HTMLElement).closest("button, input")) return; event.preventDefault(); groupPointerDragRef.current = { groupId: "ungrouped", label: t("library.ungrouped", "Ungrouped"), startX: event.clientX, startY: event.clientY, dragging: false }; }} data-slh-context-menu="true" onContextMenu={(event) => openContextMenu(event, { kind: "ungrouped" })}>
                   <button type="button" onClick={() => void setUngroupedCollapsedState(!ungroupedCollapsed)} aria-expanded={!ungroupedCollapsed} aria-label={`${ungroupedCollapsed ? uiText("installation.texts.expand", "Expand") : uiText("installation.texts.collapse", "Collapse")} ${t("library.ungrouped", "Ungrouped")}`}>
                     <ArrowRight className={ungroupedCollapsed ? styles.collapsedArrow : styles.expandedArrow} size={15} weight="bold" />
                   </button>
                   <h2 data-minimal-title>{t("library.ungrouped", "Ungrouped")}</h2>
                   <span>{ungrouped.length + pendingInstances.length}</span>
-                </div>
+                </LibraryGroupHeader>
                 {!ungroupedCollapsed ? <div className={viewMode === "icons" ? styles.iconsGrid : viewMode === "grid" ? styles.grid : styles.list} {...dropHandlers(null)}>
                   {pendingInstances.map((instance) => renderInstance(instance, undefined, true))}
                   {ungrouped.length > 0 ? ungrouped.map((instance) => renderInstance(instance)) : <p className={styles.emptyGroup}>{t("library.emptyGroup", "Drop or create an instance in this group.")}</p>}
@@ -717,7 +711,7 @@ export function LibraryPage() {
       {groupDragPreview ? <div className={styles.groupDragPreview} style={{ left: groupDragPreview.x, top: groupDragPreview.y }} aria-hidden="true">{groupDragPreview.label}</div> : null}
       {panelActionDragPreview ? <div className={styles.groupDragPreview} style={{ left: panelActionDragPreview.x, top: panelActionDragPreview.y }} aria-hidden="true">{panelActionDragPreview.label}</div> : null}
       {contextMenu ? (
-        <div ref={contextMenuRef} className={`${styles.contextMenu} slh-context-menu`} style={{ left: contextMenu.x, top: contextMenu.y }} onPointerDown={(event) => { event.stopPropagation(); if (event.button === 2) beginContextMenuMove(event); }} onMouseDown={(event) => { if (event.button === 2) beginContextMenuMove(event); }} data-slh-context-menu="true" onContextMenu={(event) => { event.preventDefault(); event.stopPropagation(); }}>
+        <LibraryMenuSurface ref={contextMenuRef} style={{ left: contextMenu.x, top: contextMenu.y }} onPointerDown={(event) => { event.stopPropagation(); if (event.button === 2) beginContextMenuMove(event); }} onMouseDown={(event) => { if (event.button === 2) beginContextMenuMove(event); }} data-slh-context-menu="true" onContextMenu={(event) => { event.preventDefault(); event.stopPropagation(); }}>
           {contextMenu.kind === "ungrouped" ? <>
             <header className={styles.contextTitle} onPointerDown={beginContextMenuMove} onMouseDown={(event) => { if (event.button === 2) beginContextMenuMove(event); }}><FolderOpen size={17} /><strong>{uiText("library.ungrouped", "Ungrouped")}</strong></header>
             <div>
@@ -749,7 +743,7 @@ export function LibraryPage() {
               })}
             </div>
           </>}
-        </div>
+        </LibraryMenuSurface>
       ) : null}
       <Dialog open={renamingGroup !== null} title={uiText("library.texts.renameGroup", "Rename group")} description={uiText("library.texts.instancesStayInTheSameGroup", "Instances stay in the same group.")} onClose={() => setRenamingGroup(null)} width="small">
         <form className={styles.renameForm} onSubmit={(event) => { event.preventDefault(); void renameGroup(); }}>
@@ -757,6 +751,6 @@ export function LibraryPage() {
           <button className={common.button} type="submit" disabled={!renameValue.trim()}>{uiText("common.save", "Save")}</button>
         </form>
       </Dialog>
-    </div>
+    </LibraryFrame>
   );
 }

@@ -1,3 +1,4 @@
+import { LibrarySidePanelSurface } from "../common/LibraryChrome";
 import { useUiText } from "../../i18n/UiText";
 import { useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
@@ -199,7 +200,7 @@ export function InstanceSidePanel({ instance, onDelete, onContextMenu }: Instanc
   const actionOrder = panelOptions.actionOrder?.length ? panelOptions.actionOrder : Object.keys(actionButtons);
 
   return (
-    <aside
+    <LibrarySidePanelSurface
       className={styles.panel}
       data-slh-context-menu="true" onContextMenu={(event) => { event.preventDefault(); onContextMenu?.(event); }}
       onPointerDown={(event) => {
@@ -260,6 +261,6 @@ export function InstanceSidePanel({ instance, onDelete, onContextMenu }: Instanc
           <button className={common.ghostButton} type="button" onClick={() => setStoreDialogOpen(false)}>{uiText("common.cancel", "Cancel")}</button>
         </div>
       </Dialog>
-    </aside>
+    </LibrarySidePanelSurface>
   );
 }

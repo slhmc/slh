@@ -23,7 +23,7 @@ Both assets are bundled locally so the portable launcher UI does not need a font
 - Source: https://github.com/yushijinhun/authlib-injector
 - Runtime version: 1.2.8
 - License: GNU General Public License v3.0
-- Distribution: downloaded from the official GitHub release on the first Ely.by launch and accepted only after SHA-256 verification; it is not embedded in `SLH.exe`
+- Distribution: downloaded from the official GitHub release on the first Ely.by launch or first offline launch with a local skin and accepted only after SHA-256 verification; it is not embedded in `SLH.exe`
 
 ## Bedrock version metadata
 
@@ -63,3 +63,10 @@ GPU sampling uses the Windows PDH API.
 The separate native prototype uses Slint 1.18.1 and wgpu 30.0.1. Slint offers GPL-3.0-only, Slint Royalty-free 2.0, and commercial licensing alternatives; see https://slint.dev/license. Desktop distribution must follow the selected Slint license. The prototype does not change the licensing of the existing Tauri frontend.
 
 wgpu, glam, bytemuck, directories, tar, flate2, and keyring are covered by their upstream permissive licenses. Exact dependencies and versions are recorded in `crates/slh-native/Cargo.lock` and `crates/slh-core/Cargo.lock`. Pixeloid Sans retains its existing SIL OFL attribution above.
+
+## RustCrypto RSA 0.9.10
+
+- Source: https://github.com/RustCrypto/RSA
+- License: MIT (selected from MIT OR Apache-2.0)
+- Use: signatures for local offline skin textures; no account authentication
+- Full license: resources/licenses/RustCrypto-RSA-MIT.txt

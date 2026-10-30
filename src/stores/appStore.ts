@@ -15,6 +15,7 @@ import { versionNotification } from "../lib/versionNotifications";
 import { receivePackProgress } from "./packJobs";
 
 interface ToastMessage {
+  reportPath?: string;
   brief?: boolean;
   id: string;
   tone: "info" | "success" | "error";
@@ -223,7 +224,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
       get().pushToast({
         tone: "error",
         title: "Minecraft crashed",
-        message: "Try again. If it continues, check the app log.",
+        message: "errors.gameCrashed",
+        reportPath: event.reportPath ?? undefined,
       });
     }
   },
@@ -241,11 +243,15 @@ export const useAppStore = create<AppStore>((set, get) => ({
       && item.action?.label === toast.action?.label
       && item.action?.url === toast.action?.url);
     if (isDuplicate) return;
-    const item = { ...toast, title: engine.keyOf(toast.title, toast.params), message: engine.keyOf(toast.message, toast.params),
+    const item = { ...toast, title: engine.keyOf(toast.title, toast.params), message: engine.isDiagnostic(toast.message) ? toast.message : engine.keyOf(toast.message, toast.params),
       action: toast.action ? { ...toast.action, label: engine.keyOf(toast.action.label, toast.params) } : undefined, id: crypto.randomUUID() };
     const maxVisible = Math.max(1, Math.min(8, preferences?.maxVisible ?? 3));
     set({ toasts: [...get().toasts, item].slice(-maxVisible) });
-    window.setTimeout(() => get().dismissToast(item.id), toast.brief ? 2000 : preferences?.durationMs ?? 5000);
+    // Reports stay reachable until dismissed; technical details must not
+    // disappear while the user is reading or trying to open the report.
+    if (!item.reportPath && !engine.diagnosticReportPath(item.message)) {
+      window.setTimeout(() => get().dismissToast(item.id), toast.brief ? 2000 : preferences?.durationMs ?? 5000);
+    }
   },
   dismissToast: (id) => set({ toasts: get().toasts.filter((toast) => toast.id !== id) }),
 }));

@@ -113,6 +113,8 @@ struct ProjectFile {
     id: u64,
     mod_id: u64,
     is_available: bool,
+    #[serde(default)]
+    is_server_pack: bool,
     display_name: String,
     file_name: String,
     release_type: u32,
@@ -596,6 +598,7 @@ pub async fn install(
     // Stage backups and download records first, then fetch all independent
     // CurseForge files concurrently. World archives still get unpacked in
     // order after their verified download completes.
+    let mut staging=super::mod_identity::ContentStage::default();
     let mut changed = Vec::new();
     for (index, item) in resolved.iter().enumerate() {
         let destination = PathBuf::from(&item.plan.destination);
@@ -614,7 +617,7 @@ pub async fn install(
                     item.plan.project_id, item.plan.version_id
                 ))
             } else {
-                destination.clone()
+                staging.prepare(&destination)?
             };
             let download_id = Uuid::new_v4().to_string();
             sqlx::query(
@@ -623,7 +626,7 @@ pub async fn install(
             )
             .bind(&download_id)
             .bind(&item.url)
-            .bind(download_destination.to_string_lossy().into_owned())
+            .bind(if item.project_type=="world" {download_destination.to_string_lossy().into_owned()}else{destination.to_string_lossy().into_owned()})
             .bind(item.plan.size_bytes as i64)
             .execute(&state.database)
             .await?;
@@ -718,6 +721,7 @@ pub async fn install(
             .execute(&state.database)
             .await?;
             let destination = PathBuf::from(&item.plan.destination);
+            if item.project_type!="world" {staging.commit(download_destination,&destination,&item.sha1).await?;}
             if item.project_type == "world" {
                 backups_created += install_world_archive(
                     state,
@@ -736,6 +740,9 @@ pub async fn install(
                 }
             }
             installed_files += 1;
+        }
+        if item.project_type == "mod" {
+            backups_created += super::mod_identity::replace_duplicates(state, instance_id, Path::new(&item.plan.destination)).await?;
         }
         sqlx::query(
             "INSERT INTO installed_content(instance_id, provider, project_id, version_id, \
@@ -840,7 +847,7 @@ pub async fn install_modpack_tracked(
             state,
             api_get(state, &format!("mods/{project_id}/files/{file_id}")).await?,
         ).await?;
-        if response.data.mod_id != project_id || !response.data.is_available {
+        if response.data.mod_id != project_id || !available_client_file(&response.data) {
             return Err(AppError::Conflict("Selected CurseForge modpack file is unavailable".into()));
         }
         response.data
@@ -898,7 +905,7 @@ pub async fn install_modpack_tracked(
             url: url.clone(),
             destination: archive_path.clone(),
             sha1: Some(sha1),
-            max_bytes: None,
+            max_bytes: Some(512 * 1024 * 1024),
         },
         move |completed, total| {
             let _ = progress_app.emit(
@@ -1010,10 +1017,14 @@ pub(crate) async fn pack_download(
     )
     .await?;
     let file = response.data;
-    if file.mod_id != project_id || !file.is_available {
-        return Err(AppError::Conflict(format!(
-            "CurseForge file {file_id} is unavailable for project {project_id}"
-        )));
+    if file.mod_id != project_id {
+        return Err(AppError::Security(format!("CurseForge file {file_id} belongs to a different project")));
+    }
+    if !file.is_available {
+        return Err(AppError::PackFileUnavailable {
+            provider: "CurseForge".into(), project: project.name,
+            file_name: file.file_name, file_id: file_id.to_string(),
+        });
     }
     validate_file_name(&file.file_name)?;
     let sha1 = file
@@ -1566,7 +1577,7 @@ async fn latest_available_file(state: &AppState, project_id: u64) -> AppResult<P
     .await?;
     response
         .data
-        .retain(|file| file.is_available && file.hashes.iter().any(|hash| hash.algo == 1));
+        .retain(|file| available_client_file(file) && file.hashes.iter().any(|hash| hash.algo == 1));
     response.data.sort_by(|left, right| {
         left.release_type
             .cmp(&right.release_type)
@@ -1627,7 +1638,7 @@ pub async fn project_details(
         modpack_versions: files
             .data
             .into_iter()
-            .filter(|file| file.is_available)
+            .filter(available_client_file)
             .take(50)
             .map(|file| {
                 let game_versions = file
@@ -1641,16 +1652,8 @@ pub async fn project_details(
                     })
                     .cloned()
                     .collect::<Vec<_>>();
-                let loaders = file
-                    .game_versions
-                    .iter()
-                    .filter(|value| {
-                        !value
-                            .chars()
-                            .next()
-                            .is_some_and(|character| character.is_ascii_digit())
-                    })
-                    .cloned()
+                let loaders = file.game_versions.iter()
+                    .filter_map(|value| canonical_loader(value).map(str::to_owned))
                     .collect::<Vec<_>>();
                 ModpackVersionOption {
                     id: file.id.to_string(),
@@ -1810,6 +1813,7 @@ fn validate_file_name(value: &str) -> AppResult<()> {
 
 fn class_id_for(project_type: &str) -> Option<u64> {
     match project_type {
+        "plugin" => Some(5),
         "mod" => Some(6),
         "resourcepack" => Some(12),
         "modpack" => Some(4471),
@@ -1817,6 +1821,11 @@ fn class_id_for(project_type: &str) -> Option<u64> {
         "world" => Some(17),
         _ => None,
     }
+}
+
+/// Server plugins share the launcher's authenticated, cached and rate-limited API client.
+pub(crate) async fn server_api(state:&AppState,path:&str,parameters:&[(String,String)])->AppResult<serde_json::Value> {
+    send_api_json(state,api_get(state,path).await?.query(parameters)).await
 }
 
 fn curseforge_sort_field(sort: &str) -> u32 {
@@ -1831,6 +1840,7 @@ fn curseforge_sort_field(sort: &str) -> u32 {
 
 fn project_type(class_id: Option<u64>) -> &'static str {
     match class_id {
+        Some(5) => "plugin",
         Some(4984) => "mod",
         Some(6929) => "resourcepack",
         Some(6913) => "world",
@@ -1840,6 +1850,20 @@ fn project_type(class_id: Option<u64>) -> &'static str {
         Some(6552) => "shader",
         Some(17) => "world",
         _ => "project",
+    }
+}
+
+fn available_client_file(file: &ProjectFile) -> bool {
+    file.is_available && !file.is_server_pack
+}
+
+fn canonical_loader(value: &str) -> Option<&'static str> {
+    match value.to_ascii_lowercase().as_str() {
+        "forge" => Some("forge"),
+        "fabric" => Some("fabric"),
+        "quilt" => Some("quilt"),
+        "neoforge" => Some("neoforge"),
+        _ => None,
     }
 }
 
@@ -2011,6 +2035,70 @@ mod tests {
     use super::*;
 
     #[tokio::test]
+    async fn restricted_pack_waits_for_verified_manual_file_and_resumes_same_instance() {
+        use std::io::Write;
+        use sha1::{Digest, Sha1};
+        let root = tempfile::tempdir().unwrap();
+        let paths = PortablePaths::from_executable(&root.path().join("SLH.exe"), Some(root.path().to_path_buf())).unwrap();
+        let state = AppState::initialize_isolated_at(paths).await.unwrap();
+        // Prime the real API adapter cache with controlled provider responses;
+        // the complete import path below must make no external requests.
+        let hash = hex::encode(Sha1::digest(b"verified manual mod"));
+        for (endpoint, data) in [
+            ("mods/123", serde_json::json!({"id":123,"name":"Restricted mod","slug":"restricted-mod","summary":"test","downloadCount":1,
+                "classId":6,"dateModified":"2026-01-01T00:00:00Z","allowModDistribution":false})),
+            ("mods/123/files/456", serde_json::json!({"id":456,"modId":123,"isAvailable":true,"displayName":"Restricted mod 1.0",
+                "fileName":"required.jar","releaseType":1,"hashes":[{"algo":1,"value":hash}],"fileDate":"2026-01-01T00:00:00Z","fileLength":19,"downloadUrl":null})),
+        ] {
+            state.curseforge_http.remember(api_get(&state, endpoint).await.unwrap(), serde_json::json!({"data":data}), &state.database).await.unwrap();
+        }
+        let minecraft = state.paths.cache.join("minecraft");
+        std::fs::create_dir_all(&minecraft).unwrap();
+        std::fs::write(minecraft.join("version_manifest_v2.json"), br#"{"versions":[]}"#).unwrap();
+        let archive_path = root.path().join("pack.zip");
+        let mut zip = zip::ZipWriter::new(std::fs::File::create(&archive_path).unwrap());
+        zip.start_file("manifest.json", zip::write::SimpleFileOptions::default()).unwrap();
+        zip.write_all(br#"{"manifestType":"minecraftModpack","manifestVersion":1,"name":"Restricted pack","minecraft":{"version":"test-unavailable","modLoaders":[]},"files":[{"projectID":123,"fileID":456,"required":true}],"overrides":"overrides"}"#).unwrap();
+        zip.start_file("overrides/options.txt", zip::write::SimpleFileOptions::default()).unwrap();
+        zip.write_all(b"pack settings").unwrap();
+        zip.finish().unwrap();
+        let request = || ImportSlhRequest { archive_path: archive_path.to_string_lossy().into_owned(), name: None };
+        let error = crate::archives::import_curseforge_pack(&Host::silent(), &state, request()).await.unwrap_err();
+        let AppError::ManualDownloads { files, .. } = error else { panic!("Expected manual files, got {error}"); };
+        assert_eq!(files.len(), 1);
+        assert!(files[0].url.ends_with("/restricted-mod/download/456"));
+        let count: i64 = sqlx::query_scalar("SELECT count(*) FROM instances").fetch_one(&state.database).await.unwrap();
+        assert_eq!(count, 0);
+        let manual = state.paths.downloads.join("curseforge-manual");
+        std::fs::create_dir_all(&manual).unwrap();
+        let source = root.path().join("manual.jar");
+        std::fs::write(&source, b"verified manual mod").unwrap();
+        cache_verified_pack_file(&manual, &source, "required.jar", &hash).await.unwrap();
+        let error = crate::archives::import_curseforge_pack(&Host::silent(), &state, request()).await.unwrap_err();
+        assert!(matches!(error.root(), AppError::NotFound(_)), "{error}");
+        let id: String = sqlx::query_scalar("SELECT id FROM instances").fetch_one(&state.database).await.unwrap();
+        let instance = database::instance(&state.database, &id).await.unwrap();
+        let game = PathBuf::from(&instance.game_dir);
+        assert_eq!(std::fs::read(game.join("mods/required.jar")).unwrap(), b"verified manual mod");
+        std::fs::write(game.join("options.txt"), b"user settings").unwrap();
+        let error = crate::minecraft::installer::install_instance(&Host::silent(), &state, &id, None).await.unwrap_err();
+        assert!(matches!(error.root(), AppError::NotFound(_)), "{error}");
+        let count: i64 = sqlx::query_scalar("SELECT count(*) FROM instances").fetch_one(&state.database).await.unwrap();
+        assert_eq!(count, 1);
+        assert_eq!(std::fs::read(game.join("options.txt")).unwrap(), b"user settings");
+        state.curseforge_http.remember(api_get(&state, "mods/123/files/456").await.unwrap(), serde_json::json!({"data":{
+            "id":456,"modId":123,"isAvailable":false,"displayName":"Removed file","fileName":"required.jar","releaseType":1,
+            "hashes":[],"fileDate":"2026-01-01T00:00:00Z","fileLength":19
+        }}), &state.database).await.unwrap();
+        let error = pack_download(&state, 123, 456).await.err().expect("unavailable file must block installation");
+        let command: crate::error::CommandError = error.into();
+        assert_eq!(command.code, "not_found");
+        assert_eq!(command.message_key.as_deref(), Some("errors.packFileUnavailable"));
+        assert_eq!(command.params.unwrap()["project"], "Restricted mod");
+        state.database.close().await;
+    }
+
+    #[tokio::test]
     async fn pack_cache_keeps_distinct_versions_and_rejects_changed_files() {
         use sha1::{Digest, Sha1};
         let directory = tempfile::tempdir().unwrap();
@@ -2043,6 +2131,35 @@ mod tests {
         assert!(validate_api_relative_path("mods/238222/files").is_ok());
         assert!(validate_api_relative_path("../secret").is_err());
         assert!(validate_api_relative_path("mods/search?gameId=432").is_err());
+    }
+
+    #[test]
+    fn file_loader_tags_use_launcher_ids_and_exclude_environment_tags() {
+        for (tag, expected) in [("Forge", "forge"), ("NeoForge", "neoforge"), ("Fabric", "fabric"), ("Quilt", "quilt")] {
+            assert_eq!(canonical_loader(tag), Some(expected));
+            assert!(loader_code(canonical_loader(tag).unwrap(), "mod").is_ok());
+        }
+        for tag in ["1.21.1", "Java 21", "Client", "Server"] {
+            assert_eq!(canonical_loader(tag), None);
+        }
+    }
+
+    #[test]
+    fn server_archives_are_never_offered_as_client_modpacks() {
+        let mut data = serde_json::json!({
+            "id": 1, "modId": 2, "isAvailable": true,
+            "displayName": "Pack", "fileName": "pack.zip", "releaseType": 1,
+            "fileDate": "2026-10-30T00:00:00Z", "fileLength": 1
+        });
+        let legacy: ProjectFile = serde_json::from_value(data.clone()).unwrap();
+        assert!(available_client_file(&legacy));
+        data["isServerPack"] = true.into();
+        let server: ProjectFile = serde_json::from_value(data.clone()).unwrap();
+        assert!(!available_client_file(&server));
+        data["isServerPack"] = false.into();
+        data["isAvailable"] = false.into();
+        let unavailable: ProjectFile = serde_json::from_value(data).unwrap();
+        assert!(!available_client_file(&unavailable));
     }
 
     #[test]

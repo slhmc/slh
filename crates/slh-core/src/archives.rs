@@ -100,7 +100,7 @@ struct CurseForgePackFile {
 
 struct PreparedModrinthFile {
     relative: PathBuf,
-    url: String,
+    urls: Vec<String>,
     sha1: String,
     file_size: u64,
 }
@@ -712,13 +712,23 @@ pub async fn import_modrinth_pack(
 ) -> AppResult<Instance> {
     let archive_path = PathBuf::from(&request.archive_path);
     let source_for_manifest = archive_path.clone();
-    let manifest = tokio::task::spawn_blocking(move || -> AppResult<ModrinthPackManifest> {
+    let (manifest, overridden_paths) = tokio::task::spawn_blocking(move || -> AppResult<(ModrinthPackManifest, std::collections::HashSet<String>)> {
         let file = File::open(source_for_manifest)?;
         let mut archive = zip::ZipArchive::new(file)?;
         validate_archive(&mut archive)?;
         let value = read_json_entry(&mut archive, "modrinth.index.json")?
             .ok_or_else(|| AppError::InvalidInput("Archive has no modrinth.index.json".into()))?;
-        Ok(serde_json::from_value(value)?)
+        let mut overridden = std::collections::HashSet::new();
+        for i in 0..archive.len() {
+            let entry = archive.by_index(i)?;
+            if entry.is_dir() { continue; }
+            let name = entry.name().replace('\\', "/");
+            if let Some(relative) = name.strip_prefix("overrides/").or_else(|| name.strip_prefix("client-overrides/")) {
+                validate_relative_path(Path::new(relative))?;
+                overridden.insert(relative.to_ascii_lowercase());
+            }
+        }
+        Ok((serde_json::from_value(value)?, overridden))
     })
     .await
     .map_err(|error| AppError::Process(format!("Modrinth manifest task failed: {error}")))??;
@@ -761,6 +771,9 @@ pub async fn import_modrinth_pack(
         .into_iter()
         .filter(|file| {
             file.env.as_ref().and_then(|env| env.client.as_deref()) != Some("unsupported")
+                // Archive overrides are authoritative. Downloading their indexed
+                // counterparts again on resume would overwrite the override.
+                && !overridden_paths.contains(&file.path.replace('\\', "/").to_ascii_lowercase())
         })
         .map(|file| {
             let relative = PathBuf::from(&file.path);
@@ -775,16 +788,17 @@ pub async fn import_modrinth_pack(
                     relative.display()
                 )));
             }
-            let url = file
+            let urls = file
                 .downloads
                 .into_iter()
-                .find(|url| url.starts_with("https://"))
-                .ok_or_else(|| {
-                    AppError::Security(format!(
+                .filter(|url| url.starts_with("https://"))
+                .collect::<Vec<_>>();
+            if urls.is_empty() {
+                return Err(AppError::Security(format!(
                         "Modrinth pack file {} has no HTTPS download",
                         relative.display()
-                    ))
-                })?;
+                    )));
+            }
             let sha1 = file.hashes.get("sha1").cloned().ok_or_else(|| {
                 AppError::Security(format!(
                     "Modrinth pack file {} has no SHA-1 hash",
@@ -793,7 +807,7 @@ pub async fn import_modrinth_pack(
             })?;
             Ok(PreparedModrinthFile {
                 relative,
-                url,
+                urls,
                 sha1,
                 file_size: file.file_size,
             })
@@ -809,11 +823,15 @@ pub async fn import_modrinth_pack(
             "Modrinth pack downloads exceed the 16 GiB safety limit".into(),
         ));
     }
-    let created = instances::create_instance(
+    let origin_key = format!("modrinth-import:{}", archive_sha1(&archive_path).await?);
+    let previous = pending_modrinth_instance(state, &origin_key).await?;
+    let resumed = previous.is_some();
+    let created = if let Some(previous) = previous { previous } else { instances::create_instance(
         &state.database,
         &state.paths,
         CreateInstanceRequest {
-            name: request.name.unwrap_or(manifest.name),
+            name: instances::allocate_unique_display_name(&state.database,
+                &request.name.unwrap_or_else(|| crate::content::install::safe_modpack_name(&manifest.name))).await?,
             group_id: None,
             minecraft_version,
             loader_type: loader_type.into(),
@@ -827,12 +845,16 @@ pub async fn import_modrinth_pack(
             bedrock_profile_mode: None,
         },
     )
-    .await?;
+    .await? };
+    crate::database::set_setting(&state.database, &origin_key, &serde_json::json!({
+        "instanceId": created.id, "archivePath": archive_path.to_string_lossy(),
+        "provider": "modrinth", "pending": true,
+    })).await?;
     // Claim the newly-created instance for the complete import+installation
     // operation so its side panel cannot offer a second Install action while
     // pack files are still downloading.
     let claimed = sqlx::query(
-        "UPDATE instances SET status = 'installing' WHERE id = ? AND status = 'created'",
+        "UPDATE instances SET status = 'installing' WHERE id = ? AND status IN ('created', 'error')",
     )
     .bind(&created.id)
     .execute(&state.database)
@@ -846,23 +868,22 @@ pub async fn import_modrinth_pack(
     let operation_id = Uuid::new_v4().to_string();
     let game_dir = PathBuf::from(&created.game_dir);
     let total_files = downloadable.len() as u64;
+    let _ = app.emit(crate::host::EventKind::OperationProgress, ProgressEvent {
+        operation_id: operation_id.clone(), instance_id: Some(created.id.clone()),
+        operation: "import".into(), stage: "pack-files".into(), message: "Installing Modrinth pack files".into(),
+        completed: 0, total: Some(total_files), downloaded_bytes: Some(0), total_bytes: Some(total_size),
+    });
     let result = async {
         let source_for_overrides = archive_path.clone();
         let game_for_overrides = game_dir.clone();
-        tokio::task::spawn_blocking(move || {
-            extract_override_prefixes(&source_for_overrides, &game_for_overrides)
-        })
-        .await
-        .map_err(|error| AppError::Process(format!("Pack overrides task failed: {error}")))??;
-        let plans = downloadable
-            .iter()
-            .map(|file| DownloadPlan {
-                url: file.url.clone(),
-                destination: game_dir.join(&file.relative),
-                sha1: Some(file.sha1.clone()),
-                max_bytes: None,
-            })
-            .collect::<Vec<_>>();
+        let overrides_done = crate::database::setting(&state.database, &format!("{origin_key}:overrides"))
+            .await.ok().and_then(|v| v.as_bool()).unwrap_or(false);
+        // Do not overwrite a user's configuration on a retry after the pack
+        // files or Minecraft downloads failed.
+        let plans = downloadable.iter().map(|file| file.urls.iter().map(|url| DownloadPlan {
+            url: url.clone(), destination: game_dir.join(&file.relative),
+            sha1: Some(file.sha1.clone()), max_bytes: Some(file.file_size.max(1)),
+        }).collect::<Vec<_>>()).collect::<Vec<_>>();
         let relative_names = downloadable
             .iter()
             .map(|file| file.relative.display().to_string())
@@ -874,7 +895,12 @@ pub async fn import_modrinth_pack(
         let mut completed = 0_u64;
         let mut downloaded_bytes = 0_u64;
         let concurrency = configured_concurrency(&state.database).await;
-        download_many(&state.http, plans, concurrency, move |index, bytes| {
+        let mut pending = stream::iter(plans.into_iter().enumerate().map(|(index, plans)| {
+            let client = state.http.clone();
+            async move { crate::minecraft::download::download_from_mirrors(&client, &plans).await.map(|bytes| (index, bytes)) }
+        })).buffer_unordered(concurrency);
+        while let Some(result) = pending.next().await {
+            let (index, bytes) = result?;
             completed += 1;
             downloaded_bytes = downloaded_bytes.saturating_add(bytes);
             let _ = progress_app.emit(
@@ -891,13 +917,24 @@ pub async fn import_modrinth_pack(
                     total_bytes: Some(total_size),
                 },
             );
-        })
-        .await?;
+        }
+        if !resumed || !overrides_done {
+            tokio::task::spawn_blocking(move || {
+                extract_override_prefixes(&source_for_overrides, &game_for_overrides)
+            })
+        .await
+        .map_err(|error| AppError::Process(format!("Pack overrides task failed: {error}")))??;
+            crate::database::set_setting(&state.database, &format!("{origin_key}:overrides"), &serde_json::json!(true)).await?;
+        }
         crate::minecraft::installer::install_instance_claimed(&install_app, state, &created.id)
             .await
     }
     .await;
     if result.is_ok() {
+        crate::database::set_setting(&state.database, &origin_key, &serde_json::json!({
+            "instanceId": created.id, "archivePath": archive_path.to_string_lossy(),
+            "provider": "modrinth", "pending": false,
+        })).await?;
         let _ = app.emit(
             crate::host::EventKind::OperationProgress,
             ProgressEvent {
@@ -936,6 +973,31 @@ pub async fn import_modrinth_pack(
     result
 }
 
+async fn archive_sha1(path: &Path) -> AppResult<String> {
+    use sha1::Digest;
+    use tokio::io::AsyncReadExt;
+    let mut file = tokio::fs::File::open(path).await?;
+    let mut digest = sha1::Sha1::new();
+    let mut buffer = vec![0; 128 * 1024];
+    loop {
+        let n = file.read(&mut buffer).await?;
+        if n == 0 { break; }
+        digest.update(&buffer[..n]);
+    }
+    Ok(hex::encode(digest.finalize()))
+}
+
+async fn pending_modrinth_instance(state: &AppState, key: &str) -> AppResult<Option<Instance>> {
+    let value = match crate::database::setting(&state.database, key).await { Ok(v) => v, Err(_) => return Ok(None) };
+    if value.get("pending").and_then(Value::as_bool) != Some(true) { return Ok(None); }
+    let Some(id) = value.get("instanceId").and_then(Value::as_str) else { return Ok(None); };
+    let instance = match crate::database::instance(&state.database, id).await { Ok(i) => i, Err(_) => return Ok(None) };
+    if matches!(instance.status.as_str(), "installing" | "running" | "launching") {
+        return Err(AppError::Conflict("This modpack is already being installed or running".into()));
+    }
+    Ok(Some(instance))
+}
+
 pub async fn import_curseforge_pack(
     app: &Host,
     state: &AppState,
@@ -957,7 +1019,7 @@ pub async fn import_curseforge_pack_tracked(
         validate_archive(&mut archive)?;
         let value = read_json_entry(&mut archive, "manifest.json")?
             .ok_or_else(|| AppError::InvalidInput("Archive has no manifest.json".into()))?;
-        Ok(serde_json::from_value(value)?)
+        parse_curseforge_manifest(value)
     })
     .await
     .map_err(|error| AppError::Process(format!("CurseForge manifest task failed: {error}")))??;
@@ -1095,6 +1157,7 @@ pub async fn import_curseforge_pack_tracked(
         },
         None => None,
     };
+    let resumed = previous.is_some();
     let instance_name = instances::allocate_unique_display_name(&state.database, &requested_name).await?;
     let created = if let Some(previous) = previous { previous } else { instances::create_instance(
         &state.database,
@@ -1141,11 +1204,6 @@ pub async fn import_curseforge_pack_tracked(
         let source_for_overrides = archive_path.clone();
         let game_for_overrides = game_dir.clone();
         let override_prefix = overrides.clone();
-        tokio::task::spawn_blocking(move || {
-            extract_override_prefix(&source_for_overrides, &game_for_overrides, &override_prefix)
-        })
-        .await
-        .map_err(|error| AppError::Process(format!("Pack overrides task failed: {error}")))??;
         let mut plans = Vec::with_capacity(prepared.len());
         let mut destinations = Vec::with_capacity(prepared.len());
         let mut download_ids = Vec::with_capacity(prepared.len());
@@ -1263,6 +1321,16 @@ pub async fn import_curseforge_pack_tracked(
             .execute(&state.database)
             .await?;
         }
+        let overrides_done = crate::database::setting(&state.database, &format!("{origin_key}:overrides"))
+            .await.ok().and_then(|v| v.as_bool()).unwrap_or(false);
+        if !resumed || !overrides_done {
+        tokio::task::spawn_blocking(move || {
+            extract_override_prefix(&source_for_overrides, &game_for_overrides, &override_prefix)
+        })
+        .await
+        .map_err(|error| AppError::Process(format!("Pack overrides task failed: {error}")))??;
+            crate::database::set_setting(&state.database, &format!("{origin_key}:overrides"), &serde_json::json!(true)).await?;
+        }
         crate::minecraft::installer::install_instance_claimed(app, state, &created.id).await
     }
     .await;
@@ -1315,6 +1383,23 @@ pub async fn import_curseforge_pack_tracked(
             .await;
     }
     result
+}
+
+fn parse_curseforge_manifest(value: Value) -> AppResult<CurseForgePackManifest> {
+    if value.get("manifestType").and_then(Value::as_str) != Some("minecraftModpack") {
+        return Err(AppError::InvalidInput("Archive is not a CurseForge Minecraft modpack".into()));
+    }
+    if !value.get("files").is_some_and(Value::is_array) {
+        return Err(AppError::InvalidInput("CurseForge modpack manifest has no file list".into()));
+    }
+    let manifest: CurseForgePackManifest = serde_json::from_value(value)
+        .map_err(|error| AppError::InvalidInput(format!("Invalid CurseForge modpack manifest: {error}")))?;
+    if manifest.manifest_version != 1 || manifest.name.trim().is_empty() || manifest.minecraft.version.trim().is_empty() {
+        return Err(AppError::InvalidInput("Unsupported or incomplete CurseForge Minecraft modpack manifest".into()));
+    }
+    curseforge_loader(&manifest.minecraft.mod_loaders)?;
+    validate_relative_path(Path::new(manifest.overrides.trim_matches(['/', '\\'])))?;
+    Ok(manifest)
 }
 
 fn curseforge_loader(loaders: &[CurseForgeModLoader]) -> AppResult<(&'static str, Option<String>)> {
@@ -1410,44 +1495,21 @@ fn inspect_archive_sync_with_key(
         });
     }
     if let Some(value) = read_json_entry(&mut archive, "manifest.json")? {
-        let minecraft = value
-            .pointer("/minecraft/version")
-            .and_then(Value::as_str)
-            .map(str::to_owned);
-        let (loader_type, loader_version) = value
-            .pointer("/minecraft/modLoaders")
-            .and_then(Value::as_array)
-            .and_then(|loaders| {
-                loaders
-                    .iter()
-                    .find(|loader| loader.get("primary").and_then(Value::as_bool) == Some(true))
-                    .or_else(|| loaders.first())
-            })
-            .and_then(|loader| loader.get("id").and_then(Value::as_str))
-            .and_then(|id| {
-                ["fabric", "forge", "neoforge", "quilt"]
-                    .into_iter()
-                    .find_map(|kind| {
-                        id.strip_prefix(&format!("{kind}-"))
-                            .map(|version| (kind.to_owned(), version.to_owned()))
-                    })
-            })
-            .map_or((None, None), |(kind, version)| (Some(kind), Some(version)));
-        // Both a personal API key and the default SLH relay can resolve file IDs.
-        let can_import = true;
-        return Ok(ArchiveInspection {
-            archive_type: "curseforge".into(),
-            name: value.get("name").and_then(Value::as_str).map(str::to_owned),
-            minecraft_version: minecraft,
-            loader_type,
-            loader_version,
-            can_import,
-            message: if can_import {
-                "CurseForge pack manifest is valid and ready to import".into()
-            } else {
-                "CurseForge archive is valid; resolving project file IDs requires a configured API key".into()
-            },
-        });
+        // Browser extensions and unrelated ZIPs also use manifest.json.
+        // Only the explicit CurseForge Minecraft format can trigger auto-import.
+        if value.get("manifestType").and_then(Value::as_str) == Some("minecraftModpack") {
+            let manifest = parse_curseforge_manifest(value)?;
+            let (loader_type, loader_version) = curseforge_loader(&manifest.minecraft.mod_loaders)?;
+            return Ok(ArchiveInspection {
+                archive_type: "curseforge".into(),
+                name: Some(manifest.name),
+                minecraft_version: Some(manifest.minecraft.version),
+                loader_type: Some(loader_type.into()),
+                loader_version,
+                can_import: true,
+                message: "CurseForge pack manifest is valid and ready to import".into(),
+            });
+        }
     }
     Ok(ArchiveInspection {
         archive_type: "unknown".into(),
@@ -1895,6 +1957,144 @@ mod tests {
     use super::*;
 
     #[tokio::test]
+    #[ignore = "live provider downloads; requires SLH_PACK_TEST_CACHE, SLH_PACK_TEST_JAVA and SLH_PACK_TEST_JAVA17"]
+    async fn live_modpack_catalog_downloads_prepare_profiles_and_explain_blocked_files() {
+        let source = PathBuf::from(std::env::var("SLH_PACK_TEST_CACHE").unwrap()).join("minecraft");
+        let root = tempfile::tempdir().unwrap();
+        let paths = crate::portable::PortablePaths::from_executable(&root.path().join("SLH.exe"), Some(root.path().to_path_buf())).unwrap();
+        let state = AppState::initialize_isolated_at(paths).await.unwrap();
+        let target = state.paths.cache.join("minecraft");
+        // Copy only immutable, referenced Minecraft artifacts into the private
+        // test cache. Pack archives/mods themselves must come from live CDNs.
+        let copy = |relative: &Path| {
+            let from = source.join(relative);
+            if from.is_file() {
+                let to = target.join(relative);
+                std::fs::create_dir_all(to.parent().unwrap()).unwrap();
+                std::fs::copy(from, to).unwrap();
+            }
+        };
+        copy(Path::new("version_manifest_v2.json"));
+        for version in ["1.21.1", "1.19.2"] {
+            let relative = PathBuf::from(format!("versions/{version}.json"));
+            copy(&relative);
+            let details: Value = serde_json::from_slice(&std::fs::read(source.join(relative)).unwrap()).unwrap();
+            if let Some(libraries) = details["libraries"].as_array() {
+                for lib in libraries {
+                    if let Some(path) = lib["downloads"]["artifact"]["path"].as_str() { copy(&PathBuf::from("libraries").join(path)); }
+                    if let Some(classifiers) = lib["downloads"]["classifiers"].as_object() {
+                        for value in classifiers.values() { if let Some(path) = value["path"].as_str() { copy(&PathBuf::from("libraries").join(path)); } }
+                    }
+                }
+            }
+            let index = PathBuf::from(format!("assets/indexes/{}.json", details["assetIndex"]["id"].as_str().unwrap()));
+            copy(&index);
+            if let Ok(bytes) = std::fs::read(source.join(index)) {
+                let index: Value = serde_json::from_slice(&bytes).unwrap();
+                for object in index["objects"].as_object().unwrap().values() {
+                    let hash = object["hash"].as_str().unwrap();
+                    copy(&PathBuf::from(format!("assets/objects/{}/{hash}", &hash[..2])));
+                }
+            }
+        }
+        for (provider, java) in [("modrinth", "SLH_PACK_TEST_JAVA"), ("curseforge", "SLH_PACK_TEST_JAVA17"), ("curseforge-current", "SLH_PACK_TEST_JAVA17")] {
+            eprintln!("{provider}: checking live catalog, archive, required files and Minecraft preparation");
+            let mut minecraft = crate::database::setting(&state.database, "minecraft").await.unwrap();
+            minecraft["javaMode"] = "custom".into();
+            minecraft["javaPath"] = std::env::var(java).unwrap().into();
+            crate::database::set_setting(&state.database, "minecraft", &minecraft).await.unwrap();
+            let result = if provider == "modrinth" {
+                crate::content::install::install_modpack(&Host::silent(), &state, "TMKfZUmY", Some("Live Modrinth".into()), Some("1.21.1"), Some("fabric"), Some("iFYyzXiu")).await
+            } else if provider == "curseforge-current" {
+                crate::content::curseforge::install_modpack(&Host::silent(), &state, "1600389", Some("Live CurseForge current".into()), Some("9101514".into())).await
+            } else {
+                crate::content::curseforge::install_modpack(&Host::silent(), &state, "953413", Some("Live CurseForge".into()), Some("5048053".into())).await
+            };
+            match result {
+                Ok(instance) => {
+                    assert_eq!(instance.status, "installed");
+                    let mods = std::fs::read_dir(Path::new(&instance.game_dir).join("mods")).unwrap().count();
+                    assert!(mods > 0);
+                    let version_root = Path::new(&instance.game_dir).parent().unwrap().join("versions");
+                    assert!(version_root.join(&instance.minecraft_version).join("version.json").is_file());
+                    eprintln!("{provider}: installed; {mods} mod files; Minecraft and loader preparation complete (game not started)");
+                }
+                Err(AppError::ManualDownloads { files, .. }) if provider.starts_with("curseforge") => {
+                    assert!(!files.is_empty());
+                    assert!(files.iter().all(|f| f.url.starts_with("https://www.curseforge.com/")));
+                    eprintln!("curseforge: live archive and metadata verified; {} author-restricted files require manual download", files.len());
+                }
+                Err(error @ AppError::PackFileUnavailable { .. }) if provider.starts_with("curseforge") => {
+                    let command: crate::error::CommandError = error.into();
+                    assert_eq!(command.message_key.as_deref(), Some("errors.packFileUnavailable"));
+                    assert!(command.params.unwrap()["fileName"].as_str().is_some());
+                    eprintln!("{provider}: an unavailable required file was identified with structured provider/project/file context");
+                }
+                Err(error) => panic!("{provider}: {}", crate::security::redact_diagnostic(&error.to_string())),
+            }
+        }
+        state.database.close().await;
+    }
+
+    #[tokio::test]
+    async fn modrinth_retry_resumes_same_instance_checks_mods_and_preserves_overrides() {
+        use sha1::{Digest, Sha1};
+        let root = tempfile::tempdir().unwrap();
+        let paths = crate::portable::PortablePaths::from_executable(&root.path().join("SLH.exe"), Some(root.path().to_path_buf())).unwrap();
+        let mut state = AppState::initialize_isolated_at(paths).await.unwrap();
+        state.http = reqwest::Client::builder().no_proxy().timeout(std::time::Duration::from_millis(100)).build().unwrap();
+        let cache = state.paths.cache.join("minecraft");
+        std::fs::create_dir_all(&cache).unwrap();
+        std::fs::write(cache.join("version_manifest_v2.json"), br#"{"versions":[]}"#).unwrap();
+        let archive = root.path().join("resume.mrpack");
+        let manifest = serde_json::to_vec(&serde_json::json!({
+            "formatVersion": 1, "game": "minecraft", "name": "Resume pack", "dependencies": {"minecraft":"test-unavailable"},
+            "files": [
+                {"path":"mods/needed.jar", "hashes":{"sha1":hex::encode(Sha1::digest(b"verified"))}, "downloads":["https://127.0.0.1:9/needed.jar"], "fileSize":8},
+                {"path":"config/overlap.txt", "hashes":{"sha1":"0000000000000000000000000000000000000000"}, "downloads":["https://127.0.0.1:9/overlap.txt"], "fileSize":8},
+                {"path":"mods/server.jar", "hashes":{}, "downloads":[], "fileSize":0, "env":{"client":"unsupported"}}
+            ]
+        })).unwrap();
+        write_archive(&archive, &[("modrinth.index.json", &manifest), ("overrides/options.txt", b"pack-options"),
+            ("overrides/config/overlap.txt", b"base"), ("client-overrides/config/overlap.txt", b"client")]);
+        let instances = state.paths.instances.clone();
+        let seeded = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let host = Host::new(move |event| {
+            if matches!(event, crate::host::CoreEvent::Progress(ref p) if p.stage == "pack-files") && !seeded.swap(true, std::sync::atomic::Ordering::SeqCst) {
+                let instance = std::fs::read_dir(&instances).unwrap().next().unwrap().unwrap().path();
+                std::fs::write(instance.join("game/mods/needed.jar"), b"verified").unwrap();
+            }
+            Ok(())
+        });
+        let request = || ImportSlhRequest { archive_path: archive.to_string_lossy().into_owned(), name: None };
+        let error = import_modrinth_pack(&host, &state, request()).await.unwrap_err();
+        assert!(matches!(error.root(), AppError::NotFound(_)));
+        let id: String = sqlx::query_scalar("SELECT id FROM instances").fetch_one(&state.database).await.unwrap();
+        let instance = crate::database::instance(&state.database, &id).await.unwrap();
+        let game = PathBuf::from(&instance.game_dir);
+        assert_eq!(std::fs::read(game.join("config/overlap.txt")).unwrap(), b"client");
+        assert!(!game.join("mods/server.jar").exists());
+        std::fs::write(game.join("options.txt"), b"user-settings").unwrap();
+        std::fs::remove_file(game.join("mods/needed.jar")).unwrap();
+        // The normal Retry installation action must fetch the missing mod,
+        // rather than going straight to vanilla installation and declaring success.
+        let error = crate::minecraft::installer::install_instance(&Host::silent(), &state, &id, None).await.unwrap_err();
+        assert!(matches!(error.root(), AppError::Network(_)), "{error}");
+        assert!(error.to_string().contains("needed.jar"));
+        assert!(error.report_path().is_some());
+        assert_eq!(std::fs::read(game.join("options.txt")).unwrap(), b"user-settings");
+        assert_eq!(std::fs::read(game.join("config/overlap.txt")).unwrap(), b"client");
+        std::fs::write(game.join("mods/needed.jar"), b"verified").unwrap();
+        let error = import_modrinth_pack(&Host::silent(), &state, request()).await.unwrap_err();
+        assert!(matches!(error.root(), AppError::NotFound(_)), "{error}");
+        let count: i64 = sqlx::query_scalar("SELECT count(*) FROM instances").fetch_one(&state.database).await.unwrap();
+        assert_eq!(count, 1);
+        assert_eq!(crate::database::instance(&state.database, &id).await.unwrap().status, "error");
+        assert_eq!(std::fs::read(game.join("options.txt")).unwrap(), b"user-settings");
+        state.database.close().await;
+    }
+
+    #[tokio::test]
     #[ignore = "requires SLH_CURSEFORGE_PACK_FIXTURE and the live CurseForge API/relay"]
     async fn one_block_horror_reports_all_manual_files_before_creating_instance() {
         let archive_path = std::env::var("SLH_CURSEFORGE_PACK_FIXTURE").unwrap();
@@ -2026,6 +2226,33 @@ mod tests {
         assert_eq!(metadata.loader_version.as_deref(), Some("0.16.14"));
         assert!(staged.path().join("mods/example.jar").is_file());
         assert!(!staged.path().join("minecraft/mods/example.jar").exists());
+    }
+
+    #[test]
+    fn chrome_extension_is_not_a_curseforge_pack() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("extension.zip");
+        let manifest = br#"{"name":"Forgotten chrome extension","manifest_version":3,"version":"1.0","permissions":["storage"],"content_scripts":[]}"#;
+        write_archive(&path, &[("manifest.json", manifest), ("content-script.js", b"fixture")]);
+        let inspection = inspect_archive_sync(&path).unwrap();
+        assert_eq!(inspection.archive_type,"unknown");
+        assert!(!inspection.can_import);
+        assert!(inspection.name.is_none());
+        assert!(parse_curseforge_manifest(serde_json::from_slice(manifest).unwrap()).is_err());
+    }
+
+    #[test]
+    fn incomplete_minecraft_manifest_is_never_advertised_as_importable() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("broken.zip");
+        for manifest in [
+            r#"{"manifestType":"minecraftModpack","manifestVersion":1,"name":"Broken","files":[],"overrides":"overrides"}"#,
+            r#"{"manifestType":"minecraftModpack","manifestVersion":1,"name":"Broken","minecraft":{"version":"1.21.1"},"overrides":"overrides"}"#,
+            r#"{"manifestType":"minecraftModpack","manifestVersion":2,"name":"Broken","minecraft":{"version":"1.21.1"},"files":[],"overrides":"overrides"}"#
+        ] {
+            write_archive(&path,&[("manifest.json",manifest.as_bytes())]);
+            assert!(inspect_archive_sync(&path).is_err());
+        }
     }
 
     #[test]

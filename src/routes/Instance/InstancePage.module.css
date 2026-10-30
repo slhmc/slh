@@ -304,3 +304,7 @@
 .tabEmpty p { max-width: 480px; margin: 0; line-height: 1.5; }
 .spin { animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+.consolePanel { display:flex; flex-direction:column; min-height:360px; height:calc(100dvh - 260px); }
+
+.consolePanel > [data-log-viewer] { padding:var(--space-3); }

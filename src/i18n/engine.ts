@@ -28,7 +28,7 @@ export function interpolate(text: string, params: TranslationParams = {}, locale
 export function createTranslationEngine() {
   let state: LocaleSnapshot = { code: "en-US", messages: english, locales: [], diagnostics: [], valid: true };
   const listeners = new Set<() => void>();
-  const diagnostics = new Map<string, { key: string; params?: TranslationParams }>();
+  const diagnostics = new Map<string, { key: string; params?: TranslationParams; reportPath?: string }>();
   const t = (key: string, fallback?: string, params?: TranslationParams): string => {
     const original = key;
     key = sourceKeys[key] ?? key;
@@ -59,11 +59,12 @@ export function createTranslationEngine() {
   };
   return {
     t, tr,
-    rememberDiagnostic: (message: string, key: string, params?: TranslationParams) => {
+    rememberDiagnostic: (message: string, key: string, params?: TranslationParams, reportPath?: string) => {
       if (resolve(english, key) === undefined) return;
       if (diagnostics.size >= 200) diagnostics.delete(diagnostics.keys().next().value!);
-      diagnostics.set(message, { key, params });
+      diagnostics.set(message, { key, params, reportPath });
     },
+    diagnosticReportPath: (message: string) => diagnostics.get(message)?.reportPath,
     isDiagnostic: (message: string) => diagnostics.has(message),
     keyOf: (value: string, params?: TranslationParams): string => {
       if (!value) return value;

@@ -202,7 +202,8 @@
 .actionMenu summary:focus-visible,
 .actionMenu[open] summary { border-color: var(--color-border-strong); color: var(--color-text); background: var(--color-surface-2); }
 
-.actionMenu > div {
+.actionMenu > div,
+.actionPopup {
   position: absolute;
   top: calc(100% + 5px);
   right: 0;
@@ -215,7 +216,8 @@
   box-shadow: 0 12px 28px color-mix(in srgb, var(--color-shadow) 84%, transparent);
 }
 
-.actionMenu button {
+.actionMenu button,
+.actionPopup button {
   display: flex;
   min-height: 32px;
   align-items: center;
@@ -229,8 +231,16 @@
 }
 
 .actionMenu button:hover,
-.actionMenu button:focus-visible { background: var(--color-surface-2); }
-.actionMenu button:disabled { opacity: 0.45; cursor: not-allowed; }
-.actionMenu .deleteAction { color: var(--color-error); }
+.actionMenu button:focus-visible,
+.actionPopup button:hover,
+.actionPopup button:focus-visible { background: var(--color-surface-2); }
+.actionMenu button:disabled,
+.actionPopup button:disabled { opacity: 0.45; cursor: not-allowed; }
+.actionMenu .deleteAction,
+.actionPopup .deleteAction { color: var(--color-error); }
 
 .listRow .actionMenu { top: 12px; right: 7px; }
+
+.actionPopup button svg { flex-shrink: 0; }
+
+.actionMenu > div { left: 100%; right: auto; }

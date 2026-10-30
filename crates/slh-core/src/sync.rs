@@ -81,6 +81,7 @@ pub async fn create_mapping(
     if all_instances {
         unique.insert("*".to_owned());
         instances = database::instances(&state.database).await?;
+        instances.retain(|instance| instance.loader_type != "rust");
     } else {
         for id in &request.instance_ids {
             if id == "*" {
@@ -91,7 +92,11 @@ pub async fn create_mapping(
             if !unique.insert(id.clone()) {
                 continue;
             }
-            instances.push(database::instance(&state.database, id).await?);
+            let instance = database::instance(&state.database, id).await?;
+            if instance.loader_type == "rust" {
+                return Err(AppError::Unavailable("Horizon uses isolated settings and does not participate in Java instance synchronization".into()));
+            }
+            instances.push(instance);
         }
     }
     if instances.is_empty() && !(all_instances && request.initial_source == "shared") {
@@ -204,6 +209,11 @@ pub async fn run_for_instance(
     instance: &Instance,
     phase: SyncPhase,
 ) -> AppResult<Vec<SyncRunResult>> {
+    // Horizon rewrites options.txt in its own format. Wildcard Java mappings
+    // must never import those settings or publish them back into shared storage.
+    if instance.loader_type == "rust" {
+        return Ok(Vec::new());
+    }
     let mappings = list_mappings(&state.database).await?;
     let mut results = Vec::new();
     for mapping in mappings.into_iter().filter(|mapping| {
@@ -262,7 +272,7 @@ pub async fn run_mapping_now(
             "Enable this sync mapping before running it".into(),
         ));
     }
-    let instances = if mapping.instance_ids.iter().any(|id| id == "*") {
+    let mut instances = if mapping.instance_ids.iter().any(|id| id == "*") {
         database::instances(&state.database).await?
     } else {
         let mut instances = Vec::new();
@@ -271,6 +281,7 @@ pub async fn run_mapping_now(
         }
         instances
     };
+    instances.retain(|instance| instance.loader_type != "rust");
     let source = instances
         .iter()
         .find(|instance| instance.id == source_instance_id)
@@ -409,6 +420,9 @@ async fn sync_roots(
     force: bool,
     counters: &mut Counters,
 ) -> AppResult<()> {
+    if instance.loader_type == "rust" {
+        return Err(AppError::Unavailable("Horizon uses isolated settings and does not participate in Java instance synchronization".into()));
+    }
     let shared = state.paths.shared.join(&mapping.source_relative_path);
     let local = PathBuf::from(&instance.game_dir).join(&mapping.target_relative_path);
     let (source, target) = match phase {
@@ -505,9 +519,14 @@ async fn sync_file(
             let shared_changed = shared_hash != old_shared;
             let local_changed = local_hash != old_local;
             if is_conflict(&old_shared, &old_local, &shared_hash, &local_hash) {
+                let conflicting_path = if relative.as_os_str().is_empty() {
+                    mapping.target_relative_path.clone()
+                } else {
+                    relative.display().to_string()
+                };
                 return Err(AppError::Conflict(format!(
                     "Sync conflict in {} for instance {}: both copies changed",
-                    relative.display(),
+                    conflicting_path,
                     instance.name
                 )));
             }
@@ -755,6 +774,60 @@ fn category_paths(category: &str) -> AppResult<(String, String, &'static str)> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn horizon_cannot_read_or_publish_wildcard_java_settings() {
+        let temporary = tempfile::tempdir().unwrap();
+        let paths = crate::portable::PortablePaths::from_executable(
+            &temporary.path().join("SLH.exe"), Some(temporary.path().to_path_buf()),
+        ).unwrap();
+        let state = AppState::initialize_isolated_at(paths).await.unwrap();
+        let mut instances = Vec::new();
+        for name in ["Fabric", "Vanilla", "Horizon"] {
+            let request = serde_json::from_value(serde_json::json!({
+                "name":name,"minecraftVersion":"26.3","loaderType":"vanilla",
+                "memoryMinMb":512,"memoryMaxMb":2048
+            })).unwrap();
+            let mut instance = crate::instances::create_instance(&state.database, &state.paths, request).await.unwrap();
+            if name == "Horizon" {
+                instance.loader_type = "rust".into();
+                sqlx::query("UPDATE instances SET loader_type='rust' WHERE id=?")
+                    .bind(&instance.id).execute(&state.database).await.unwrap();
+            }
+            std::fs::write(Path::new(&instance.game_dir).join("options.txt"), name).unwrap();
+            instances.push(instance);
+        }
+        let [java, other_java, rust] = &instances[..] else { unreachable!() };
+        let mapping = create_mapping(&state, CreateSyncMappingRequest {
+            category:"options".into(), instance_ids:vec!["*".into()], direction:"bidirectional".into(),
+            initial_source:java.id.clone(), acknowledge_world_risk:false,
+        }).await.unwrap();
+        let shared = state.paths.shared.join("options/options.txt");
+        let rust_file = Path::new(&rust.game_dir).join("options.txt");
+        assert_eq!(std::fs::read_to_string(&rust_file).unwrap(), "Horizon", "initial mapping must not import Java options into Horizon");
+        assert_eq!(std::fs::read_to_string(Path::new(&other_java.game_dir).join("options.txt")).unwrap(), "Fabric");
+        for phase in [SyncPhase::Pull, SyncPhase::Push] {
+            assert!(run_for_instance(&state, rust, phase).await.unwrap().is_empty());
+        }
+        assert_eq!(std::fs::read_to_string(&shared).unwrap(), "Fabric");
+        assert_eq!(std::fs::read_to_string(&rust_file).unwrap(), "Horizon");
+        let snapshots:i64=sqlx::query_scalar("SELECT COUNT(*) FROM sync_snapshots WHERE instance_id=?")
+            .bind(&rust.id).fetch_one(&state.database).await.unwrap();
+        assert_eq!(snapshots,0);
+        // Explicit sync still works between Java instances, while skipping Horizon.
+        std::fs::write(Path::new(&java.game_dir).join("options.txt"), "Java changed").unwrap();
+        let results=run_mapping_now(&state,&mapping.id,&java.id).await.unwrap();
+        assert_eq!(results.len(),2);
+        assert_eq!(std::fs::read_to_string(Path::new(&other_java.game_dir).join("options.txt")).unwrap(), "Java changed");
+        assert_eq!(std::fs::read_to_string(&rust_file).unwrap(), "Horizon");
+        assert!(run_mapping_now(&state,&mapping.id,&rust.id).await.is_err());
+        // Existing Java conflicts remain protected instead of being overwritten.
+        std::fs::write(&shared,"Shared changed").unwrap();
+        std::fs::write(Path::new(&other_java.game_dir).join("options.txt"),"Local changed").unwrap();
+        assert!(run_for_instance(&state,other_java,SyncPhase::Pull).await.is_err());
+        assert_eq!(std::fs::read_to_string(Path::new(&other_java.game_dir).join("options.txt")).unwrap(),"Local changed");
+        state.database.close().await;
+    }
 
     #[test]
     fn categories_map_to_safe_relative_paths() {

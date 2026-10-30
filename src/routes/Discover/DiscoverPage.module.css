@@ -33,7 +33,6 @@
   cursor: pointer;
 }
 
-.sourceStatus button:hover,
 .sourceStatus button.sourceActive {
   color: var(--color-text);
   background: var(--color-surface-2);
@@ -152,7 +151,7 @@
 .projectGrid {
   display: grid;
   min-width: 0;
-  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr));
   gap: 13px;
 }
 
@@ -164,16 +163,20 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   background: var(--color-surface);
-  transition: border-color 150ms ease, transform 150ms ease;
+  transition: border-color 150ms ease;
   content-visibility: auto;
   contain-intrinsic-size: auto 210px;
 }
 .clickableCard { cursor: pointer; }
 .clickableCard:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
 
-.projectCard:hover {
-  border-color: var(--color-border-strong);
-  transform: translateY(-1px);
+@media (hover: hover) {
+  .projectCard:hover { border-color: var(--color-border-strong); }
+  .sourceStatus button:hover { color: var(--color-text); background: var(--color-surface-2); }
+}
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .projectCard { transition: border-color 150ms ease, transform 150ms ease; }
+  .projectCard:hover { transform: translateY(-1px); }
 }
 
 .installedCard { border-color: var(--color-border-strong); filter: grayscale(0.68); opacity: 0.68; }
@@ -366,6 +369,8 @@
 
 .loadMore {
   display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
   justify-content: center;
   padding: 18px 0 8px;
 }
@@ -413,3 +418,8 @@
 .filterLabel { grid-column: 1 / -1; grid-row: 1; min-height: 20px; }
 @media (max-width: 1000px) { .filters { grid-template-columns: repeat(2, minmax(0, 1fr)); } .snapshotToggle { grid-column: 1 / -1; } }
 @media (max-width: 540px) { .filters { grid-template-columns: minmax(0, 1fr); } }
+
+.emptyResult { display:grid; justify-items:center; gap:var(--space-3); padding:var(--space-6); color:var(--color-text-muted); text-align:center; }
+.emptyResult h2 { font-size:var(--text-body); line-height:1.5; }
+
+.planItems > div > span:first-child { min-width:0; overflow-wrap:anywhere; }

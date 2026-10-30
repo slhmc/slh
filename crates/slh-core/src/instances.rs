@@ -220,11 +220,18 @@ pub async fn create_instance(
         ));
     }
     let loader = request.loader_type.to_ascii_lowercase();
-    if !["vanilla", "fabric", "forge", "neoforge", "quilt", "bedrock"].contains(&loader.as_str()) {
+    if !["vanilla", "fabric", "forge", "neoforge", "quilt", "bedrock", "rust"].contains(&loader.as_str()) {
         return Err(AppError::InvalidInput(format!(
             "Unsupported loader type: {}",
             request.loader_type
         )));
+    }
+    if loader == "rust" {
+        crate::minecraft::horizon::ensure_enabled(pool).await?;
+        crate::minecraft::horizon::validate(&request.minecraft_version)?;
+        if let Some(tag)=&request.loader_version {
+            if !crate::minecraft::horizon_catalog::valid_tag(tag) {return Err(AppError::InvalidInput("Invalid Horizon release tag".into()));}
+        } else if request.minecraft_version != "26.3" {return Err(AppError::InvalidInput("Select a Horizon release".into()));}
     }
     if loader == "bedrock" && request.loader_version.is_some() {
         return Err(AppError::InvalidInput(
@@ -354,12 +361,17 @@ pub async fn update_instance(
     }
     let old_root =
         validated_instance_root(&state.paths, &instance.folder_name, &instance.game_dir)?;
+    if (instance.loader_type == "rust" || request.loader_type.as_deref() == Some("rust"))
+        && (request.loader_type.as_deref().is_some_and(|v| v != instance.loader_type)
+            || request.minecraft_version.as_deref().is_some_and(|v| v != instance.minecraft_version)) {
+        return Err(AppError::Unavailable("Recreate experimental Horizon instances to change their runtime settings".into()));
+    }
     let loader_type = request
         .loader_type
         .clone()
         .unwrap_or_else(|| instance.loader_type.clone())
         .to_ascii_lowercase();
-    if !["vanilla", "fabric", "forge", "neoforge", "quilt", "bedrock"]
+    if !["vanilla", "fabric", "forge", "neoforge", "quilt", "bedrock", "rust"]
         .contains(&loader_type.as_str())
     {
         return Err(AppError::InvalidInput(format!(
@@ -416,12 +428,21 @@ pub async fn update_instance(
             .clone()
             .or_else(|| instance.loader_version.clone())
     };
-    if !matches!(loader_type.as_str(), "vanilla" | "bedrock")
+    if !matches!(loader_type.as_str(), "vanilla" | "bedrock" | "rust")
         && loader_version.as_deref().unwrap_or("").trim().is_empty()
     {
         return Err(AppError::InvalidInput(format!(
             "{loader_type} loader version is required"
         )));
+    }
+    if loader_type=="rust" {
+        crate::minecraft::horizon::validate(&minecraft_version)?;
+        if loader_version.as_deref().is_some_and(|tag|!crate::minecraft::horizon_catalog::valid_tag(tag)) {
+            return Err(AppError::InvalidInput("Invalid Horizon release tag".into()));
+        }
+        if matches!(instance.status.as_str(),"installing"|"launching"|"running") {
+            return Err(AppError::Conflict("Wait for Horizon installation or stop the game before changing its release".into()));
+        }
     }
     let runtime_changed = minecraft_version != instance.minecraft_version
         || loader_type != instance.loader_type

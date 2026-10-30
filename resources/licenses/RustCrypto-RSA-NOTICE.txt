@@ -1,0 +1,5 @@
+RustCrypto RSA 0.9.10
+Source: https://github.com/RustCrypto/RSA
+License: MIT (selected from MIT OR Apache-2.0)
+Used to sign public local offline skin textures for Minecraft.
+Full license: RustCrypto-RSA-MIT.txt

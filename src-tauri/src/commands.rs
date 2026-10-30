@@ -1,6 +1,6 @@
 use base64::Engine;
 use serde_json::Value;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Manager, State, WebviewWindow};
 
 use crate::accounts;
@@ -246,6 +246,33 @@ pub fn open_bedrock_content_file(path: String) -> CommandResult<()> {
 }
 
 #[tauri::command]
+pub async fn record_command_failure(state: State<'_, AppState>, operation: String, code: String, message: String) -> CommandResult<Option<String>> {
+    // Receive no command arguments, credentials or account state. A bounded
+    // diagnostic is sufficient for failures before the core operation starts.
+    if operation.len() > 120 || code.len() > 80 || message.len() > 64 * 1024 {
+        return Ok(None);
+    }
+    if matches!(code.as_str(), "cancelled" | "manual_downloads_required" | "offline_account_name_required" | "two_factor_required") { return Ok(None); }
+    let error = crate::error::AppError::Process(format!("{code}: {message}"));
+    let error = slh_core::diagnostics::record(&state, error, &operation, "command", None, None).await;
+    Ok(error.report_path().map(str::to_owned))
+}
+
+#[tauri::command]
+pub fn open_crash_report(state: State<'_, AppState>, path: Option<String>) -> CommandResult<()> {
+    let path = if let Some(path) = path {
+        slh_core::diagnostics::validate_report_path(&state.paths, Path::new(&path))?
+    } else {
+        let directory = state.paths.root.join("crash");
+        std::fs::create_dir_all(&directory).map_err(crate::error::AppError::from)?;
+        directory
+    };
+    tauri_plugin_opener::open_path(path, None::<&str>)
+        .map_err(|e| crate::error::AppError::Process(format!("Could not open error report: {e}")))?;
+    Ok(())
+}
+
+#[tauri::command]
 pub async fn search_bedrock_curseforge(
     state: State<'_, AppState>,
     query: String,
@@ -265,6 +292,7 @@ pub async fn download_bedrock_curseforge(
     project_id: String,
     game_version: Option<String>,
 ) -> CommandResult<String> {
+    let _maintenance = slh_core::storage_cleanup::gate().read().await;
     settings::ensure_bedrock_enabled(&state.database).await.map_err(crate::error::CommandError::from)?;
     let path = crate::content::curseforge::download_bedrock(&state, &project_id, game_version.as_deref())
         .await.map_err(crate::error::CommandError::from)?;
@@ -719,6 +747,7 @@ pub async fn install_managed_java(
     state: State<'_, AppState>,
     major_version: u32,
 ) -> CommandResult<JavaInstallation> {
+    let _maintenance = slh_core::storage_cleanup::gate().read().await;
     minecraft::java::install_managed(&crate::core_host::host(&app), &state, major_version)
         .await
         .map_err(Into::into)
@@ -729,6 +758,7 @@ pub async fn create_instance(
     state: State<'_, AppState>,
     request: CreateInstanceRequest,
 ) -> CommandResult<Instance> {
+    let _maintenance = slh_core::storage_cleanup::gate().read().await;
     async fn create(
         state: &AppState,
         request: CreateInstanceRequest,
@@ -748,6 +778,7 @@ pub async fn update_instance(
     state: State<'_, AppState>,
     request: UpdateInstanceRequest,
 ) -> CommandResult<Instance> {
+    let _maintenance = slh_core::storage_cleanup::gate().read().await;
     instances::update_instance(&state, request)
         .await
         .map_err(Into::into)
@@ -779,6 +810,7 @@ pub async fn create_instance_version_copy(
     state: State<'_, AppState>,
     request: CreateInstanceVersionCopyRequest,
 ) -> CommandResult<CreateInstanceVersionCopyResult> {
+    let _maintenance = slh_core::storage_cleanup::gate().read().await;
     crate::version_migration::create_copy(&crate::core_host::host(&app), &state, request)
         .await
         .map_err(Into::into)
@@ -789,6 +821,7 @@ pub async fn delete_instance(
     state: State<'_, AppState>,
     instance_id: String,
 ) -> CommandResult<DeleteInstanceResult> {
+    let _maintenance = slh_core::storage_cleanup::gate().read().await;
     instances::delete_instance(&state, &instance_id)
         .await
         .map_err(Into::into)
@@ -816,6 +849,7 @@ pub async fn install_instance(
     instance_id: String,
     bedrock_mirror_url: Option<String>,
 ) -> CommandResult<Instance> {
+    let _maintenance = slh_core::storage_cleanup::gate().read().await;
     minecraft::installer::install_instance(
         &crate::core_host::host(&app),
         &state,
@@ -833,6 +867,7 @@ pub async fn launch_instance(
     instance_id: String,
     offline_username: Option<String>,
 ) -> CommandResult<LaunchResponse> {
+    let _maintenance = slh_core::storage_cleanup::gate().read().await;
     minecraft::launcher::launch_instance(&crate::core_host::host(&app), &state, &instance_id, offline_username.as_deref())
         .await
         .map_err(Into::into)
@@ -972,6 +1007,7 @@ pub async fn install_modrinth_project(
     instance_id: String,
     project_id: String,
 ) -> CommandResult<ContentInstallResult> {
+    let _maintenance = slh_core::storage_cleanup::gate().read().await;
     crate::content::install::install(&crate::core_host::host(&app), &state, &instance_id, &project_id)
         .await
         .map_err(Into::into)
@@ -987,6 +1023,7 @@ pub async fn install_modrinth_modpack(
     loader: Option<String>,
     version_id: Option<String>,
 ) -> CommandResult<Instance> {
+    let _maintenance = slh_core::storage_cleanup::gate().read().await;
     async fn install(
         app: &AppHandle,
         state: &AppState,
@@ -1038,6 +1075,7 @@ pub async fn run_pack_install(
     let host = crate::core_host::host(&app);
     let state = &*state;
     slh_core::pack_operations::run(&host, state, key.clone(), |host| async move {
+        let _maintenance=slh_core::storage_cleanup::gate().read().await;
         let text = |field: &str| args.get(field).and_then(serde_json::Value::as_str).map(str::to_owned);
         let instance = match command_name.as_str() {
             "install_curseforge_modpack" => crate::content::curseforge::install_modpack_tracked(
@@ -1079,6 +1117,7 @@ pub async fn install_curseforge_project(
     instance_id: String,
     project_id: String,
 ) -> CommandResult<ContentInstallResult> {
+    let _maintenance = slh_core::storage_cleanup::gate().read().await;
     crate::content::curseforge::install(&crate::core_host::host(&app), &state, &instance_id, &project_id)
         .await
         .map_err(Into::into)
@@ -1185,6 +1224,7 @@ pub async fn install_curseforge_modpack(
     version_id: Option<String>,
     progress_key: Option<String>,
 ) -> CommandResult<Instance> {
+    let _maintenance = slh_core::storage_cleanup::gate().read().await;
     async fn install(
         app: &AppHandle,
         state: &AppState,
@@ -1258,6 +1298,7 @@ pub async fn run_sync(
     instance_id: String,
     phase: String,
 ) -> CommandResult<Vec<SyncRunResult>> {
+    let _maintenance = slh_core::storage_cleanup::gate().read().await;
     let instance = database::instance(&state.database, &instance_id)
         .await
         .map_err(crate::error::CommandError::from)?;
@@ -1281,6 +1322,7 @@ pub async fn run_sync_mapping_now(
     mapping_id: String,
     source_instance_id: String,
 ) -> CommandResult<Vec<SyncRunResult>> {
+    let _maintenance = slh_core::storage_cleanup::gate().read().await;
     crate::sync::run_mapping_now(&state, &mapping_id, &source_instance_id)
         .await
         .map_err(Into::into)
@@ -1416,6 +1458,7 @@ pub async fn import_slh_archive(
     state: State<'_, AppState>,
     request: ImportSlhRequest,
 ) -> CommandResult<Instance> {
+    let _maintenance = slh_core::storage_cleanup::gate().read().await;
     async fn import(
         state: &AppState,
         request: ImportSlhRequest,
@@ -1433,6 +1476,7 @@ pub async fn import_modrinth_pack(
     state: State<'_, AppState>,
     request: ImportSlhRequest,
 ) -> CommandResult<Instance> {
+    let _maintenance = slh_core::storage_cleanup::gate().read().await;
     async fn import(
         app: &AppHandle,
         state: &AppState,
@@ -1452,6 +1496,7 @@ pub async fn import_curseforge_pack(
     request: ImportSlhRequest,
     progress_key: Option<String>,
 ) -> CommandResult<Instance> {
+    let _maintenance = slh_core::storage_cleanup::gate().read().await;
     async fn import(
         app: &AppHandle,
         state: &AppState,
@@ -1471,6 +1516,7 @@ pub async fn import_instance_folder(
     state: State<'_, AppState>,
     request: ImportFolderRequest,
 ) -> CommandResult<Instance> {
+    let _maintenance = slh_core::storage_cleanup::gate().read().await;
     async fn import(
         app: &AppHandle,
         state: &AppState,
@@ -1578,6 +1624,7 @@ pub async fn repair_instance(
     state: State<'_, AppState>,
     instance_id: String,
 ) -> CommandResult<Instance> {
+    let _maintenance = slh_core::storage_cleanup::gate().read().await;
     minecraft::installer::install_instance(&crate::core_host::host(&app), &state, &instance_id, None)
         .await
         .map_err(Into::into)

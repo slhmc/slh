@@ -1,0 +1,13 @@
+.viewer { display:flex; flex:1; flex-direction:column; gap:var(--space-3); min-width:0; min-height:0; }
+.tools,.search { display:flex; flex-wrap:wrap; align-items:center; gap:var(--space-2); flex-shrink:0; }
+.search input { flex:1 1 180px; min-width:0; }
+.search span { font-size:var(--text-caption); font-variant-numeric:tabular-nums; }
+.output { flex:1; min-height:100px; overflow:auto; overscroll-behavior:contain; padding:var(--space-3); border-radius:var(--radius-sm); font-family:var(--font-mono); line-height:1.45; }
+.line { white-space:pre; min-width:100%; width:max-content; content-visibility:auto; contain-intrinsic-block-size:auto 19px; }
+.wrap .line { width:100%; white-space:pre-wrap; overflow-wrap:anywhere; }
+.empty { color:inherit; opacity:0.7; }
+.options { display:grid; gap:var(--space-2); }
+.options button { width:100%; justify-content:flex-start; }
+.followButton[aria-pressed="true"] { border-color:var(--color-accent); color:var(--color-accent); background:color-mix(in srgb,var(--color-accent) 12%,var(--color-surface)); }
+
+@media (max-width:720px) { .output { flex:none; height:200px; } }

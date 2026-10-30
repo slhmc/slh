@@ -4,6 +4,7 @@ import {
   Compass,
   GearSix,
   House,
+  HardDrives,
   Stack,
 } from "../icons";
 import { Link, NavLink, useMatch } from "react-router-dom";
@@ -20,6 +21,7 @@ export const sidebarNavigation = [
   { id: "home" as const, path: "/home", label: "Home", labelKey: "navigation.home", icon: House },
   { id: "library" as const, path: "/library", label: "Library", labelKey: "navigation.library", icon: Stack },
   { id: "discover" as const, path: "/discover", label: "Discover", labelKey: "navigation.discover", icon: Compass },
+  { id: "localServers" as const, path: "/local-servers", label: "Local servers", labelKey: "navigation.localServers", icon: HardDrives },
 ];
 
 export const sidebarSettings = { id: "settings" as const, path: "/settings/general", label: "Settings", labelKey: "navigation.settings", icon: GearSix };

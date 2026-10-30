@@ -1,0 +1,33 @@
+import { expect, test } from "@playwright/test";
+
+test("Java version types default to releases and allow independent legacy installs", async ({ page }) => {
+  await page.goto("/#/library");
+  await page.getByRole("button", { name: "New instance", exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  const types = dialog.getByRole("group", { name: "Version types", exact: true });
+  await expect(types.getByRole("checkbox", { name: "Releases", exact: true })).toBeChecked();
+  for (const name of ["Snapshots", "Beta", "Alpha"]) await expect(types.getByRole("checkbox", { name, exact: true })).not.toBeChecked();
+  await expect(dialog.getByRole("button", { name: /b1.7.3/ })).toHaveCount(0);
+  await expect(dialog.getByRole("button", { name: /26w32a/ })).toHaveCount(0);
+  await types.getByRole("checkbox", { name: "Beta", exact: true }).check();
+  await types.getByRole("checkbox", { name: "Alpha", exact: true }).check();
+  await types.getByRole("checkbox", { name: "Releases", exact: true }).uncheck();
+  await expect(dialog.getByRole("button", { name: /1.21.8/ })).toHaveCount(0);
+  await dialog.getByRole("button", { name: /b1.7.3/ }).click();
+  const install = dialog.getByRole("button", { name: "Create and install", exact: true });
+  await expect(install).toBeEnabled();
+  await types.getByRole("checkbox", { name: "Beta", exact: true }).uncheck();
+  await expect(install).toBeDisabled();
+  await dialog.getByRole("button", { name: /a1.2.6/ }).click();
+  await expect(install).toBeEnabled();
+  await types.getByRole("checkbox", { name: "Snapshots", exact: true }).check();
+  await expect(dialog.getByRole("button", { name: /26w32a/ })).toBeVisible();
+  await expect(dialog.getByRole("textbox", { name: "Instance name", exact: true })).toHaveValue("Minecraft a1.2.6");
+  await types.screenshot({ path: "artifacts/version-types-horizontal.png" });
+  await page.setViewportSize({ width: 800, height: 560 });
+  await expect(types.getByRole("checkbox", { name: "Alpha", exact: true })).toBeVisible();
+  await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+  await page.getByRole("button", { name: "New instance", exact: true }).click();
+  await expect(types.getByRole("checkbox", { name: "Releases", exact: true })).toBeChecked();
+  await expect(types.getByRole("checkbox", { name: "Alpha", exact: true })).not.toBeChecked();
+});

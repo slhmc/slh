@@ -34,3 +34,5 @@ docs/verification/
 /crates/slh-native/
 
 /release-notes.txt
+
+.generated/

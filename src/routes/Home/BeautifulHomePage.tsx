@@ -111,9 +111,8 @@ export function BeautifulHomePage() {
     finally { setSetupBusy(false); }
   };
   const customize = () => {
-    if (active?.provider === "microsoft") setAppearanceAccount(active);
-    else if (active?.provider === "elyby") void openUrl("https://ely.by/skins");
-    else pushToast({ tone: "info", title: uiText("home.texts.offlineSkin", "Offline skin"), message: uiText("home.texts.theStandardSkinIsSelectedByTheOfflineAccount", "The standard skin is selected by the offline account UUID.") });
+    if (active?.provider === "elyby") void openUrl("https://ely.by/skins");
+    else if (active) setAppearanceAccount(active);
   };
   const playedAt = instance?.lastLaunchedAt ?? instance?.lastPlayedAt;
   const days = playedAt ? Math.round((Date.parse(playedAt) - Date.now()) / 86400000) : null;

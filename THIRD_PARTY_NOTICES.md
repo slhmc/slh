@@ -23,7 +23,7 @@ Both assets are bundled locally so the portable launcher UI does not need a font
 - Source: https://github.com/yushijinhun/authlib-injector
 - Runtime version: 1.2.8
 - License: GNU General Public License v3.0
-- Distribution: downloaded from the official GitHub release on the first Ely.by launch and accepted only after SHA-256 verification; it is not embedded in `SLH.exe`
+- Distribution: downloaded from the official GitHub release on the first Ely.by launch or first offline launch with a local skin and accepted only after SHA-256 verification; it is not embedded in `SLH.exe`
 
 ## Bedrock version metadata
 
@@ -57,3 +57,10 @@ Source: https://github.com/GuillaumeGomez/sysinfo
 Copyright (c) 2015 Guillaume Gomez.
 License: resources/licenses/sysinfo-MIT.txt.
 GPU sampling uses the Windows PDH API.
+
+## RustCrypto RSA 0.9.10
+
+- Source: https://github.com/RustCrypto/RSA
+- License: MIT (selected from MIT OR Apache-2.0)
+- Use: signatures for local offline skin textures; no account authentication
+- Full license: resources/licenses/RustCrypto-RSA-MIT.txt

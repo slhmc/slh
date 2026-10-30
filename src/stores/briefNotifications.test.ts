@@ -3,12 +3,24 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { useAppStore } from './appStore';
 import { command } from '../lib/tauri';
 import type { BootstrapData } from '../lib/types';
+import { engine } from '../i18n/engine';
 
 beforeEach(async () => {
   vi.useFakeTimers();
   useAppStore.setState({ bootstrap: await command<BootstrapData>('get_bootstrap'), toasts: [] });
 });
 afterEach(() => { vi.clearAllTimers(); vi.useRealTimers(); });
+
+it('keeps reports and original technical details until explicit dismissal', () => {
+  const message = 'Download failed for needed.jar: HTTP 404';
+  engine.rememberDiagnostic(message, 'errors.downloadMissing', undefined, 'E:/SLH/crash/slh-test.txt');
+  useAppStore.getState().pushToast({ tone: 'error', title: 'Installation failed', message });
+  vi.advanceTimersByTime(60000);
+  expect(useAppStore.getState().toasts).toHaveLength(1);
+  expect(useAppStore.getState().toasts[0].message).toBe(message);
+  useAppStore.getState().dismissToast(useAppStore.getState().toasts[0].id);
+  expect(useAppStore.getState().toasts).toHaveLength(0);
+});
 
 it('replaces the previous brief notification without dismissing the replacement early', () => {
   const store = useAppStore.getState();

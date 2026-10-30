@@ -1,5 +1,6 @@
 import { LauncherUpdateDialog, requestLauncherUpdate } from "./components/common/LauncherUpdateDialog";
 import { useUiText } from "./i18n/UiText";
+import { useServerLibraryStore } from "./stores/serverLibraryStore";
 import { buildTheme } from "./lib/theme";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
@@ -20,13 +21,15 @@ import { FirstRun } from "./components/onboarding/FirstRun";
 const HomePage = lazy(() => import("./routes/Home/HomePage").then((module) => ({ default: module.HomePage })));
 const LibraryPage = lazy(() => import("./routes/Library/LibraryPage").then((module) => ({ default: module.LibraryPage })));
 const DiscoverPage = lazy(() => import("./routes/Discover/DiscoverPage").then((module) => ({ default: module.DiscoverPage })));
+const LocalServersPage = lazy(() => import("./routes/LocalServers/LocalServersPage").then((module) => ({ default: module.LocalServersPage })));
 const ServersPage = lazy(() => import("./routes/Servers/ServersPage").then((module) => ({ default: module.ServersPage })));
 const SettingsPage = lazy(() => import("./routes/Settings/SettingsPage").then((module) => ({ default: module.SettingsPage })));
 const InstancePage = lazy(() => import("./routes/Instance/InstancePage").then((module) => ({ default: module.InstancePage })));
 import common from "./components/common/Common.module.css";
 import styles from "./App.module.css";
 
-const mainSections = new Set(["home", "library", "discover", "servers"]);
+const ServerWorkspacePage = lazy(() => import("./routes/LocalServers/ServerWorkspacePage").then(module => ({default: module.ServerWorkspacePage})));
+const mainSections = new Set(["home", "library", "discover", "servers", "local-servers"]);
 
 function StartupRoute() {
   const bootstrap = useAppStore((state) => state.bootstrap);
@@ -82,6 +85,15 @@ function AppContent() {
   const initialize = useAppStore((state) => state.initialize);
   const bootstrap = useAppStore((state) => state.bootstrap);
   const loading = useAppStore((state) => state.loading);
+  const serversScanned=useRef(false);
+  useEffect(() => {
+    if (!bootstrap || serversScanned.current) return;
+    serversScanned.current = true;
+    const servers = useServerLibraryStore.getState();
+    void servers.refresh().catch(() => undefined);
+    void servers.synchronize().catch(() => undefined);
+  }, [Boolean(bootstrap)]);
+
   useCurseForgeArchiveImport(bootstrap?.settings.downloads.curseforgeImportArchives === true,
     bootstrap?.settings.downloads.curseforgeDirectory);
   const error = useAppStore((state) => state.error);
@@ -254,6 +266,8 @@ function AppContent() {
               <Route path="home" element={<HomePage />} />
               <Route path="library" element={<LibraryPage />} />
               <Route path="discover" element={<DiscoverPage />} />
+              <Route path="local-servers" element={<LocalServersPage />} />
+              <Route path="local-servers/:serverId" element={<ServerWorkspacePage />} />
               <Route path="servers" element={<ServersPage />} />
               <Route path="settings/:section" element={<SettingsPage />} />
               <Route path="instance/:id" element={<InstancePage />} />

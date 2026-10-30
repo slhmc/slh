@@ -41,6 +41,21 @@ pub fn redact_secrets(input: &str) -> String {
     })
 }
 
+/// Reports also see third-party console output and signed CDN URLs. Strip
+/// complete query strings/userinfo and both CLI/JSON spellings of credentials.
+pub fn redact_diagnostic(input: &str) -> String {
+    static PATTERNS: std::sync::OnceLock<[Regex; 3]> = std::sync::OnceLock::new();
+    let patterns = PATTERNS.get_or_init(|| [
+        r#"(?i)((?:--?)?(?:access[_-]?token|refresh[_-]?token|client[_-]?secret|password|api[_-]?key|id_token|auth_code|token|sessionId|session|cookie|set-cookie))([\"']?\s*(?:[:=]|\s)\s*)(?:\"[^\"]*\"|'[^']*'|[^\s\"',;&]+)"#,
+        r#"(?i)(https?://)[^\s/@\"']+@"#,
+        r#"(?i)(https?://[^\s?\"'<>]+)\?[^\s\"'<>]+"#,
+    ].map(|p| Regex::new(p).expect("diagnostic redaction regex is valid")));
+    let text = patterns[0].replace_all(input, "${1}${2}[REDACTED]");
+    let text = redact_secrets(&text);
+    let text = patterns[1].replace_all(&text, "${1}[REDACTED]@");
+    patterns[2].replace_all(&text, "${1}?[REDACTED]").into_owned()
+}
+
 #[cfg(windows)]
 pub fn encrypt_for_current_user(plain: &[u8]) -> AppResult<Vec<u8>> {
     dpapi::protect(plain)
@@ -218,6 +233,15 @@ mod tests {
         assert!(!redacted.contains("abc.def"));
         assert!(!redacted.contains("secret"));
         assert!(!redacted.contains("hello"));
+    }
+
+    #[test]
+    fn diagnostics_remove_quoted_cli_json_and_url_credentials() {
+        let input = r#"--accessToken cli-secret --password "words in password" {"refreshToken":"json secret with spaces"} https://user:private@cdn.test/mod.jar?signature=signed-secret"#;
+        let result = redact_diagnostic(input);
+        for secret in ["cli-secret", "words in password", "json secret with spaces", "private", "signed-secret"] {
+            assert!(!result.contains(secret), "leaked {secret}: {result}");
+        }
     }
 
     #[cfg(windows)]

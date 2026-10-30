@@ -44,7 +44,7 @@ test("minimal settings tiles fit their content while retaining enlarged text", a
   await page.goto("/#/settings/appearance");
   await page.getByRole("switch", { name: "Minimalism", exact: true }).click();
   await page.evaluate(() => location.hash = "/settings/appearance");
-  const row = page.getByRole("switch", { name: "Compact top bar (beta)", exact: true }).locator('xpath=ancestor::div[contains(@class,"settingRow")]');
+  const row = page.getByRole("switch", { name: "Compact navigation (beta)", exact: true }).locator('xpath=ancestor::div[contains(@class,"settingRow")]');
   await expect(row).toBeVisible();
   expect((await row.boundingBox())!.height).toBeLessThan(125);
   expect(await row.locator("strong").first().evaluate(el => getComputedStyle(el).fontSize)).toBe("16px");

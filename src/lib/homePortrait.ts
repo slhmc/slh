@@ -26,15 +26,15 @@ async function stored(key: string, blob?: Blob): Promise<Blob | undefined> {
 }
 
 /** A single PNG is retained on disk. No renderer, canvas or animation loop is cached. */
-export async function homePortrait(skin: HomeSkin): Promise<Blob> {
-  const hash = await crypto.subtle.digest("SHA-256",new TextEncoder().encode(`${portraitRevision}:${skin.model}:${skin.dataUrl}`));
+export async function homePortrait(skin: HomeSkin, poseMode: "home" | "standing" = "home"): Promise<Blob> {
+  const hash = await crypto.subtle.digest("SHA-256",new TextEncoder().encode(`${portraitRevision}:${poseMode}:${skin.model}:${skin.dataUrl}`));
   const key = Array.from(new Uint8Array(hash),byte => byte.toString(16).padStart(2,"0")).join("");
   if (latest?.key === key) return latest.blob;
   const existing = pending.get(key);
   if (existing) return existing;
   const work = queue.catch(() => {}).then(async () => {
     const cached = await stored(key);
-    const blob = cached ?? await renderPortrait(skin);
+    const blob = cached ?? await renderPortrait(skin, poseMode);
     latest = {key,blob};
     if (!cached) await stored(key,blob);
     return blob;
@@ -45,7 +45,7 @@ export async function homePortrait(skin: HomeSkin): Promise<Blob> {
   finally { pending.delete(key); }
 }
 
-async function renderPortrait(skin: HomeSkin): Promise<Blob> {
+async function renderPortrait(skin: HomeSkin, poseMode: "home" | "standing"): Promise<Blob> {
   const [{SkinViewEngine},{SkinModelType}] = await Promise.all([
     import("../vendor/mine3d/core/scene-loop"), import("../vendor/mine3d/types"),
   ]);
@@ -53,6 +53,15 @@ async function renderPortrait(skin: HomeSkin): Promise<Blob> {
   canvas.style.cssText = "width:480px;height:720px";
   const pose = {speed:1,paused:true,progress:0,controlsLegs:true,
     update(player: import("skin3d").PlayerObject) {
+      if (poseMode === "standing") {
+        // A level head and relaxed limbs, seen slightly from the side.
+        player.rotation.set(0, .22, 0);
+        for (const part of [player.skin.head, player.skin.body, player.skin.leftArm,
+          player.skin.rightArm, player.skin.leftLeg, player.skin.rightLeg]) part.rotation.set(0, 0, 0);
+        player.skin.leftLeg.position.x = 2;
+        player.skin.rightLeg.position.x = -2;
+        return;
+      }
       // Avatar Maker's Body4 joint angles, adapted to skin3d's pivots.
       player.rotation.set(.3,.25,0);
       player.skin.head.rotation.set(-.26,-.3,-.1);
@@ -90,3 +99,23 @@ async function renderPortrait(skin: HomeSkin): Promise<Blob> {
       blob ? resolve(blob) : reject(new Error("Portrait encoding failed")),"image/png"));
   } finally { engine.dispose(); }
 }
+
+/** Inspect or clear the single recoverable PNG; never touch account skin records. */
+async function portraitRecord(clear = false): Promise<{ key:string; size:number }> {
+  if (typeof indexedDB === "undefined") { if (clear) latest = undefined; return {key:latest?.key ?? "", size:latest?.blob.size ?? 0}; }
+  return new Promise(resolve => {
+    const open = indexedDB.open(databaseName, 1);
+    open.onupgradeneeded = () => open.result.createObjectStore("portrait");
+    open.onerror = open.onblocked = () => resolve({key:"",size:0});
+    open.onsuccess = () => {
+      const db = open.result; const tx = db.transaction("portrait", clear ? "readwrite" : "readonly");
+      const request = clear ? tx.objectStore("portrait").clear() : tx.objectStore("portrait").get("last");
+      let result = {key:"",size:0};
+      request.onsuccess = () => { if (!clear && request.result) result = {key:request.result.key,size:request.result.blob.size}; };
+      tx.oncomplete = () => { db.close(); if (clear) latest = undefined; resolve(result); };
+      tx.onerror = tx.onabort = () => { db.close(); resolve({key:"",size:0}); };
+    };
+  });
+}
+export const portraitCacheInfo = () => portraitRecord();
+export async function clearHomePortraitCache(): Promise<void> { await queue.catch(() => {}); await portraitRecord(true); }

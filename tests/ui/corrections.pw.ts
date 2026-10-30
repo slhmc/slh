@@ -36,14 +36,14 @@ for (const mode of ["Grid view", "Grouped icons", "List view"]) {
 
 test("appearance controls save immediately and beta switches live in Appearance", async ({ page }) => {
   await page.goto("/#/settings/appearance");
-  await expect(page.getByRole("switch", { name: "Compact top bar (beta)", exact: true })).toBeVisible();
+  await expect(page.getByRole("switch", { name: "Compact navigation (beta)", exact: true })).toBeVisible();
   await expect(page.getByRole("switch", { name: "Compact settings menu (beta)", exact: true })).toBeVisible();
   await page.getByRole("spinbutton", { name: "Corner radius", exact: true }).fill("0");
   await expect.poll(() => page.locator("html").evaluate(el => getComputedStyle(el).getPropertyValue("--radius-lg"))).toBe("0px");
   await page.getByRole("combobox", { name: "Interface density", exact: true }).selectOption("compact");
   await expect.poll(() => page.locator("html").evaluate(el => getComputedStyle(el).getPropertyValue("--control-height"))).toBe("32px");
   await page.evaluate(() => location.hash = "/settings/advanced");
-  await expect(page.getByRole("switch", { name: "Compact top bar (beta)", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("switch", { name: "Compact navigation (beta)", exact: true })).toHaveCount(0);
   await page.evaluate(() => location.hash = "/settings/appearance");
   await expect(page.getByRole("spinbutton", { name: "Corner radius", exact: true })).toHaveValue("0");
   await expect(page.getByRole("combobox", { name: "Interface density", exact: true })).toHaveValue("compact");

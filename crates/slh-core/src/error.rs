@@ -6,6 +6,10 @@ pub type CommandResult<T> = Result<T, CommandError>;
 
 #[derive(Debug, Error)]
 pub enum AppError {
+    #[error("{source}")]
+    Reported { #[source] source: Box<AppError>, report_path: String },
+    #[error("Download failed for {path} ({url}): {source}")]
+    Download { path: String, url: String, #[source] source: Box<AppError> },
     #[error("Installation cancelled")]
     Cancelled,
     #[error("File operation failed: {0}")]
@@ -26,6 +30,8 @@ pub enum AppError {
     InvalidInput(String),
     #[error("Requested item was not found: {0}")]
     NotFound(String),
+    #[error("{provider} required file is unavailable: {project} / {file_name} (file {file_id})")]
+    PackFileUnavailable { provider: String, project: String, file_name: String, file_id: String },
     #[error("The operation conflicts with current state: {0}")]
     Conflict(String),
     #[error("Java {required} or newer is required, but {path} is Java {actual}")]
@@ -47,6 +53,7 @@ pub enum AppError {
 impl AppError {
     pub fn code(&self) -> &'static str {
         match self {
+            Self::Reported { source, .. } | Self::Download { source, .. } => source.code(),
             Self::Cancelled => "cancelled",
             Self::Io(_) => "io_error",
             Self::Database(_) => "database_error",
@@ -57,6 +64,7 @@ impl AppError {
             Self::Archive(_) => "archive_error",
             Self::InvalidInput(_) => "invalid_input",
             Self::NotFound(_) => "not_found",
+            Self::PackFileUnavailable { .. } => "not_found",
             Self::Conflict(_) => "conflict",
             Self::JavaCompatibility { .. } => "conflict",
             Self::OfflineAccountNameRequired(_) => "offline_account_name_required",
@@ -65,6 +73,21 @@ impl AppError {
             Self::Process(_) => "process_error",
             Self::Security(_) => "security_error",
             Self::TwoFactorRequired(_) => "two_factor_required",
+        }
+    }
+
+    pub fn root(&self) -> &Self {
+        match self {
+            Self::Reported { source, .. } | Self::Download { source, .. } => source.root(),
+            _ => self,
+        }
+    }
+
+    pub fn report_path(&self) -> Option<&str> {
+        match self {
+            Self::Reported { report_path, .. } => Some(report_path),
+            Self::Download { source, .. } => source.report_path(),
+            _ => None,
         }
     }
 }
@@ -84,17 +107,25 @@ pub struct ManualDownloadFile { pub name: String, pub file_name: String, pub url
 
 impl From<AppError> for CommandError {
     fn from(value: AppError) -> Self {
-        let (message_key, params, details) = match &value {
+        let (message_key, params, mut details) = match value.root() {
+            AppError::PackFileUnavailable { provider, project, file_name, file_id } => (Some("errors.packFileUnavailable".into()),
+                Some(serde_json::json!({"provider":provider,"project":project,"fileName":file_name})), Some(serde_json::json!({"fileId":file_id}))),
+            AppError::Unavailable(message) if message.starts_with("Unsupported Horizon ") => (Some("errors.horizonUnsupported".into()), None, None),
+            AppError::Conflict(message) if message.starts_with("Sync conflict in ") => (Some("errors.syncConflict".into()), None, None),
             AppError::Unavailable(message) if message.starts_with("Bedrock Preview downloads are disabled.") => (Some("errors.bedrockPreviewStoreOnly".into()), None, None),
             AppError::ManualDownloads { directory, files } => (Some("installation.manualRequired".into()), None, Some(serde_json::json!({ "directory": directory, "files": files }))),
             AppError::JavaCompatibility { required, actual, path } => (Some("errors.javaCompatibility".into()), Some(serde_json::json!({"required":required,"actual":actual})), Some(serde_json::json!({"path":path}))),
             AppError::Unavailable(message) if message == "Choose a Java executable or enable automatic Java detection" => (Some("errors.javaManualRequired".into()), None, None),
             AppError::Unavailable(message) if message == "No compatible Java runtime was found; select or install Java in Settings" => (Some("errors.javaDownloadDisabled".into()), None, None),
-            _ => (Some(format!("errors.{}", value.code())), None, None),
+            _ => (Some(crate::diagnostics::message_key(&value).into()), None, None),
         };
+        if let Some(path) = value.report_path() {
+            let details = details.get_or_insert_with(|| serde_json::json!({}));
+            details["reportPath"] = path.into();
+        }
         Self {
             code: value.code().to_owned(),
-            message: crate::security::redact_secrets(&value.to_string()),
+            message: crate::security::redact_diagnostic(&value.to_string()),
             message_key, params, details,
         }
     }

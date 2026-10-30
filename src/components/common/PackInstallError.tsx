@@ -9,6 +9,7 @@ import { command } from "../../lib/tauri";
 import { useI18n } from "../../i18n/I18nProvider";
 import common from "./Common.module.css";
 import styles from "./PackInstallError.module.css";
+import { FailureReportLink } from "./FailureReportLink";
 
 const observedDownloads = new Map<string, string>();
 
@@ -100,6 +101,7 @@ export function PackInstallError({ message, busy, onRetry, onError, showRetry = 
     </> : <>
       <p>{translated}</p>
       <details><summary>{uiText("common.texts.technicalDetails", "Technical details")}</summary><pre className={styles.message}>{message}</pre></details>
+      {failure?.details?.reportPath ? <FailureReportLink path={failure.details.reportPath} /> : null}
       {showRetry ? <button type="button" className={common.secondaryButton} disabled={busy || choosing} onClick={() => void onRetry()}>{uiText("common.retry", "Retry")}</button> : null}
     </>}
     {openError ? <p role="alert">{uiText("common.texts.couldNotOpenDownloadPagesTryOpeningTheFile", "Could not open download pages. Try opening the file links individually.")}<br /><code>{openError}</code></p> : null}
