@@ -612,3 +612,16 @@ async fn leaf_catalog_pins_channels_and_download_checksums_and_discovers_existin
     let server = discovery::connect(&state, folder.to_string_lossy().into_owned(), None).await.unwrap();
     assert_eq!(server.config.core, "leaf");
 }
+#[cfg(target_os = "macos")]
+#[test]
+fn macos_system_temp_aliases_allow_real_files_but_reject_nested_symlinks() {
+    let root = tempfile::tempdir().unwrap();
+    super::store::plain_path(root.path()).unwrap();
+    let directory = root.path().join("actual");
+    std::fs::create_dir(&directory).unwrap();
+    super::store::plain_path(&directory.join("new-file.jar")).unwrap();
+    let linked = root.path().join("linked");
+    std::os::unix::fs::symlink(&directory, &linked).unwrap();
+    assert!(super::store::plain_path(&linked.join("new-file.jar")).is_err());
+}
+

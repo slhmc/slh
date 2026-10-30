@@ -95,6 +95,30 @@ pub fn plain_path(path: &Path) -> AppResult<()> {
                 #[cfg(not(windows))]
                 let link = meta.file_type().is_symlink();
                 if link {
+                    // macOS exposes its standard temporary directories through
+                    // /var and /tmp aliases. Accept only the known OS mapping,
+                    // after checking the real target; user-created links below
+                    // that directory must still be rejected.
+                    #[cfg(target_os = "macos")]
+                    {
+                        let target = match at.as_path() {
+                            path if path == Path::new("/var") => Some(Path::new("/private/var")),
+                            path if path == Path::new("/tmp") => Some(Path::new("/private/tmp")),
+                            _ => None,
+                        };
+                        if let Some(target) = target {
+                            let link_target = std::fs::read_link(&at)?;
+                            let resolved_target = if link_target.is_absolute() {
+                                link_target
+                            } else {
+                                Path::new("/").join(link_target)
+                            };
+                            if resolved_target == target {
+                                plain_path(target)?;
+                                continue;
+                            }
+                        }
+                    }
                     return Err(AppError::Security(
                         "Server and cleanup paths cannot contain symbolic links or junctions"
                             .into(),
