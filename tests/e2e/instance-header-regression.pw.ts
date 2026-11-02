@@ -6,6 +6,8 @@ test("default instance actions remain buttons in one grid", async ({page}) => {
     await page.setViewportSize({width, height: width === 800 ? 560 : 900});
     await expect(page.getByRole("button", {name:"Delete instance",exact:true})).toBeAttached();
     await expect(page.getByText("More actions", {exact:true})).toHaveCount(0);
+    const labelsFit = await page.locator('[class*="quickGrid"] button span').evaluateAll(labels => labels.every(label => label.scrollWidth <= label.clientWidth + 1));
+    expect(labelsFit).toBe(true);
     await page.screenshot({path:`artifacts/ui/instance-actions-${width}.png`});
   }
 });

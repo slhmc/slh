@@ -30,7 +30,7 @@ Java-память редактируется вручную двумя числ�
 
 See ../docs/ux-audit-implementation.md for decisions and coverage. Reuse the shared confirmation Dialog; destructive confirmations default on and can be disabled in Advanced. No new backup/trash feature. Real errors, licensing and world-sync safeguards are independent.
 
-Rare translation/manual Java/appearance controls use themed disclosures. The library has a short heading. Small creation windows put version selection before identity and keep a version/loader summary in the footer. Instance quick actions use a single button grid without More; explicit user arrangements and visibility are retained.
+Rare translation/manual Java/appearance controls use themed disclosures. The library has a short heading. Small creation windows put version selection before identity and keep a version/loader summary in the footer. Instance quick actions use a single button grid without More; explicit user arrangements and visibility are retained. At window widths up to 1320 px the instance grid uses two columns to keep labels readable in WebKit.
 
 Window chrome follows the host by default. Advanced enables overrides; Appearance owns system dropdowns, window-control style and side. macOS signal colors are reserved --color-window-* tokens: 12px visual lights inside 24x28px hit regions. Windows retains 44px width; Linux uses 28px round hit regions. These are custom controls invoking host window actions, not native decorations.
 
