@@ -85,7 +85,13 @@ mod tests {
         let mut general = crate::database::setting(&state.database, "general").await.unwrap();
         general["rustMinecraft"] = true.into();
         crate::database::set_setting(&state.database, "general", &general).await.unwrap();
-        let server = super::super::store::create(&state, request()).await.unwrap();
+        let created = super::super::store::create(&state, request()).await;
+        if !cfg!(all(target_os = "windows", target_arch = "x86_64")) {
+            assert!(matches!(created, Err(AppError::Unavailable(_))), "unsupported platforms must reject the native engine");
+            state.database.close().await;
+            return;
+        }
+        let server = created.unwrap();
         std::fs::write(Path::new(&server.path).join("server.properties"), "server-port=25568\n").unwrap();
         assert_eq!(super::super::store::get(&state, &server.id).await.unwrap().config.properties["server-port"], "25568");
         std::fs::write(Path::new(&server.path).join("server.properties"), "server-port=25565\n").unwrap();
