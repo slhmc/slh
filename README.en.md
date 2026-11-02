@@ -7,7 +7,7 @@
 <p align="center">Minecraft Java Edition · Separate instances · Mods and modpacks · A customizable interface</p>
 
 <p align="center">
-  <a href="https://github.com/slhmc/slh/releases/tag/v0.2.1"><img src="assets/readme/buttons/download-en.png" width="420" alt="Download SLH"></a>
+  <a href="https://github.com/slhmc/slh/releases/tag/v0.2.3"><img src="assets/readme/buttons/download-en.png" width="420" alt="Download SLH"></a>
 </p>
 <p align="center">
   <a href="https://slhmc.github.io/"><img src="assets/readme/buttons/website-en.png" width="200" alt="SLH website"></a>
@@ -63,22 +63,22 @@ Explore the [interactive preview on the SLH website](https://slhmc.github.io/#pr
 
 ## Download and play
 
-Try the [v0.2.0 pre-release](https://github.com/slhmc/slh/releases/tag/v0.2.1). Choose a package for your operating system.
+Try the [v0.2.3 pre-release](https://github.com/slhmc/slh/releases/tag/v0.2.3). Choose a package for your operating system.
 
 > ⚠️ **Linux and macOS builds have not been manually tested.** All four desktop targets were built and passed unit tests, but launching SLH and Minecraft on Linux and macOS has not been verified.
 
 | Platform | Installer / package | Portable / app archive |
 | :--- | :--- | :--- |
-| **🪟 Windows 10 / 11 · x64** | [EXE](https://github.com/slhmc/slh/releases/download/v0.2.0/SLH-0.2.0-x86_64-pc-windows-msvc-setup.exe) · [MSI](https://github.com/slhmc/slh/releases/download/v0.2.0/SLH-0.2.0-x86_64-pc-windows-msvc.msi) | [ZIP](https://github.com/slhmc/slh/releases/download/v0.2.0/SLH-0.2.0-x86_64-pc-windows-msvc-portable.zip) |
-| **🍎 macOS · Intel · manually untested** | [DMG](https://github.com/slhmc/slh/releases/download/v0.2.0/SLH-0.2.0-x86_64-apple-darwin.dmg) | [App ZIP](https://github.com/slhmc/slh/releases/download/v0.2.0/SLH-0.2.0-x86_64-apple-darwin-app.zip) |
-| **🍎 macOS · Apple Silicon · manually untested** | [DMG](https://github.com/slhmc/slh/releases/download/v0.2.0/SLH-0.2.0-aarch64-apple-darwin.dmg) | [App ZIP](https://github.com/slhmc/slh/releases/download/v0.2.0/SLH-0.2.0-aarch64-apple-darwin-app.zip) |
-| **🐧 Linux · x64 · manually untested** | [DEB](https://github.com/slhmc/slh/releases/download/v0.2.0/SLH-0.2.0-x86_64-unknown-linux-gnu.deb) · [RPM](https://github.com/slhmc/slh/releases/download/v0.2.0/SLH-0.2.0-x86_64-unknown-linux-gnu.rpm) | [AppImage](https://github.com/slhmc/slh/releases/download/v0.2.0/SLH-0.2.0-x86_64-unknown-linux-gnu.AppImage) |
+| **🪟 Windows 10 / 11 · x64** | [EXE](https://github.com/slhmc/slh/releases/download/v0.2.3/SLH-0.2.3-x86_64-pc-windows-msvc-setup.exe) · [MSI](https://github.com/slhmc/slh/releases/download/v0.2.3/SLH-0.2.3-x86_64-pc-windows-msvc.msi) | [ZIP](https://github.com/slhmc/slh/releases/download/v0.2.3/SLH-0.2.3-x86_64-pc-windows-msvc-portable.zip) |
+| **🍎 macOS · Intel · manually untested** | [DMG](https://github.com/slhmc/slh/releases/download/v0.2.3/SLH-0.2.3-x86_64-apple-darwin.dmg) | [App ZIP](https://github.com/slhmc/slh/releases/download/v0.2.3/SLH-0.2.3-x86_64-apple-darwin-app.zip) |
+| **🍎 macOS · Apple Silicon · manually untested** | [DMG](https://github.com/slhmc/slh/releases/download/v0.2.3/SLH-0.2.3-aarch64-apple-darwin.dmg) | [App ZIP](https://github.com/slhmc/slh/releases/download/v0.2.3/SLH-0.2.3-aarch64-apple-darwin-app.zip) |
+| **🐧 Linux · x64 · manually untested** | [DEB](https://github.com/slhmc/slh/releases/download/v0.2.3/SLH-0.2.3-x86_64-unknown-linux-gnu.deb) · [RPM](https://github.com/slhmc/slh/releases/download/v0.2.3/SLH-0.2.3-x86_64-unknown-linux-gnu.rpm) | [AppImage](https://github.com/slhmc/slh/releases/download/v0.2.3/SLH-0.2.3-x86_64-unknown-linux-gnu.AppImage) |
 
 **Windows portable:** extract the entire ZIP into a writable folder and run `SLH.exe`. Keep the folder together when moving it.
 
 Linux packages were built on Ubuntu 22.04; compatibility with every distribution is not guaranteed. Windows and Linux packages are unsigned; macOS packages are ad-hoc signed and not notarized.
 
-Back up important worlds before testing or adapting an instance. [SHA-256 checksums](https://github.com/slhmc/slh/releases/download/v0.2.0/SHA256SUMS.txt).
+Back up important worlds before testing or adapting an instance. [SHA-256 checksums](https://github.com/slhmc/slh/releases/download/v0.2.3/SHA256SUMS.txt).
 
 ## Frequently asked questions
 

@@ -4,7 +4,9 @@
 
 # Smile LauncHer
 
-A local-first Minecraft: Java Edition launcher for Windows.
+A Minecraft launcher for Windows, macOS and Linux.
+
+**Current pre-release:** [SLH 0.2.3](https://github.com/slhmc/slh/releases/tag/v0.2.3).
 
 **Languages:** [English](README.md) · [Русский](README.ru.md) · [Deutsch](README.de.md)
 
@@ -15,7 +17,8 @@ SLH keeps Minecraft installations isolated, lets you manage accounts and Java lo
 ## Highlights
 
 - Separate Minecraft instances with groups, grid/list views, logs, worlds, screenshots and per-instance settings.
-- Vanilla, Fabric, Forge, NeoForge and Quilt.
+- Vanilla, Fabric, Forge, NeoForge and Quilt; experimental Horizon on Windows x64.
+- A persistent local-server library with console, player lists and live settings.
 - Microsoft, Ely.by and offline accounts.
 - Modrinth browsing and verified installation; CurseForge support when configured.
 - Managed Eclipse Temurin Java 8, 17, 21 and 25, plus detection of installed Java runtimes.

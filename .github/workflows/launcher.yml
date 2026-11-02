@@ -81,7 +81,7 @@ jobs:
           retention-days: 30
   release:
     needs: desktop
-    if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/codex/release-0.2.3')
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -104,6 +104,10 @@ jobs:
         shell: bash
         run: |
           version="$(node --input-type=module -e 'import {releaseVersion} from "./scripts/release-version.mjs"; import {readFileSync} from "node:fs"; console.log(releaseVersion(JSON.parse(readFileSync("package.json")).version))')"
+          if gh release view "v$version" --json isDraft --jq .isDraft 2>/dev/null | grep -qx false; then
+            echo "Release v$version is already published; keeping its assets unchanged."
+            exit 0
+          fi
           if ! gh release view "v$version" >/dev/null 2>&1; then
             gh release create "v$version" --target "$GITHUB_SHA" --draft --prerelease --title "SLH v$version" --notes-file release-notes.txt
           fi
