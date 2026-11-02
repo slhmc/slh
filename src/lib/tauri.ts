@@ -13,7 +13,7 @@ export const isTauri =
   typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
 const previewBootstrap: BootstrapData = {
-  version: "0.2.2.1-dev",
+  version: "0.2.3-dev",
   buildUnix: 0,
   portableRoot: "E:\\SLH-Portable",
   firstRun: false,
@@ -197,8 +197,8 @@ const previewBootstrap: BootstrapData = {
     },
     {
       provider: "elyby",
-      available: false,
-      message: "Ely.by sign-in is not active in this build.",
+      available: true,
+      message: "Ely.by sign-in may request 2FA. The verified authentication agent is downloaded automatically on first launch.",
     },
   ],
 };
@@ -225,7 +225,11 @@ function normalizeFailure(error: unknown): CommandFailure {
 
 export async function command<T>(name: string, args?: Record<string, unknown>): Promise<T> {
   if (!isTauri) {
-    if (["get_local_server_metrics","get_server_players","edit_server_players","sync_server_library","edit_server_collection","organize_server_library","reorder_server_collections","save_server_library_view","save_server_artwork","open_server_collection_folder","discover_local_servers","connect_local_server","get_local_server_icon","set_local_server_icon","list_server_plugins","search_server_plugins","server_plugin_versions","plan_server_plugin","install_server_plugin","manage_server_plugin","check_local_server_launch","inspect_local_server_core_candidate","repair_local_server_core","get_local_servers","get_local_server_config","delete_local_server","local_server_catalog","preview_server_launch","create_local_server","update_local_server","install_local_server","start_local_server","control_local_server","get_local_server_console","open_local_server_console","export_local_server_script","create_server_group","rename_server_group","move_server_group","move_local_server","save_server_defaults","open_local_server_folder","scan_storage_cleanup","execute_storage_cleanup","optimize_storage_database"].includes(name)) return (await import("./localServersPreview")).localServersPreview(name,args) as T;
+    if (name === "activate_account") {
+      previewBootstrap.accounts.forEach(account => { account.active = account.id === args?.accountId; });
+      return null as T;
+    }
+    if (["apply_local_server_live","update_local_server_memory","get_local_server_metrics","get_server_players","edit_server_players","sync_server_library","edit_server_collection","organize_server_library","reorder_server_collections","save_server_library_view","save_server_artwork","open_server_collection_folder","discover_local_servers","connect_local_server","get_local_server_icon","set_local_server_icon","list_server_plugins","search_server_plugins","server_plugin_versions","plan_server_plugin","install_server_plugin","manage_server_plugin","check_local_server_launch","inspect_local_server_core_candidate","repair_local_server_core","get_local_servers","get_local_server_config","delete_local_server","local_server_catalog","preview_server_launch","create_local_server","update_local_server","install_local_server","start_local_server","control_local_server","get_local_server_console","open_local_server_console","export_local_server_script","create_server_group","rename_server_group","move_server_group","move_local_server","save_server_defaults","open_local_server_folder","scan_storage_cleanup","execute_storage_cleanup","optimize_storage_database"].includes(name)) return (await import("./localServersPreview")).localServersPreview(name,args) as T;
     if (name === "run_pack_install") return command<T>(String(args?.commandName), args?.args as Record<string, unknown>);
     if (name === "scan_curseforge_downloads") return [] as T;
     if (name === "get_locale_revision") return String(args?.code ?? "en-US") as T;

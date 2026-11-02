@@ -1,3 +1,4 @@
+import { useConfirmation } from "../../components/common/ConfirmationProvider";
 import { LogViewer } from "../../components/common/LogViewer";
 import { DetailFrame, DetailTabs } from "../../components/common/LibraryChrome";
 import { ErrorText } from "../../components/common/ErrorText";
@@ -98,6 +99,7 @@ async function mapWithConcurrency<T, R>(items: T[], limit: number, task: (item: 
 
 export function InstancePage() {
   const uiText = useUiText();
+  const confirm = useConfirmation();
   const { id } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
@@ -110,7 +112,9 @@ export function InstancePage() {
   const endInstanceOperation = useAppStore((state) => state.endInstanceOperation);
   const { tr, locale } = useI18n();
   const [busy, setBusy] = useState(false);
-  const [files, setFiles] = useState<InstanceFileEntry[]>([]);
+  const [indexedFiles, setFiles] = useState<InstanceFileEntry[]>([]);
+  const [filesKey, setFilesKey] = useState("");
+  const [filesError, setFilesError] = useState("");
   const [filesLoading, setFilesLoading] = useState(false);
   const [selectedContentPaths, setSelectedContentPaths] = useState<string[]>([]);
   const [contentContextMenu, setContentContextMenu] = useState<{ x: number; y: number } | null>(null);
@@ -182,6 +186,8 @@ export function InstancePage() {
         ? styles.tabsBottom
         : "";
   const tabOrder = normalizeInstanceTabOrder(bootstrap?.settings.general.instanceTabs?.order);
+  const currentFilesKey = `${id}:${tab}`;
+  const files = filesKey === currentFilesKey ? indexedFiles : [];
   const supportedTabs: readonly InstanceTab[] = isBedrock ? tabs.filter((item) => item !== "shaders" && item !== "screenshots") : tabs;
   const configuredVisibleTabs = bootstrap?.settings.general.instanceTabs?.visible;
   const visibleTabIds = new Set<InstanceTab>(
@@ -376,10 +382,12 @@ export function InstancePage() {
     }
     let active = true;
     setSelectedContentPaths([]);
+    setFiles([]);
+    setFilesError("");
     setFilesLoading(true);
     command<InstanceFileEntry[]>("list_instance_files", { instanceId: id, category: tab })
-      .then((items) => { if (active) setFiles(items); })
-      .catch((error) => { if (active) pushToast({ tone: "error", title: uiText("instance.texts.filesCouldNotBeIndexed", "Files could not be indexed"), message: String((error as { message?: string }).message ?? error) }); })
+      .then((items) => { if (active) { setFiles(items); setFilesKey(`${id}:${tab}`); } })
+      .catch((error) => { if (active) setFilesError(String((error as { message?: string }).message ?? error)); })
       .finally(() => { if (active) setFilesLoading(false); });
     return () => { active = false; };
   }, [contentRevision, id, instance?.loaderType, pushToast, tab]);
@@ -760,6 +768,7 @@ export function InstancePage() {
   };
 
   const deleteInstance = async () => {
+    if (!await confirm({ title: uiText("installation.texts.deleteInstance"), description: uiText("audit.deleteInstanceWarning"), names: [instance.name] })) return;
     setBusy(true);
     const pending = useAppStore.getState().deleteInstance(instance.id);
     navigate("/library", { replace: true });
@@ -978,6 +987,7 @@ export function InstancePage() {
 
   const deleteContentEntry = async (entry: InstanceFileEntry) => {
     if (!instance || !["mods", "resourcepacks", "shaders", "worlds", "screenshots"].includes(tab) || contentActionBusy) return;
+    if (!await confirm({ title: uiText("common.delete"), description: uiText("audit.deleteFilesWarning"), names: [entry.name] })) return;
     setContentActionBusy(true);
     try {
       await command("delete_instance_content", { instanceId: instance.id, category: tab, path: entry.path });
@@ -1037,6 +1047,7 @@ export function InstancePage() {
   };
   const deleteSelectedContent = async () => {
     if (!instance || selectedContent.length === 0 || contentActionBusy) return;
+    if (!await confirm({ title: uiText("common.delete"), description: uiText("audit.deleteFilesWarning"), names: selectedContent.map(entry => entry.name) })) return;
     setContentActionBusy(true);
     const failed: string[] = [];
     for (const entry of selectedContent) {
@@ -1116,7 +1127,7 @@ export function InstancePage() {
 
   return (
     <DetailFrame position="" className={tabsPositionClass}>
-      <header className={styles.header}>
+      <header className={styles.header}><button className={common.ghostButton} onClick={() => { selectInstance(instance.id); navigate("/library"); }}>{uiText("navigation.library")}</button>
         <InstanceArtwork instance={instance} size="small" />
         <div className={styles.identity}><h1>{instance.name}</h1><p>{uiText("settings.minecraft", "Minecraft")}{" "}{instance.minecraftVersion} · {instance.loaderType === "bedrock" ? uiText("installation.texts.bedrock", "Bedrock") : instance.loaderType}</p></div>
         <div className={styles.headerMeta}><span><Clock size={15} /> {formatPlaytime(instance.playtimeSeconds, locale, tr)}</span><span className={instance.status === "installed" ? common.successBadge : common.badge}>{tr(instance.status)}</span></div>
@@ -1181,7 +1192,7 @@ export function InstancePage() {
                 <button className={common.ghostButton} type="button" disabled={contentActionBusy} onClick={() => setSelectedContentPaths([])}>{uiText("discover.texts.clearSelection", "Clear selection")}</button>
               </div>
             </div> : null}
-            {filesLoading ? <div className={styles.tabEmpty}><SpinnerGap className={styles.spin} size={30} /><p>{uiText("instance.texts.indexingFiles", "Indexing files")}</p></div> : files.length === 0 ? <div className={styles.tabEmpty}><File size={34} weight="duotone" /><h2>{tr(isBedrock && tab === "logs" ? uiText("instance.texts.noBedrockLogsFound", "No Bedrock logs found") : uiText("instance.texts.noCompatibleContentFound", "No compatible content found"))}</h2><p>{tr(isBedrock && tab === "mods" ? "Import a Bedrock pack or browse CurseForge to get started." : isBedrock && tab === "resourcepacks" ? uiText("instance.texts.importABedrockResourcePackOrBrowseTheCatalog", "Import a Bedrock resource pack or browse the catalog. Bedrock uses resource packs for visual changes.") : isBedrock && tab === "worlds" ? uiText("instance.texts.importAMcworldFileOrChooseAWorldIn", "Import a .mcworld file or choose a world in Minecraft.") : isBedrock && tab === "screenshots" ? uiText("instance.texts.windowsCapturesAreShownHereWhenTheyAreSaved", "Windows captures are shown here when they are saved in the standard Captures or Screenshots folder.") : isBedrock && tab === "logs" ? uiText("instance.texts.bedrockLogFilesAppearHereWhenMinecraftCreatesThem", "Bedrock log files appear here when Minecraft creates them.") : uiText("instance.texts.installContentMatchedToThisInstanceOrPlaceFiles", "Install content matched to this instance or place files in its folder."))}</p></div> : tab === "screenshots" ? <div className={styles.screenshotGrid}>{displayedFiles.map((entry) => <div className={`${styles.screenshotItem} ${selectedContentPaths.includes(entry.path) ? styles.contentSelected : ""}`} key={entry.path} data-slh-context-menu="true" onContextMenu={(event) => openContentContextMenu(event, entry)}>{screenshotSelectionControl(entry)}<button className={styles.screenshotOpenButton} type="button" aria-label={`${uiText("instance.texts.open", "Open")} ${entry.name}`} onClick={(event) => { if (event.ctrlKey || event.metaKey) { event.preventDefault(); selectContent(entry.path, true); return; } void openScreenshot(entry); }}><ScreenshotPreview instanceId={instance.id} entry={entry} /><span><strong>{entry.name}</strong><small>{entry.modifiedAt ? new Date(entry.modifiedAt).toLocaleString(locale) : formatBytes(entry.sizeBytes)}</small></span></button></div>)}</div> : <div className={styles.fileList}>{displayedFiles.map((entry) => <div className={`${styles.fileRow} ${selectedContentPaths.includes(entry.path) ? styles.contentSelected : ""}`} key={entry.path} data-slh-context-menu="true" onContextMenu={isBedrock && tab === "logs" ? undefined : (event) => openContentContextMenu(event, entry)}>{isBedrock && tab === "logs" ? <button className={styles.fileOpen} type="button" onClick={() => void revealInstancePath(instance.id, entry.path).catch((error) => pushToast({ tone: "error", title: uiText("instance.texts.logCouldNotBeOpened", "Log could not be opened"), message: String((error as { message?: string }).message ?? error) }))}><span className={styles.fileIcon}><FileText size={19} /></span><span><strong>{entry.name}</strong><small>{entry.modifiedAt ? new Date(entry.modifiedAt).toLocaleString(locale) : uiText("instance.texts.modifiedTimeUnavailable", "Modified time unavailable")}</small></span><span>{formatBytes(entry.sizeBytes)}</span></button> : <>{contentSelectionControl(entry)}<button className={styles.fileOpen} type="button" aria-pressed={selectedContentPaths.includes(entry.path)} onClick={(event) => selectContent(entry.path, event.ctrlKey || event.metaKey)}><span className={`${styles.fileIcon} ${entry.iconDataUrl ? styles.fileArtwork : ""}`}>{entry.iconDataUrl ? <img src={entry.iconDataUrl} alt="" /> : entry.entryType === "directory" ? <FolderOpen size={19} /> : <File size={19} />}</span><span><strong>{entry.name}</strong><small>{entry.modifiedAt ? new Date(entry.modifiedAt).toLocaleString(locale) : uiText("instance.texts.modifiedTimeUnavailable", "Modified time unavailable")}</small></span><span>{formatBytes(entry.sizeBytes)}</span></button><button className={`${common.iconButton} ${styles.contentDelete}`} type="button" disabled={contentActionBusy} aria-label={`${uiText("common.delete", "Delete")} ${entry.name}`} title={uiText("instance.texts.deleteWithoutConfirmation", "Delete without confirmation")} onClick={() => void deleteContentEntry(entry)}><Trash size={16} /></button></>}</div>)}</div>}
+            {filesError ? <div className={styles.tabEmpty} role="alert"><h2>{uiText("instance.texts.filesCouldNotBeIndexed")}</h2><ErrorText message={filesError} /><button className={common.secondaryButton} onClick={() => setContentRevision(value => value + 1)}>{uiText("common.retry")}</button></div> : filesLoading ? <div className={styles.tabEmpty}><SpinnerGap className={styles.spin} size={30} /><p>{uiText("instance.texts.indexingFiles", "Indexing files")}</p></div> : files.length === 0 ? <div className={styles.tabEmpty}><File size={34} weight="duotone" /><h2>{tr(isBedrock && tab === "logs" ? uiText("instance.texts.noBedrockLogsFound", "No Bedrock logs found") : tab === "screenshots" ? uiText("audit.noScreenshots") : tab === "worlds" ? uiText("audit.noWorlds") : uiText("instance.texts.noCompatibleContentFound", "No compatible content found"))}</h2><p>{tr(tab === "screenshots" ? uiText("audit.screenshotsHint") : !isBedrock && tab === "worlds" ? uiText("audit.worldsHint") : isBedrock && tab === "mods" ? "Import a Bedrock pack or browse CurseForge to get started." : isBedrock && tab === "resourcepacks" ? uiText("instance.texts.importABedrockResourcePackOrBrowseTheCatalog", "Import a Bedrock resource pack or browse the catalog. Bedrock uses resource packs for visual changes.") : isBedrock && tab === "worlds" ? uiText("instance.texts.importAMcworldFileOrChooseAWorldIn", "Import a .mcworld file or choose a world in Minecraft.") : isBedrock && tab === "screenshots" ? uiText("instance.texts.windowsCapturesAreShownHereWhenTheyAreSaved", "Windows captures are shown here when they are saved in the standard Captures or Screenshots folder.") : isBedrock && tab === "logs" ? uiText("instance.texts.bedrockLogFilesAppearHereWhenMinecraftCreatesThem", "Bedrock log files appear here when Minecraft creates them.") : uiText("instance.texts.installContentMatchedToThisInstanceOrPlaceFiles", "Install content matched to this instance or place files in its folder."))}</p></div> : tab === "screenshots" ? <div className={styles.screenshotGrid}>{displayedFiles.map((entry) => <div className={`${styles.screenshotItem} ${selectedContentPaths.includes(entry.path) ? styles.contentSelected : ""}`} key={entry.path} data-slh-context-menu="true" onContextMenu={(event) => openContentContextMenu(event, entry)}>{screenshotSelectionControl(entry)}<button className={styles.screenshotOpenButton} type="button" aria-label={`${uiText("instance.texts.open", "Open")} ${entry.name}`} onClick={(event) => { if (event.ctrlKey || event.metaKey) { event.preventDefault(); selectContent(entry.path, true); return; } void openScreenshot(entry); }}><ScreenshotPreview instanceId={instance.id} entry={entry} /><span><strong>{entry.name}</strong><small>{entry.modifiedAt ? new Date(entry.modifiedAt).toLocaleString(locale) : formatBytes(entry.sizeBytes)}</small></span></button></div>)}</div> : <div className={styles.fileList}>{displayedFiles.map((entry) => <div className={`${styles.fileRow} ${selectedContentPaths.includes(entry.path) ? styles.contentSelected : ""}`} key={entry.path} data-slh-context-menu="true" onContextMenu={isBedrock && tab === "logs" ? undefined : (event) => openContentContextMenu(event, entry)}>{isBedrock && tab === "logs" ? <button className={styles.fileOpen} type="button" onClick={() => void revealInstancePath(instance.id, entry.path).catch((error) => pushToast({ tone: "error", title: uiText("instance.texts.logCouldNotBeOpened", "Log could not be opened"), message: String((error as { message?: string }).message ?? error) }))}><span className={styles.fileIcon}><FileText size={19} /></span><span><strong>{entry.name}</strong><small>{entry.modifiedAt ? new Date(entry.modifiedAt).toLocaleString(locale) : uiText("instance.texts.modifiedTimeUnavailable", "Modified time unavailable")}</small></span><span>{formatBytes(entry.sizeBytes)}</span></button> : <>{contentSelectionControl(entry)}<button className={styles.fileOpen} type="button" aria-pressed={selectedContentPaths.includes(entry.path)} onClick={(event) => selectContent(entry.path, event.ctrlKey || event.metaKey)}><span className={`${styles.fileIcon} ${entry.iconDataUrl ? styles.fileArtwork : ""}`}>{entry.iconDataUrl ? <img src={entry.iconDataUrl} alt="" /> : entry.entryType === "directory" ? <FolderOpen size={19} /> : <File size={19} />}</span><span><strong>{entry.name}</strong><small>{entry.modifiedAt ? new Date(entry.modifiedAt).toLocaleString(locale) : uiText("instance.texts.modifiedTimeUnavailable", "Modified time unavailable")}</small></span><span>{formatBytes(entry.sizeBytes)}</span></button><button className={`${common.iconButton} ${styles.contentDelete}`} type="button" disabled={contentActionBusy} aria-label={`${uiText("common.delete", "Delete")} ${entry.name}`} title={uiText("instance.texts.deleteWithoutConfirmation", "Delete without confirmation")} onClick={() => void deleteContentEntry(entry)}><Trash size={16} /></button></>}</div>)}</div>}
           </div>
         ) : tab === "logs" ? (
           <div className={styles.consolePanel}>

@@ -151,3 +151,25 @@
 .compact .actions { padding-left: 4px; }
 
 @media (max-width: 620px) { .actions > button span, .importMenu summary span { display: none; } .actions > button { padding: 0 8px; min-width: 32px; } .windowControls button { width: 32px; } }
+
+/* System chrome is visual; actual actions follow the host platform. */
+.controlsLeft.titlebar { grid-template-columns: auto minmax(40px, 1fr) auto; }
+.controlsLeft.compact.titlebar { grid-template-columns: auto 44px minmax(0, 1fr) auto; }
+.controlsLeft .windowControls { order: -1; }
+.windowControls button { display: grid; place-items: center; }
+.windowControls.macos, .windowControls.linux { align-items: center; gap: var(--space-1); padding: 0 var(--space-2); }
+.windowControls.macos button { position: relative; width: 24px; height: 28px; background: none; color: var(--color-window-symbol); }
+.windowControls.macos button::before { content: ""; position: absolute; width: 12px; height: 12px; border-radius: 50%; background: var(--color-window-minimize); }
+.windowControls.macos .close { order: -3; }
+.windowControls.macos .minimize { order: -2; }
+.windowControls.macos .maximize { order: -1; }
+.windowControls.macos .close::before { background: var(--color-window-close); }
+.windowControls.macos .maximize::before { background: var(--color-window-maximize); }
+.windowControls.macos button svg { position: relative; width: 9px; height: 9px; opacity: 0; }
+.windowControls.macos:hover button svg, .windowControls.macos button:focus-visible svg { opacity: 1; }
+.windowControls.linux button { width: 28px; height: 28px; border-radius: 50%; }
+.windowControls.linux .close { background: var(--color-surface-2); }
+
+@media (prefers-reduced-motion: no-preference) { .windowControls button { transition: background 140ms ease, color 140ms ease, transform 150ms ease-out; } .windowControls button:active { transform: scale(.96); } }
+
+.windowControls button:active, .windowControls.macos button:active { background: var(--color-surface-hover); box-shadow: inset 0 0 0 1px var(--color-border-strong); }

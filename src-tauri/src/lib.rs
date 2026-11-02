@@ -113,7 +113,10 @@ pub fn run() {
             })?;
             app.manage(window_activity::Activity::default());
             app.manage(ui_events::UiEvents::default());
-            let updater = tauri_plugin_updater::Builder::new();
+            let updater = tauri_plugin_updater::Builder::new()
+                .default_version_comparator(|current, release| {
+                    crate::updates::is_newer(&release.version.to_string(), &current.to_string())
+                });
             #[cfg(windows)]
             let updater = updater.installer_arg(format!("/D={}", state.paths.executable_dir.display()));
             app.handle().plugin(updater.build())?;
@@ -203,6 +206,8 @@ pub fn run() {
             local_servers::set_local_server_icon,
             local_servers::get_local_server_config,
             local_servers::get_server_players,
+              local_servers::apply_local_server_live,
+              local_servers::update_local_server_memory,
             local_servers::edit_server_players,
             local_servers::delete_local_server,
             local_servers::local_server_catalog,

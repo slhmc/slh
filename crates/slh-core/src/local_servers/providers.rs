@@ -12,7 +12,7 @@ use serde_json::Value;
 use std::path::{Path, PathBuf};
 use tokio::io::AsyncWriteExt;
 
-const USER_AGENT: &str = "SLH/0.2.2.1 (https://github.com/slhmc/slh)";
+const USER_AGENT: &str = "SLH/0.2.3 (https://github.com/slhmc/slh)";
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CoreVersion {
@@ -118,6 +118,17 @@ pub async fn vanilla_details(state: &AppState, mc: &str) -> AppResult<Value> {
     json(state, url).await
 }
 pub async fn catalog(state: &AppState, core: &str, mc: Option<&str>) -> AppResult<ServerCatalog> {
+    if core == "horizon" {
+        crate::minecraft::horizon::ensure_enabled(&state.database).await?;
+        crate::minecraft::horizon::validate(mc.unwrap_or("26.3"))?;
+        return Ok(ServerCatalog {
+            minecraft_versions: crate::minecraft::horizon_catalog::minecraft_versions(state).await?,
+            versions: if let Some(mc) = mc {
+                crate::minecraft::horizon_catalog::versions(state, mc).await?.into_iter().filter(|v| super::horizon::supported(&v.id))
+                    .map(|v| CoreVersion { id: v.id, stable: v.stable, java_major: 0 }).collect()
+            } else { vec![] },
+        });
+    }
     let mut out = ServerCatalog {
         minecraft_versions: vec![],
         versions: vec![],
@@ -589,6 +600,7 @@ async fn install_inner(
     state: &AppState,
     server: &store::LocalServer,
 ) -> AppResult<LaunchPlan> {
+    if server.config.core == "horizon" { return super::horizon::install(app, state, server).await; }
     let c = &server.config;
     version_path(&c.minecraft_version)?;
     version_path(&c.core_version)?;

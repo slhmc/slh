@@ -49,7 +49,7 @@ pub async fn update(pool: &SqlitePool, key: &str, value: Value) -> AppResult<Val
         ));
     }
     if key == "general" {
-        validate_optional_booleans(&value, &["rustMinecraft"])?;
+        validate_optional_booleans(&value, &["rustMinecraft", "confirmDestructiveActions", "platformCustomization"])?;
         if let Some(policy) = value.get("webview") {
             let policy: crate::webview_settings::WebviewSettings = serde_json::from_value(policy.clone())
                 .map_err(|e| AppError::InvalidInput(format!("Invalid WebView2 settings: {e}")))?;
@@ -187,7 +187,12 @@ fn validate_java(value: &Value) -> AppResult<()> {
 }
 
 fn validate_appearance(value: &Value) -> AppResult<()> {
-    validate_optional_booleans(value, &["fitProjectTitles"])?;
+    validate_optional_booleans(value, &["fitProjectTitles", "systemControls"])?;
+    for (field, allowed) in [("windowControlsStyle", &["auto", "windows", "macos", "linux"][..]), ("windowControlsSide", &["auto", "left", "right"][..])] {
+        if value.get(field).is_some_and(|v| !v.as_str().is_some_and(|s| allowed.contains(&s))) {
+            return Err(AppError::InvalidInput(format!("Invalid {field}")));
+        }
+    }
     const COLORS: &[&str] = &[
         "background",
         "surface",
@@ -472,6 +477,31 @@ mod tests {
             let mut invalid=legacy.clone(); invalid[field]=Value::from("false");
             assert!(validate_java(&invalid).is_err());
         }
+    }
+
+    #[tokio::test]
+    async fn platform_preferences_round_trip_without_replacing_unrelated_settings() {
+        let pool = sqlx::sqlite::SqlitePoolOptions::new().max_connections(1).connect("sqlite::memory:").await.unwrap();
+        sqlx::migrate!("./migrations").run(&pool).await.unwrap();
+        let original = database::setting(&pool, "general").await.unwrap();
+        update(&pool, "general", serde_json::json!({"confirmDestructiveActions":false,"platformCustomization":true})).await.unwrap();
+        let saved = database::setting(&pool, "general").await.unwrap();
+        assert_eq!(saved["confirmDestructiveActions"], false);
+        assert_eq!(saved["language"], original["language"]);
+        assert!(update(&pool, "general", serde_json::json!({"confirmDestructiveActions":"false"})).await.is_err());
+        let mut appearance = serde_json::json!({
+            "background":"#1f2226","surface":"#292d32","surface2":"#343a40",
+            "border":"#454c54","text":"#ffffff","textMuted":"#aeb6bf",
+            "accent":"#cd491e","accentHover":"#e15828","accentPressed":"#ae3916",
+            "activePresetId":"slh-orange","presets":[],"scalePercent":100
+        });
+        appearance["windowControlsStyle"] = serde_json::json!("macos");
+        appearance["windowControlsSide"] = serde_json::json!("right");
+        appearance["systemControls"] = serde_json::json!(true);
+        update(&pool, "appearance", appearance.clone()).await.unwrap();
+        assert_eq!(database::setting(&pool, "appearance").await.unwrap()["windowControlsStyle"], "macos");
+        appearance["windowControlsSide"] = serde_json::json!("middle");
+        assert!(update(&pool, "appearance", appearance).await.is_err());
     }
 
     #[test]

@@ -1,9 +1,10 @@
 import { readFileSync, writeFileSync, readdirSync, unlinkSync, existsSync } from "node:fs";
 import path from "node:path";
+import { releaseVersion } from "./release-version.mjs";
 
 const directory = process.argv[2] ?? "packages";
 const internalVersion = JSON.parse(readFileSync("package.json", "utf8")).version;
-const version = internalVersion.replace(/\+1$/, ".1");
+const version = releaseVersion(internalVersion);
 const platforms = {};
 const files = readdirSync(directory);
 for (const file of files.filter(name => name.startsWith("update-") && name.endsWith(".json"))) {
@@ -35,7 +36,7 @@ if (/\{\{[A-Z_]+\}\}/.test(notes)) throw Error("Unresolved release note placehol
 writeFileSync("release-notes.txt", notes);
 writeFileSync(path.join(directory, "latest.json"), JSON.stringify({
   version: internalVersion,
-  notes: "Local servers and Leaf, experimental Horizon, offline skins, legacy Minecraft and Forge fixes, more reliable Modrinth/CurseForge installs and launch diagnostics.",
+  notes: "Update fixes, Horizon and local-server improvements. / Исправления обновления, улучшения Horizon и локальных серверов.",
   pub_date: new Date().toISOString(),
   platforms,
 }, null, 2));

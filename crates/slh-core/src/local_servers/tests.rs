@@ -545,7 +545,7 @@ async fn players_lists_roundtrip_preserve_identity_permissions_and_unknown_field
     let server = store::create(&state, req).await.unwrap();
     let first = players::list(&state, &server.id).await.unwrap();
     let edit = |kind: &str, action: &str, name: &str, id: Option<String>, revision: String| PlayerEdit {
-        kind: kind.into(), action: action.into(), name: name.into(), uuid: id, level: Some(3), reason: Some("Test reason".into()), expected_revision: revision,
+        kind: kind.into(), action: action.into(), name: name.into(), uuid: id, identity_provider: None, level: Some(3), reason: Some("Test reason".into()), expected_revision: revision,
     };
     let list = players::edit(&state, &server.id, edit("whitelist", "add", "Notch", None, first.revisions["whitelist"].clone())).await.unwrap();
     let id = crate::accounts::offline_uuid("Notch").to_string();
@@ -568,11 +568,25 @@ async fn players_lists_roundtrip_preserve_identity_permissions_and_unknown_field
 }
 
 #[tokio::test]
+async fn explicit_offline_player_uses_offline_identity_even_with_cached_online_profile() {
+    use super::players::{self, PlayerEdit};
+    let (_root, state) = setup().await;
+    let server = store::create(&state, request(None)).await.unwrap();
+    std::fs::write(Path::new(&server.path).join("usercache.json"), r#"[{"name":"Alex","uuid":"00000000-0000-4000-8000-000000000001"}]"#).unwrap();
+    let list = players::edit(&state, &server.id, PlayerEdit {
+        kind: "operators".into(), action: "add".into(), name: "Alex".into(), uuid: None,
+        identity_provider: Some("offline".into()), level: Some(4), reason: None, expected_revision: "missing".into(),
+    }).await.unwrap();
+    assert_eq!(list.operators[0]["uuid"], crate::accounts::offline_uuid("Alex").to_string());
+    assert_eq!(list.operators[0]["name"], "Alex");
+}
+
+#[tokio::test]
 async fn players_lists_reject_stale_corrupt_running_and_invalid_edits() {
     use super::players::{self, PlayerEdit};
     let (_root, state) = setup().await;
     let server = store::create(&state, request(None)).await.unwrap();
-    let edit = |kind: &str, name: &str, revision: &str| PlayerEdit { kind: kind.into(), action: "add".into(), name: name.into(), uuid: Some(crate::accounts::offline_uuid("Test").to_string()), level: Some(4), reason: None, expected_revision: revision.into() };
+    let edit = |kind: &str, name: &str, revision: &str| PlayerEdit { kind: kind.into(), action: "add".into(), name: name.into(), uuid: Some(crate::accounts::offline_uuid("Test").to_string()), identity_provider: None, level: Some(4), reason: None, expected_revision: revision.into() };
     let path = Path::new(&server.path).join("whitelist.json");
     std::fs::write(&path, "[]").unwrap();
     assert!(players::edit(&state, &server.id, edit("whitelist", "Test", "missing")).await.is_err());
@@ -589,6 +603,153 @@ async fn players_lists_reject_stale_corrupt_running_and_invalid_edits() {
     assert!(players::list(&state, &server.id).await.is_err());
     assert!(players::edit(&state, &server.id, edit("whitelist", "Test", "missing")).await.is_err());
     assert_eq!(std::fs::read_to_string(&path).unwrap(), "broken json");
+}
+
+#[tokio::test]
+async fn live_players_use_host_commands_and_wait_for_server_persistence() {
+    use super::{host, players::{self, PlayerEdit}, runtime};
+    use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+    let (_root, state) = setup().await;
+    let server = store::create(&state, request(None)).await.unwrap();
+    let properties = Path::new(&server.path).join("server.properties");
+    let original = "# custom operator default\nop-permission-level: 2\nforeign-setting=keep\n";
+    std::fs::write(&properties, original).unwrap();
+    assert_eq!(players::list(&state, &server.id).await.unwrap().operator_level, 2);
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let run_file = runtime::run_file(&state, &server.id);
+    std::fs::create_dir_all(run_file.parent().unwrap()).unwrap();
+    let info = host::RunInfo { server_id: server.id.clone(), host_pid: 0, java_pid: 0, java_started: 0,
+        endpoint: listener.local_addr().unwrap().to_string(), token: "test-only".into(), state: "running".into(), exit_code: None, error: None };
+    std::fs::write(&run_file, serde_json::to_vec(&info).unwrap()).unwrap();
+    let path = Path::new(&server.path).join("whitelist.json");
+    let output = path.clone();
+    let host = tokio::spawn(async move {
+        let mut commands = vec![];
+        loop {
+            let (socket, _) = listener.accept().await.unwrap();
+            let mut socket = BufReader::new(socket);
+            let mut line = String::new(); socket.read_line(&mut line).await.unwrap();
+            let request: host::Request = serde_json::from_str(&line).unwrap();
+            assert_eq!(request.token, "test-only");
+            if request.action == "command" {
+                commands.push(request.command.clone());
+                assert_eq!(request.command, "whitelist add Alex");
+                // Only the simulated Minecraft process writes the cached list.
+                assert!(!output.exists());
+                std::fs::write(&output, serde_json::to_vec(&serde_json::json!([{
+                    "name":"Alex", "uuid":crate::accounts::offline_uuid("Alex").to_string(), "fromServer":true
+                }])).unwrap()).unwrap();
+            }
+            let snapshot = host::HostSnapshot { run_id: None, state: "running".into(), lines: vec![], last_seq: 0, exit_code: None, error: None };
+            socket.get_mut().write_all(format!("{}\n", serde_json::to_string(&snapshot).unwrap()).as_bytes()).await.unwrap();
+            if !commands.is_empty() { return commands; }
+        }
+    });
+    let result = players::edit(&state, &server.id, PlayerEdit { kind: "whitelist".into(), action: "add".into(), name: "Alex".into(), uuid: None, identity_provider: None, level: None, reason: None, expected_revision: "missing".into() }).await.unwrap();
+    assert_eq!(result.whitelist[0]["fromServer"], true);
+    assert_eq!(host.await.unwrap(), ["whitelist add Alex"]);
+    assert!(path.exists());
+    assert_eq!(std::fs::read_to_string(properties).unwrap(), original);
+}
+
+#[tokio::test]
+async fn memory_can_be_saved_while_running_without_touching_server_files() {
+    let (_root, state) = setup().await;
+    let server = store::create(&state, request(None)).await.unwrap();
+    let path = Path::new(&server.path).join("server.properties");
+    let original = std::fs::read(&path).unwrap();
+    let plan = store::load_plan(&state, &server.id).await.unwrap();
+    store::set_status(&state, &server.id, "running").await.unwrap();
+    let saved = store::update_memory(&state, &server.id, 128, 2048).await.unwrap();
+    assert_eq!(saved.config.memory_min_mb, 128);
+    assert_eq!(saved.config.memory_max_mb, 2048);
+    assert_eq!(saved.status, "running");
+    assert_eq!(std::fs::read(&path).unwrap(), original);
+    assert_eq!(serde_json::to_value(store::load_plan(&state, &server.id).await.unwrap()).unwrap(), serde_json::to_value(plan).unwrap());
+    assert!(store::update_memory(&state, &server.id, 127, 2048).await.is_err());
+    assert!(store::update_memory(&state, &server.id, 4096, 2048).await.is_err());
+    assert!(store::update_memory(&state, &server.id, 128, 1_048_577).await.is_err());
+    assert_eq!(store::get(&state, &server.id).await.unwrap().config.memory_max_mb, 2048);
+}
+
+#[tokio::test]
+async fn access_change_waits_for_startup_and_accepts_empty_list_initialization() {
+    use super::{host, players::{self, PlayerEdit}, runtime};
+    use std::sync::{Arc, atomic::{AtomicBool, AtomicUsize, Ordering}};
+    use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+    let (_root, state) = setup().await;
+    let server = store::create(&state, request(None)).await.unwrap();
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let descriptor = runtime::run_file(&state, &server.id);
+    std::fs::create_dir_all(descriptor.parent().unwrap()).unwrap();
+    let info = host::RunInfo { server_id: server.id.clone(), host_pid: 0, java_pid: 0, java_started: 0,
+        endpoint: listener.local_addr().unwrap().to_string(), token: "startup-test".into(), state: "starting".into(), exit_code: None, error: None };
+    std::fs::write(&descriptor, serde_json::to_vec(&info).unwrap()).unwrap();
+    store::set_status(&state, &server.id, "starting").await.unwrap();
+    let ready = Arc::new(AtomicBool::new(false)); let commands = Arc::new(AtomicUsize::new(0));
+    let flag = ready.clone(); let count = commands.clone();
+    let path = Path::new(&server.path).join("whitelist.json"); let output = path.clone();
+    let host_task = tokio::spawn(async move {
+        loop {
+            let (socket, _) = listener.accept().await.unwrap(); let mut socket = BufReader::new(socket);
+            let mut text = String::new(); socket.read_line(&mut text).await.unwrap();
+            let request: host::Request = serde_json::from_str(&text).unwrap();
+            let is_command = request.action == "command";
+            if is_command {
+                assert!(flag.load(Ordering::SeqCst)); assert_eq!(request.command, "whitelist add Alex");
+                count.fetch_add(1, Ordering::SeqCst);
+                std::fs::write(&output, serde_json::to_vec(&serde_json::json!([{"name":"Alex", "uuid":crate::accounts::offline_uuid("Alex").to_string()}])).unwrap()).unwrap();
+            }
+            let snapshot = host::HostSnapshot { run_id: None, state: if flag.load(Ordering::SeqCst) { "running" } else { "starting" }.into(), lines: vec![], last_seq: 0, exit_code: None, error: None };
+            socket.get_mut().write_all(format!("{}\n", serde_json::to_string(&snapshot).unwrap()).as_bytes()).await.unwrap();
+            if is_command { break; }
+        }
+    });
+    let edit = players::edit(&state, &server.id, PlayerEdit { kind: "whitelist".into(), action: "add".into(), name: "Alex".into(), uuid: None, identity_provider: None, level: None, reason: None, expected_revision: "missing".into() });
+    let finish_startup = async {
+        tokio::time::sleep(std::time::Duration::from_millis(150)).await;
+        assert_eq!(commands.load(Ordering::SeqCst), 0);
+        std::fs::write(&path, "[]").unwrap(); ready.store(true, Ordering::SeqCst);
+    };
+    let (result, _) = tokio::join!(edit, finish_startup);
+    assert_eq!(result.unwrap().whitelist[0]["name"], "Alex");
+    host_task.await.unwrap(); assert_eq!(commands.load(Ordering::SeqCst), 1);
+}
+
+#[tokio::test]
+async fn world_setting_goes_through_host_and_returns_only_new_output() {
+    use super::{host, live, runtime};
+    use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+    let (_root, state) = setup().await;
+    let server = store::create(&state, request(None)).await.unwrap();
+    let properties = Path::new(&server.path).join("server.properties");
+    let original = std::fs::read(&properties).unwrap();
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let descriptor = runtime::run_file(&state, &server.id);
+    std::fs::create_dir_all(descriptor.parent().unwrap()).unwrap();
+    let info = host::RunInfo { server_id: server.id.clone(), host_pid: 0, java_pid: 0, java_started: 0,
+        endpoint: listener.local_addr().unwrap().to_string(), token: "live-test".into(), state: "running".into(), exit_code: None, error: None };
+    std::fs::write(&descriptor, serde_json::to_vec(&info).unwrap()).unwrap();
+    let host_task = tokio::spawn(async move {
+        let mut applied = false;
+        loop {
+            let (socket, _) = listener.accept().await.unwrap(); let mut socket = BufReader::new(socket);
+            let mut text = String::new(); socket.read_line(&mut text).await.unwrap();
+            let request: host::Request = serde_json::from_str(&text).unwrap();
+            assert_eq!(request.token, "live-test");
+            if request.action == "command" { assert_eq!(request.command, "difficulty hard"); applied = true; }
+            let reply = applied && request.action == "status" && request.cursor == 7;
+            let lines = if reply { vec![host::ServerLine { seq: 8, text: "Difficulty changed by server".into(), stream: "stdout".into(), timestamp: "test".into() }] } else { vec![] };
+            let snapshot = host::HostSnapshot { run_id: None, state: "running".into(), lines, last_seq: if applied { 8 } else { 7 }, exit_code: None, error: None };
+            socket.get_mut().write_all(format!("{}\n", serde_json::to_string(&snapshot).unwrap()).as_bytes()).await.unwrap();
+            if reply { break; }
+        }
+    });
+    let result = live::apply(&state, &server.id, live::LiveEdit { kind: "difficulty".into(), value: "hard".into(), rule: None }).await.unwrap();
+    assert_eq!(result.command, "difficulty hard");
+    assert_eq!(result.lines, ["Difficulty changed by server"]);
+    assert_eq!(std::fs::read(&properties).unwrap(), original);
+    host_task.await.unwrap();
 }
 
 #[tokio::test]

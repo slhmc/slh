@@ -247,6 +247,9 @@ pub async fn run(plan: HostPlan) -> AppResult<()> {
         .await?;
     let listener = TcpListener::bind((std::net::Ipv4Addr::LOCALHOST, 0)).await?;
     let mut command = tokio::process::Command::new(&plan.launch.java);
+    if plan.launch.required_java == 0 {
+        command.env("HORIZON_NO_AUDIO", "1").env("HORIZON_NO_TELEMETRY", "1").env("HORIZON_HOME", &plan.launch.directory);
+    }
     command
         .args(&plan.launch.args)
         .current_dir(&plan.launch.directory)

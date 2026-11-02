@@ -1,3 +1,4 @@
+import { resolveColorMixes } from "./colorMix";
 import type { CSSProperties } from "react";
 import type { AppearanceColors, AppearanceSettings } from "./types";
 
@@ -22,7 +23,7 @@ function accentContrast(hex: string, dark: string, light: string) {
 
 
 export function buildTheme(appearance: AppearanceSettings, fontFamily: string): CSSProperties {
-  return {
+  const theme: Record<string, string> = {
     "--color-bg": appearance.background,
     "--color-sidebar": `color-mix(in srgb, ${appearance.background} 86%, ${appearance.surface})`,
     "--color-surface": appearance.surface,
@@ -73,5 +74,12 @@ export function buildTheme(appearance: AppearanceSettings, fontFamily: string): 
     "--panel-padding": appearance.density === "compact" ? "12px" : "20px",
     "--font-ui": fontFamily,
     colorScheme: isLightColor(appearance.background) ? "light" : "dark",
-  } as CSSProperties;
+  };
+  // Resolve all palette values, including nested status colors, without native color-mix().
+  const source = { ...theme };
+  for (const [key, value] of Object.entries(theme)) theme[key] = resolveColorMixes(value, source);
+  if (typeof __SLH_COLOR_MIXES__ !== "undefined") {
+    for (const [key, expression] of Object.entries(__SLH_COLOR_MIXES__)) theme[key] = resolveColorMixes(expression, theme);
+  }
+  return theme as CSSProperties;
 }

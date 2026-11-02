@@ -123,3 +123,48 @@
 .launchButton { padding-inline: var(--space-4); min-width: 0; white-space: normal; line-height: 1.4; }
 .launchButton.launchButton:active:not(:disabled) { transform: none; }
 @media (prefers-reduced-motion: no-preference) { .launchButton { transition: background-color 140ms ease, transform 150ms ease-out; } .launchButton.launchButton:active:not(:disabled) { transform: scale(.96); } }
+
+.invalidField { border-color: var(--color-error); box-shadow: 0 0 0 2px var(--color-error); }
+.formSection > fieldset > .note, .formSection > fieldset > .error, .formSection > fieldset > details { margin: 0; padding: var(--space-4); }
+
+.memoryEditor { display: grid; gap: var(--space-3); min-width: 0; border-bottom: 1px solid var(--color-border); }
+.memoryEditor > .note, .memoryActions { padding: var(--space-4); }
+.memoryActions { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; justify-content: flex-end; }
+.liveRuleFields { display: grid; width: 100%; min-width: 0; gap: var(--space-2); }
+.liveRuleFields code { overflow-wrap: anywhere; color: var(--color-text-muted); font: inherit; font-size: var(--text-caption); }
+.liveResponse { display: grid; gap: var(--space-2); padding: var(--space-4); min-width: 0; }
+.liveResponse code, .liveResponse pre { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; font-family: var(--font-mono); font-size: var(--text-caption); }
+.formSection fieldset > .note, .formSection fieldset > .error { margin: 0; padding: var(--space-4); }
+
+/* Server settings follow the same side navigation pattern as launcher settings. */
+.serverForm { display: grid; grid-template-columns: minmax(160px, 220px) minmax(0, 1fr); }
+.serverForm > .formTabs { display: flex; flex-direction: column; flex-wrap: nowrap; align-items: stretch; justify-content: start; padding: var(--space-3); border-bottom: 0; border-right: 1px solid var(--color-border); }
+.serverForm > .formTabs button { justify-content: flex-start; text-align: start; border-radius: var(--radius-sm); }
+.serverForm > .formTabs button[aria-selected="true"] { background: var(--color-surface-2); }
+.serverForm > .formTabs button[aria-selected="true"]::after { display: none; }
+.serverForm > .formContent { min-width: 0; }
+.playerNavigation { display: flex; flex-wrap: wrap; gap: var(--space-1); padding: var(--space-3) var(--space-4); border-top: 1px solid var(--color-border); }
+.playerNavigation button { border: 0; border-radius: var(--radius-sm); padding: var(--space-2) var(--space-3); background: transparent; color: var(--color-text-muted); font: inherit; cursor: pointer; }
+.playerNavigation button[aria-selected="true"] { background: var(--color-surface-2); color: var(--color-text); }
+.playerNavigation button:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+@media (hover: hover) { .playerNavigation button:hover { background: var(--color-surface-hover); color: var(--color-text); } }
+@media (prefers-reduced-motion: no-preference) { .playerNavigation button { transition: background-color 140ms ease, transform 150ms ease-out; } .playerNavigation button:active { transform: scale(.96); } }
+@container (max-width: 540px) { .serverForm { grid-template-columns: minmax(130px, 160px) minmax(0, 1fr); } }
+
+.rawSearchArea { padding: var(--space-3) var(--space-4); }
+.rawSearchBar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.rawSearchBar input { flex: 1 1 180px; min-width: 0; }
+
+.rawPropertiesEditor { padding: 0 var(--space-4) var(--space-4); }
+.rawPropertiesEditor textarea { width: 100%; }
+
+.rawEditorStack { position: relative; }
+.rawHighlights { position: absolute; inset: 0; margin: 0; overflow: hidden; white-space: pre-wrap; overflow-wrap: break-word; pointer-events: none; }
+.rawHighlights mark { background: var(--color-accent-soft); color: var(--color-text); }
+.rawHighlights mark[data-current="true"] { background: var(--color-accent); color: var(--color-text); }
+.rawSearching.rawSearching { position: relative; background: transparent; color: transparent; caret-color: var(--color-text); }
+
+/* Match the editable textarea metrics and avoid double selection painting. */
+.rawHighlights { font: inherit; line-height: inherit; letter-spacing: inherit; tab-size: 8; }
+.rawEditorStack textarea { tab-size: 8; }
+.rawSearching::selection { color: transparent; background: var(--color-accent-soft); }

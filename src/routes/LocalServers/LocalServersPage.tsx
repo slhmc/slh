@@ -431,6 +431,7 @@ export function LocalServersPage() {
       role="button"
       aria-pressed={selected === s.id}
       aria-label={s.name}
+      aria-describedby={s.status !== "stopped" ? `server-status-${s.id}` : undefined}
       title={s.name}
       tabIndex={0}
       data-server-card={s.id}
@@ -489,7 +490,7 @@ export function LocalServersPage() {
         </>
       ) : null}
       {s.status !== "stopped" || mode === "list" ? (
-        <span className={`${mode === "grid" ? extra.cardStatus : extra.listStatus} ${s.status === "failed" ? extra.failedStatus : s.status === "running" ? extra.runningStatus : ""}`}>
+        <span id={s.status !== "stopped" ? `server-status-${s.id}` : undefined} title={s.status !== "stopped" ? state(s) : undefined} className={`${mode === "grid" ? extra.cardStatus : extra.listStatus} ${s.status === "failed" ? extra.failedStatus : s.status === "running" ? extra.runningStatus : ""}`}>
           {s.status === "stopped" ? null : <><Info size={13} /><span>{state(s)}</span></>}
         </span>
       ) : null}
@@ -644,7 +645,6 @@ export function LocalServersPage() {
     }
   };
   const panelPosition =
-    view.panelPosition ??
     bootstrap?.settings.general.instancePanelPosition ??
     "right";
   return (

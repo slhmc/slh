@@ -48,7 +48,7 @@ export function ServerSidePanel({ server, view, groups, busy, status, onChange, 
       })}</div>
       {options.showMetadata !== false ? <div className={panel.metadata}>
         <div><span>{t("installation.texts.status")}</span><span className={server.status === "running" ? common.successBadge : server.status === "failed" ? common.errorBadge : common.badge}>{status}</span></div>
-        <div><span>{t("installation.texts.memory")}</span><strong>{new Intl.NumberFormat(locale).format(server.config.memoryMaxMb / 1024)} {t("installation.texts.gb")}</strong></div>
+        <div><span>{t("installation.texts.memory")}</span><strong>{server.config.core === "horizon" ? t("serverLive.nativeMemory") : `${new Intl.NumberFormat(locale).format(server.config.memoryMaxMb / 1024)} ${t("installation.texts.gb")}`}</strong></div>
         <div><span>{t("localServers.core")}</span><strong>{t(`localServers.cores.${server.config.core}`)}</strong></div>
         <div><span>{t("library.group")}</span><strong>{groups.find(group => group.id === server.presentation?.collectionId)?.name ?? t("library.ungrouped")}</strong></div>
       </div> : null}

@@ -16,6 +16,9 @@
     "notification:default",
     "opener:default",
     "updater:default",
-    "process:allow-restart"
+    "process:allow-restart",
+    "core:window:allow-set-fullscreen",
+    "core:window:allow-is-fullscreen",
+    "core:window:allow-is-maximized"
   ]
 }

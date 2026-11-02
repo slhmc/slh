@@ -9,11 +9,11 @@ export function SettingLayout({ children }: { children: ReactNode }) {
   return <div className={`${styles.settingsScope} ${compact ? styles.compactSettings : ""}`} data-minimalism={minimal}>{children}</div>;
 }
 
-export function SettingGrid({ children }: { children: ReactNode }) {
-  return <div className={styles.tileGrid}>{children}</div>;
+export function SettingGrid({ children, fitContent = false }: { children: ReactNode; fitContent?: boolean }) {
+  return <div className={`${styles.tileGrid} ${fitContent ? styles.contentFitGrid : ""}`}>{children}</div>;
 }
 
-export function SettingsSection({ title, description, children }: { title: string; description: string; children: ReactNode }) {
+export function SettingsSection({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
   const { tr } = useI18n();
   const layout: ReactNode[] = [];
   let rows: ReactNode[] = [];
@@ -25,24 +25,25 @@ export function SettingsSection({ title, description, children }: { title: strin
     else { flush(); layout.push(child); }
   });
   flush();
-  return <div className={styles.section}><header><h2>{tr(title)}</h2><p data-minimal-text>{tr(description)}</p></header><div className={styles.sectionBody}>{layout}</div></div>;
+  return <div className={styles.section}><header><h2>{tr(title)}</h2>{description ? <p data-minimal-text>{tr(description)}</p> : null}</header><div className={styles.sectionBody}>{layout}</div></div>;
 }
 
 const SettingLabel = createContext<string | undefined>(undefined);
 
-export function SettingRow({ title, description, children, className = "", wide = false }: {
-  title: string; description?: string; children: ReactNode; className?: string; wide?: boolean;
+export function SettingRow({ title, description, children, className = "", wide = false, onToggle }: {
+  title: string; description?: string; children: ReactNode; className?: string; wide?: boolean; onToggle?: () => void;
 }) {
   const { tr } = useI18n();
   const titleId = useId();
   const toggle = Children.toArray(children).find(child => isValidElement(child) && child.type === Toggle);
-  const clickable = Children.toArray(children).length === 1 && isValidElement<{ disabled?: boolean }>(toggle) && !toggle.props.disabled;
+  const clickable = !!onToggle || Children.toArray(children).length === 1 && isValidElement<{ disabled?: boolean }>(toggle) && !toggle.props.disabled;
   const controls = Children.map(children, child => {
     if (!isValidElement<{ "aria-label"?: string; "aria-labelledby"?: string }>(child) || !["input", "select", "textarea"].includes(String(child.type)) || child.props["aria-label"] || child.props["aria-labelledby"]) return child;
     return cloneElement(child, { "aria-labelledby": titleId });
   });
   return <div className={`${styles.settingRow} ${wide ? styles.formSettingRow : ""} ${className} ${clickable ? styles.switchRow : ""}`} onClick={clickable ? event => {
     if (event.currentTarget.querySelector("button:disabled,input:disabled") || (event.target as HTMLElement).closest('button,input,select,textarea,a,label,[role="button"],[role="switch"]')) return;
+    if (onToggle) { onToggle(); return; }
     if (isValidElement<{ checked: boolean; onChange: (checked: boolean) => void }>(toggle)) toggle.props.onChange(!toggle.props.checked);
   } : undefined}>
     <div><strong id={titleId} data-minimal-title>{tr(title)}</strong>{description ? <p data-minimal-text>{tr(description)}</p> : null}</div>

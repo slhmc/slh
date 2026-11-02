@@ -326,3 +326,21 @@
 .horizonSetting .settingControl { align-self: end; margin-top: var(--space-6); }
 .character3dControls { display: grid; gap: var(--space-4); width: 100%; }
 .character3dControls label { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.settingsScope:not(.compactSettings) .tileGrid.contentFitGrid > .settingRow { min-height:0; grid-template-rows:auto auto; align-content:start; }
+
+.disclosure { padding: var(--space-4); border-bottom: 1px solid var(--color-border); min-width: 0; }
+.disclosure > summary { cursor: pointer; color: var(--color-text); font-weight: 700; padding: var(--space-2); }
+.disclosure[open] > summary { margin-bottom: var(--space-3); }
+.disclosure > .tileGrid { padding: 0; }
+
+.disclosure > .tileGrid > :not(.settingRow), .disclosure > .tileGrid > .fontSettingRow, .disclosure > .tileGrid > .formSettingRow { grid-column: 1 / -1; min-width: 0; }
+.disclosure > .tileGrid > .fontSettingRow, .disclosure > .tileGrid > .formSettingRow { grid-template-columns: minmax(0, 1fr); }
+.accountActions { flex-wrap: wrap; }
+.accountActions > button[data-select-account] { width: auto; height: auto; min-height: 40px; font-family: var(--font-ui); }
+
+@media (hover: hover) { .toggle:hover:not(:disabled) { box-shadow: 0 0 0 2px var(--color-accent-border); } }
+.toggle:active:not(:disabled) { background: var(--color-text-muted); box-shadow: inset 0 0 0 2px var(--color-border); }
+.toggle.checked:active:not(:disabled) { background: var(--color-accent-pressed); }
+
+/* Match the font card edges without a second grid inset. */
+.appearanceGeometry { padding: 0; border-bottom: 0; }

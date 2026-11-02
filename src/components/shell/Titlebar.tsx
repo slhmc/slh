@@ -1,5 +1,6 @@
+import { desktopPlatform, windowAppearance } from "../../lib/platformAppearance";
 import { useUiText } from "../../i18n/UiText";
-import { useCallback, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { open } from "@tauri-apps/plugin-dialog";
 import {
@@ -21,6 +22,19 @@ import launcherLogo from "../../assets/brand/Smile_LauncHer_logo.png";
 export function Titlebar({ navigation }: { navigation?: ReactNode }) {
   const uiText = useUiText();
   const { t, tr } = useI18n();
+  const settings = useAppStore(state => state.bootstrap?.settings);
+  const platform = desktopPlatform();
+  const controls = windowAppearance(settings?.appearance, settings?.general.platformCustomization === true, platform);
+  const [maximized, setMaximized] = useState(false);
+  useEffect(() => {
+    if (!isTauri) return;
+    const current = getCurrentWindow();
+    let disposed = false;
+    const update = async () => { const value = platform === "macos" ? await current.isFullscreen() : await current.isMaximized(); if (!disposed) setMaximized(value); };
+    void update();
+    const listener = current.onResized(() => void update());
+    return () => { disposed = true; void listener.then(stop => stop()); };
+  }, [platform]);
   const openWizard = useAppStore((state) => state.setCreateWizardOpen);
   const pushToast = useAppStore((state) => state.pushToast);
   const refresh = useAppStore((state) => state.refresh);
@@ -39,7 +53,7 @@ export function Titlebar({ navigation }: { navigation?: ReactNode }) {
     if (!isTauri) return;
     const current = getCurrentWindow();
     if (action === "minimize") await current.minimize();
-    if (action === "maximize") await current.toggleMaximize();
+    if (action === "maximize") { if (platform === "macos") await current.setFullscreen(!await current.isFullscreen()); else await current.toggleMaximize(); }
     if (action === "close") await current.close();
   };
 
@@ -80,7 +94,7 @@ export function Titlebar({ navigation }: { navigation?: ReactNode }) {
 
   return (
     <>
-    <header className={`${styles.titlebar} ${navigation ? styles.compact : ""}`} data-tauri-drag-region>
+    <header className={`${styles.titlebar} ${navigation ? styles.compact : ""} ${controls.side === "left" ? styles.controlsLeft : ""}`} data-tauri-drag-region>
       <div className={styles.title} data-tauri-drag-region>
         <img className={styles.appLogo} src={launcherLogo} alt={uiText("shell.texts.smileLauncherLogo", "Smile LauncHer logo")} />
         <span className={styles.appName}>{uiText("common.texts.smileLauncher", "Smile LauncHer")}</span>
@@ -109,11 +123,11 @@ export function Titlebar({ navigation }: { navigation?: ReactNode }) {
           </div>
         </details>
       </div>
-      <div className={styles.windowControls}>
-        <button type="button" onClick={() => void windowAction("minimize")} aria-label={uiText("shell.texts.minimize", "Minimize")}>
+      <div className={`${styles.windowControls} ${styles[controls.style]}`} data-window-style={controls.style} data-window-side={controls.side}>
+        <button className={styles.minimize} type="button" onClick={() => void windowAction("minimize")} aria-label={uiText("shell.texts.minimize", "Minimize")}>
           <Minus size={15} />
         </button>
-        <button type="button" onClick={() => void windowAction("maximize")} aria-label={uiText("shell.texts.maximize", "Maximize")}>
+        <button className={styles.maximize} type="button" onClick={() => void windowAction("maximize")} aria-label={maximized ? uiText("audit.restoreWindow") : platform === "macos" ? uiText("audit.fullscreen") : uiText("shell.texts.maximize", "Maximize")}>
           <Square size={12} />
         </button>
         <button className={styles.close} type="button" onClick={() => void windowAction("close")} aria-label={uiText("common.close", "Close")}>

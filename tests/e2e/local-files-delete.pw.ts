@@ -54,6 +54,7 @@ test("deletion hides the card before disk cleanup completes and displays percent
   await page.goto("/#/library");
   await page.getByRole("button", { name: "Actions for Latest release" }).click();
   await page.getByRole("button", { name: "Delete", exact: true }).first().click();
+  await page.getByRole("dialog", { name: "Delete instance", exact: true }).getByRole("button", { name: "Delete", exact: true }).click();
   await expect(page.getByRole("button", { name: "Actions for Latest release" })).toHaveCount(0);
   await expect(page.getByText("Removing instance files", { exact: true })).toBeVisible();
   await expect(page.getByText("35%", { exact: true })).toBeVisible();

@@ -10,6 +10,7 @@ import { Button, Progress } from "../common/Controls";
 import { SettingLayout, SettingRow } from "../settings/SettingControls";
 import { Check, FolderOpen } from "../icons";
 import styles from "./Servers.module.css";
+import common from "../common/Common.module.css";
 
 export function ServerDefaultsPanel() {
   const t = useUiText();
@@ -26,6 +27,7 @@ export function ServerDefaultsPanel() {
   return <div className={styles.defaultsPanel}>
     {!defaults && !error ? <Progress label={t("common.loading")} /> : defaults ? <SettingLayout><fieldset disabled={busy} className={styles.config}>
       <SettingRow wide title={t("localServers.directory")}><div className={styles.path}><code>{defaults.directory ?? directory}</code><Button onClick={() => void openDialog({ directory: true, multiple: false }).then(path => { if (typeof path === "string") { void chooseDirectory(path); } })}><FolderOpen size={16} />{t("localServers.chooseFolder")}</Button>{defaults.directory ? <Button variant="ghost" onClick={() => { void chooseDirectory(null); }}>{t("localServers.defaultDirectory")}</Button> : null}</div></SettingRow>
+      <SettingRow title={t("localServers.portAllocation")}><select className={common.select} value={defaults.portAllocation || "increment"} onChange={e => { setDefaults({...defaults,portAllocation:e.target.value as "shared" | "increment"}); setSaved(false); }}><option value="shared">{t("localServers.sharedPort")}</option><option value="increment">{t("localServers.incrementPort")}</option></select></SettingRow>
       <ServerConfigFields mode="cards" value={defaults.config} defaults onChange={config => { setDefaults({ ...defaults, config }); setSaved(false); }} />
       <div className={styles.saveBar}>{saved ? <span className={styles.note} role="status">{t("localServers.saved")}</span> : null}<Button variant="primary" busy={busy} onClick={() => void save()}><Check size={16} />{t("common.save")}</Button></div>
     </fieldset></SettingLayout> : null}

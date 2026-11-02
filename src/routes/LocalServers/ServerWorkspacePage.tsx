@@ -98,6 +98,7 @@ export function ServerWorkspacePage() {
   }, [load]);
   useEffect(() => {
     if (!active) return;
+    void load();
     const timer = setInterval(() => void load(), 2000);
     return () => clearInterval(timer);
   }, [load, active]);
@@ -236,9 +237,8 @@ export function ServerWorkspacePage() {
     }
   };
   const position =
-    view.tabsPosition ??
     bootstrap?.settings.general.instanceTabsPosition ??
-    "right";
+    "top";
   const status =
     server && !serverReady(server)
       ? t(
@@ -320,8 +320,8 @@ export function ServerWorkspacePage() {
                     server.config.javaPath ?? t("localServers.automaticJava"),
                   ],
                   [
-                    t("localServers.memoryMax"),
-                    `${server.config.memoryMinMb}–${server.config.memoryMaxMb} MiB`,
+                    t("serverLive.memoryOverview"),
+                    server.config.core === "horizon" ? t("serverLive.nativeMemory") : `${server.config.memoryMinMb}–${server.config.memoryMaxMb} MiB`,
                   ],
                   [t("localServers.folder"), server.path],
                 ].map(([label, value]) => (
@@ -382,23 +382,64 @@ export function ServerWorkspacePage() {
           <ServerPluginsPanel key={server.id} server={server} />
         ) : draft ? (
           <SettingLayout><div className={extra.settings}>
-            <div className={styles.actions}><Button disabled={busy} onClick={() => { if (dirty.current) setReloadConfirm(true); else void reloadConfig(); }}>{t("serverWorkspace.reloadSettings")}</Button></div>
-            {cardSection(
-              t("serverLibrary.layout"),
-              <SettingRow wide title={t("serverLibrary.tabsPosition")}>
-                <select
-                  className={common.select}
-                  value={position}
-                  onChange={(e) => saveView({ tabsPosition: e.target.value })}
+            <fieldset
+              className={styles.config}
+              disabled={busy}
+            >
+              <ServerConfigFields
+                server={server}
+                onMemorySaved={next => {
+                  ++configEpoch.current;
+                  setServer(next);
+                  setDraft(previous => previous ? { ...previous, config: { ...previous.config, memoryMinMb: next.config.memoryMinMb, memoryMaxMb: next.config.memoryMaxMb } } : previous);
+                }}
+                mode="tabs"
+                value={draft.config}
+                pinned={server.installed}
+                onChange={(config) => {
+                  ++configEpoch.current;
+                  dirty.current = true;
+                  setDraft({ ...draft, config });
+                  setSaved(false);
+                }}
+              />
+              {!draft.config.eulaAccepted ? (
+                <label className={styles.check}>
+                  <input
+                    type="checkbox"
+                    disabled={!stoppedServer(server)}
+                    checked={draft.config.eulaAccepted}
+                    onChange={(e) => {
+                      ++configEpoch.current; dirty.current = true; setSaved(false);
+                      setDraft({
+                        ...draft,
+                        config: {
+                          ...draft.config,
+                          eulaAccepted: e.target.checked,
+                        },
+                      });
+                    }}
+                  />
+                  {t("localServers.acceptEula")}
+                </label>
+              ) : null}
+              <div className={styles.saveBar}>
+                <Button disabled={busy} onClick={() => { if (dirty.current) setReloadConfirm(true); else void reloadConfig(); }}>{t("serverWorkspace.reloadSettings")}</Button>
+                {saved ? (
+                  <span role="status" className={styles.note}>
+                    {t("localServers.saved")}
+                  </span>
+                ) : null}
+                <Button
+                  variant="primary"
+                  busy={busy}
+                  disabled={!stoppedServer(server)}
+                  onClick={() => void save()}
                 >
-                  {["top", "right", "bottom", "left"].map((key) => (
-                    <option value={key} key={key}>
-                      {t(`serverLibrary.positions.${key}`)}
-                    </option>
-                  ))}
-                </select>
-              </SettingRow>,
-            )}
+                  {t("common.save")}
+                </Button>
+              </div>
+            </fieldset>
             {cardSection(
               t("serverLibrary.identity"),
               <>
@@ -476,59 +517,6 @@ export function ServerWorkspacePage() {
                 </div>
               </>,
             )}
-            {!stoppedServer(server) ? (
-              <p className={styles.note}>{t("serverWorkspace.stopToEdit")}</p>
-            ) : null}
-            <fieldset
-              className={styles.config}
-              disabled={busy || !stoppedServer(server)}
-            >
-              <ServerConfigFields
-                server={server}
-                mode="cards"
-                value={draft.config}
-                pinned={server.installed}
-                onChange={(config) => {
-                  ++configEpoch.current;
-                  dirty.current = true;
-                  setDraft({ ...draft, config });
-                  setSaved(false);
-                }}
-              />
-              {!draft.config.eulaAccepted ? (
-                <label className={styles.check}>
-                  <input
-                    type="checkbox"
-                    checked={draft.config.eulaAccepted}
-                    onChange={(e) => {
-                      ++configEpoch.current; dirty.current = true; setSaved(false);
-                      setDraft({
-                        ...draft,
-                        config: {
-                          ...draft.config,
-                          eulaAccepted: e.target.checked,
-                        },
-                      });
-                    }}
-                  />
-                  {t("localServers.acceptEula")}
-                </label>
-              ) : null}
-              <div className={styles.saveBar}>
-                {saved ? (
-                  <span role="status" className={styles.note}>
-                    {t("localServers.saved")}
-                  </span>
-                ) : null}
-                <Button
-                  variant="primary"
-                  busy={busy}
-                  onClick={() => void save()}
-                >
-                  {t("common.save")}
-                </Button>
-              </div>
-            </fieldset>
             {cardSection(
               t("serverWorkspace.scripts"),
               <div className={styles.actions}>

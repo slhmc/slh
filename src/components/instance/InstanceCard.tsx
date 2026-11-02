@@ -1,6 +1,6 @@
 import { LibraryCardSurface } from "../common/LibraryChrome";
 import { useUiText } from "../../i18n/UiText";
-import { Check, DotsThreeVertical, FolderOpen, Trash, Wrench } from "../icons";
+import { Check, DotsThreeVertical, FolderOpen, Info, Trash, Wrench } from "../icons";
 import type { Instance, ViewMode } from "../../lib/types";
 import { InstanceArtwork } from "./InstanceArtwork";
 import styles from "./InstanceCard.module.css";
@@ -30,6 +30,9 @@ function formatLastPlayed(value: string | null, tr: (source: string) => string, 
 export function InstanceCard({ instance, selected, view, groupName, insertPosition, onSelect, onOpenFolder, onSettings, onDelete, onCancel, progress, onPointerDown }: InstanceCardProps) {
   const uiText = useUiText();
   const { tr, locale } = useI18n();
+  const status = ["running", "error", "installing", "launching"].includes(instance.status) ? tr(instance.status) : null;
+  const statusId = `instance-status-${instance.id}`;
+  const statusIndicator = status ? <span id={statusId} title={status} className={`${styles.statusIndicator} ${instance.status === "error" ? styles.statusError : instance.status === "running" ? styles.statusRunning : ""}`}><Info size={13} /><span className={styles.statusText}>{status}</span></span> : null;
   const keyboardSelect = (event: React.KeyboardEvent<HTMLElement>) => {
     if (event.target !== event.currentTarget || !["Enter", " "].includes(event.key)) return;
     event.preventDefault();
@@ -59,11 +62,13 @@ export function InstanceCard({ instance, selected, view, groupName, insertPositi
         onClick={onSelect}
         onKeyDown={keyboardSelect}
         aria-pressed={selected}
+        aria-describedby={status ? statusId : undefined}
         onPointerDown={(event) => {
           if (instance.status !== "installing" && instance.status !== "launching") onPointerDown?.(event);
         }}
       >
         <InstanceArtwork instance={instance} size="small" />
+        {statusIndicator}
         <span data-minimal-title className={styles.name}>{instance.name}</span>
         <span>{instance.minecraftVersion}</span>
         <span className={styles.loader}>{instance.loaderType === "bedrock" ? uiText("installation.texts.bedrock", "Bedrock") : instance.loaderType}</span>
@@ -86,12 +91,14 @@ export function InstanceCard({ instance, selected, view, groupName, insertPositi
       onKeyDown={keyboardSelect}
       aria-pressed={selected}
       aria-label={instance.name}
+      aria-describedby={status ? statusId : undefined}
       title={instance.name}
       onPointerDown={(event) => {
         if (instance.status !== "installing" && instance.status !== "launching") onPointerDown?.(event);
       }}
     >
       <InstanceArtwork instance={instance} size={view === "icons" ? "icon" : "card"} />
+      {statusIndicator}
       <span className={styles.cardBody}>
         <strong data-minimal-title>{instance.name}</strong>
         <small>{uiText("settings.minecraft", "Minecraft")}{" "}{instance.minecraftVersion} · {instance.loaderType === "neoforge" ? "NeoForge" : instance.loaderType === "bedrock" ? uiText("installation.texts.bedrock", "Bedrock") : instance.loaderType[0].toUpperCase() + instance.loaderType.slice(1)}</small>

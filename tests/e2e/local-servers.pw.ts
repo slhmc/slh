@@ -97,8 +97,8 @@ test("persistent server library opens nested gdz and uses the instance detail fr
  await page.getByRole("button",{name:"gdzserver",exact:true}).dblclick();
  await expect(page.getByRole("navigation",{name:"Server sections"})).toBeVisible();await expect(page.getByRole("heading",{name:"Overview",exact:true})).toBeVisible();
  const nav=page.getByRole("navigation",{name:"Server sections"});await nav.getByRole("button",{name:"Settings",exact:true}).click();
- await expect(page.getByRole("heading",{name:"Name and appearance",exact:true})).toBeVisible();await expect(page.getByRole("heading",{name:"Java and launch",exact:true})).toBeVisible();
- await page.getByRole("combobox",{name:"Tab position",exact:true}).selectOption("right");await page.screenshot({path:"artifacts/server-library-settings-v2.png"});
+ await expect(page.getByRole("heading",{name:"Name and appearance",exact:true})).toBeVisible();await page.getByRole("tab",{name:"Java and launch",exact:true}).click();await expect(page.getByRole("heading",{name:"Java and launch",exact:true})).toBeVisible();
+ await expect(page.getByRole("combobox",{name:"Tab position",exact:true})).toHaveCount(0);await page.screenshot({path:"artifacts/server-library-settings-v2.png"});
  await page.getByRole("button",{name:"Start",exact:true}).click();await expect(page.getByLabel("Server output")).toContainText("SLH browser preview");
  await expect(page.getByRole("dialog")).toHaveCount(0);await page.getByRole("button",{name:"Stop",exact:true}).click();
  await page.screenshot({path:"artifacts/server-library-console-v2.png"});expect(errors).toEqual([]);
@@ -117,7 +117,7 @@ test("configuration sections keep labels aligned and readable at effective 200 p
  await page.goto("/#/local-servers");await page.getByRole("button",{name:"Create server",exact:true}).click();const dialog=page.getByRole("dialog");
  for(const [width,height] of [[1440,900],[800,560],[400,280]]){
   await page.setViewportSize({width,height});
-  for(const section of ["Core and version","Java and launch","World","Network","Access and rules","Advanced"]){
+  for(const section of ["Core and version","Java and launch","World","Network","Server rules","Advanced"]){
    await dialog.getByRole("tab",{name:section,exact:true}).click();
    const panel=dialog.getByRole("tabpanel",{name:section,exact:true});await expect(panel).toBeVisible();
    expect(await panel.evaluate(e=>e.scrollWidth<=e.clientWidth+1)).toBe(true);

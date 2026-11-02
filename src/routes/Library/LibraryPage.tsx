@@ -1,3 +1,4 @@
+import { useConfirmation } from "../../components/common/ConfirmationProvider";
 import { LibraryFrame, LibraryToolbar, LibraryGroupHeader, LibraryViews, LibraryMenuSurface } from "../../components/common/LibraryChrome";
 import { useUiText } from "../../i18n/UiText";
 import {
@@ -66,6 +67,7 @@ type ContextMenuInput =
 
 export function LibraryPage() {
   const uiText = useUiText();
+  const confirm = useConfirmation();
   const { t, tr } = useI18n();
   const bootstrap = useAppStore((state) => state.bootstrap);
   const selectedId = useAppStore((state) => state.selectedInstanceId);
@@ -207,6 +209,7 @@ export function LibraryPage() {
 
   const deleteInstance = async (instance: Instance) => {
     if (deletingInstanceId || instance.status === "running" || instance.status === "installing" || instance.status === "launching") return;
+    if (!await confirm({ title: uiText("installation.texts.deleteInstance"), description: uiText("audit.deleteInstanceWarning"), names: [instance.name] })) return;
     setDeletingInstanceId(instance.id);
     setContextMenu(null);
     try {
@@ -635,8 +638,8 @@ export function LibraryPage() {
       <section className={`${styles.library} ${draggedInstanceId || draggedGroupId ? styles.dragging : ""}`}>
         <div className={styles.pageHeader}>
           <div>
-            <p className={styles.eyebrow}>{t("library.eyebrow", "Instance library")}</p>
-            <h1>{t("library.heading", "Your Minecraft worlds, separated and ready")}</h1>
+            
+            <h1>{uiText("audit.libraryTitle")}</h1>
             <span>{uiText("library.instanceCount", "{count} instances in this library", { count: bootstrap.instances.filter((instance) => !packJobs.some((job) => job.progress?.instanceId === instance.id)).length + pendingInstances.length })}</span>
           </div>
           <LibraryToolbar>

@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 test("portable shell and library navigation render in the required order", async ({ page }) => {
   await page.goto("/#/library");
 
-  await expect(page.getByRole("heading", { name: "Your Minecraft worlds, separated and ready" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Instance library" })).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Main navigation" }).getByRole("link")).toHaveText([
     "Home",
     "Library",
@@ -77,8 +77,9 @@ test("Appearance presets, instance deletion, and the WebView menu boundary are e
   await page.goto("/#/instance/preview-1?tab=settings");
   await expect(page.getByRole("heading", { name: "Delete instance" })).toBeVisible();
   await page.getByRole("button", { name: "Delete", exact: true }).click();
+  await page.getByRole("dialog", { name: "Delete instance", exact: true }).getByRole("button", { name: "Delete", exact: true }).click();
   await expect(page).toHaveURL(/#\/library$/);
-  await expect(page.getByRole("heading", { name: "Your Minecraft worlds, separated and ready" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Instance library" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Actions for Latest release" })).toHaveCount(0);
   expect(pageErrors).toEqual([]);
 });
@@ -91,7 +92,7 @@ test("missing instance navigation preserves React hooks and recovers to the libr
   await page.evaluate(() => { window.location.hash = "/instance/missing-instance"; });
   await expect(page.getByRole("heading", { name: "Instance not found" })).toBeVisible();
   await page.getByRole("button", { name: "Back to Library" }).click();
-  await expect(page.getByRole("heading", { name: "Your Minecraft worlds, separated and ready" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Instance library" })).toBeVisible();
   expect(pageErrors).toEqual([]);
 });
 
@@ -137,7 +138,7 @@ test("Servers and diagnostics routes expose real controls and honest empty histo
   await page.goto("/#/servers");
   await expect(page.getByRole("heading", { name: "Servers", exact: true })).toBeVisible();
   await expect(page.getByText("Local realm")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Add to servers.dat" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Add server" })).toBeDisabled();
 
   await page.goto("/#/settings/storage");
   await expect(page.getByText("data in use")).toBeVisible();

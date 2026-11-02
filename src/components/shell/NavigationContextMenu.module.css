@@ -15,7 +15,7 @@
 .itemRow.insertAfter::after { bottom: -1px; }
 .itemToggle { display: grid; flex: 1; min-width: 0; min-height: 34px; grid-template-columns: 20px 20px minmax(0, 1fr); align-items: center; gap: 9px; padding: 0 9px; border-radius: var(--radius-xs); color: var(--color-text); text-align: left; background: transparent; cursor: pointer; }
 .itemToggle:hover { background: var(--color-surface-3); }
-.itemToggle:active { transform: translateY(1px); }
+@media (prefers-reduced-motion: no-preference) { .itemToggle:active { transform: translateY(1px); } }
 .check { display: grid; width: 18px; place-items: center; color: var(--color-accent); }
 .itemToggle > svg { color: var(--color-text-muted); }
 .itemToggle > span:last-child { font-size: 0.75rem; }

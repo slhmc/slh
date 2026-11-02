@@ -1,9 +1,10 @@
+import { revealControl } from "./revealControl";
 import { expect, test } from "@playwright/test";
 
 for (const code of ["ru-RU", "de-DE"]) {
   test(`${code}: compound settings controls fit their text in both layouts`, async ({ page }) => {
     await page.goto("/#/settings/appearance");
-    await expect(page.locator('[class*="fontControl"] select')).toBeVisible();
+    await revealControl(page, '[class*="fontControl"] select');
     await page.evaluate(async code => {
       const { command } = await import("/src/lib/tauri.ts");
       const { useAppStore } = await import("/src/stores/appStore.ts");
@@ -22,6 +23,7 @@ for (const code of ["ru-RU", "de-DE"]) {
         await page.setViewportSize({ width, height: width === 800 ? 560 : 900 });
         for (const section of ["appearance", "minecraft"]) {
           await page.evaluate(section => location.hash = `/settings/${section}`, section);
+          if (section === "appearance") await revealControl(page, '[class*="fontControl"] select');
           const field = page.locator(section === "appearance" ? '[class*="fontControl"] select' : '[class*="inlineForm"] input[placeholder]');
           await expect(field).toBeVisible();
           await page.evaluate(() => document.fonts.ready);

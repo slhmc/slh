@@ -32,10 +32,7 @@ test("server tab visibility, ordering and position persist independently of inst
   await page.keyboard.press("Escape");
   await expect(menu).toHaveCount(0);
   await nav.getByRole("button", { name: "Settings", exact: true }).click();
-  for (const side of ["top", "bottom", "left", "right"]) {
-    await page.getByRole("combobox", { name: "Tab position", exact: true }).selectOption(side);
-    await expect.poll(async () => (await savedView(page)).tabsPosition).toBe(side);
-  }
+  await expect(page.getByRole("combobox", { name: "Tab position", exact: true })).toHaveCount(0);
   await page.reload();
   nav = page.getByRole("navigation", { name: "Server sections" });
   await expect(nav.getByRole("button", { name: "Plugins", exact: true })).toHaveCount(0);

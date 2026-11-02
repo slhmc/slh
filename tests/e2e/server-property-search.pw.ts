@@ -1,0 +1,44 @@
+import { test, expect } from "@playwright/test";
+test("finds and selects server.properties text without saving it", async ({ page }) => {
+  await page.goto("/#/local-servers");
+  await page.evaluate(() => localStorage.setItem("slh.previewServerProperties", JSON.stringify({"preview-Weekend": "difficulty=normal\nother=1\ndifficulty=hard\n"})));
+  await page.getByRole("button", { name: "Weekend", exact: true }).dblclick();
+  await page.locator('[data-server-tab="settings"]').click();
+  await page.getByRole("tab", { name: "Advanced", exact: true }).click();
+  const area = page.locator("textarea").filter({hasText: "difficulty"});
+  const search = page.getByRole("textbox", {name: "Search", exact: true});
+  await expect(search).toBeVisible();
+  await area.focus();
+  await page.keyboard.press("Control+f");
+  await expect(search).toBeFocused();
+  await search.fill("d");
+  await expect(search).toBeFocused();
+  await expect(page.locator('mark[data-current="true"]')).toBeVisible();
+  await expect.poll(() => area.evaluate((e: HTMLTextAreaElement) => e.value.slice(e.selectionStart, e.selectionEnd))).toBe("d");
+  await search.fill("diff");
+  await expect(search).toBeFocused();
+  await expect(page.locator('mark[data-current="true"]')).toBeVisible();
+  await expect.poll(() => area.evaluate((e: HTMLTextAreaElement) => e.value.slice(e.selectionStart, e.selectionEnd))).toBe("diff");
+  await expect(page.getByRole("status").filter({hasText:"1 / 2"})).toBeVisible();
+  for (const width of [800, 1440]) {
+    await page.setViewportSize({ width, height: width === 800 ? 560 : 900 });
+    await search.scrollIntoViewIfNeeded();
+    const bar = search.locator('xpath=ancestor::div[contains(@class,"rawSearchBar")]');
+    expect(await bar.evaluate(element => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
+    await page.screenshot({ path: `artifacts/ui/property-search-${width}.png` });
+  }
+  await page.getByRole("button", {name:"Previous",exact:true}).click();
+  expect(await area.evaluate((e: HTMLTextAreaElement) => e.selectionStart)).toBe(26);
+  await page.keyboard.press("Control+f");
+  await search.press("Enter");
+  await expect(area).toBeFocused();
+  expect(await area.evaluate((e: HTMLTextAreaElement) => e.value.slice(e.selectionStart,e.selectionEnd))).toBe("diff");
+  await page.getByRole("button", {name:"Next",exact:true}).click();
+  expect(await area.evaluate((e: HTMLTextAreaElement) => e.selectionStart)).toBe(26);
+  await area.scrollIntoViewIfNeeded();
+  await page.screenshot({ path: "artifacts/ui/property-search-focused.png" });
+  await page.keyboard.press("Control+f");
+  await search.fill("absent");
+  await expect(page.getByRole("status").filter({hasText:"0 / 0"})).toBeVisible();
+  expect(await area.inputValue()).toBe("difficulty=normal\nother=1\ndifficulty=hard\n");
+});

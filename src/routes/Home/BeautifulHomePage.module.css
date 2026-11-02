@@ -70,3 +70,6 @@
 .accountDetails > strong, .accountDetails > span { padding-right: 40px; }
 .accountCard .accountMenu, .accountActions > button:last-child { padding: 0; }
 .accountActions > button:first-child { min-width: 0; white-space: normal; }
+
+.stopRow { border-radius: var(--radius-md); background: var(--color-danger); box-shadow: var(--shadow-panel); }
+.stopRow > button { background: var(--color-danger); color: var(--color-text); border: 1px solid var(--color-error); border-radius: var(--radius-md); }

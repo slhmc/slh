@@ -1,6 +1,6 @@
 import { useUiText } from "../../i18n/UiText";
 import { useState } from "react";
-import { ArrowRight, ShieldCheck, SignIn, WarningCircle } from "../icons";
+import { ArrowRight, ShieldCheck, SignIn } from "../icons";
 import { command } from "../../lib/tauri";
 import { useAppStore } from "../../stores/appStore";
 import { BrandLogo } from "../brand/BrandLogo";
@@ -8,7 +8,7 @@ import common from "../common/Common.module.css";
 import styles from "./FirstRun.module.css";
 import { useI18n } from "../../i18n/I18nProvider";
 
-type View = "choice" | "warning" | "offline" | "elyby";
+type View = "choice" | "offline" | "elyby";
 type SecondaryProvider = "offline" | "elyby";
 
 export function FirstRun() {
@@ -18,8 +18,6 @@ export function FirstRun() {
   const pushToast = useAppStore((state) => state.pushToast);
   const { t, tr } = useI18n();
   const [view, setView] = useState<View>("choice");
-  const [pendingProvider, setPendingProvider] = useState<SecondaryProvider>("offline");
-  const [acceptedMicrosoftLater, setAcceptedMicrosoftLater] = useState(false);
   const [username, setUsername] = useState("");
   const [allowInvalidUsername, setAllowInvalidUsername] = useState(false);
   const [elyUsername, setElyUsername] = useState("");
@@ -36,23 +34,10 @@ export function FirstRun() {
     await refresh();
   };
   const requestSecondaryProvider = (provider: SecondaryProvider) => {
-    setPendingProvider(provider);
-    // Consent is valid only for the current warning flow. Re-opening an
-    // account form must always require an explicit confirmation and Continue.
-    setAcceptedMicrosoftLater(false);
-    setView("warning");
+    setView(provider);
   };
   const backToChoice = () => {
-    setAcceptedMicrosoftLater(false);
     setView("choice");
-  };
-  const continueToSecondaryProvider = () => {
-    if (!acceptedMicrosoftLater) return;
-    const provider = pendingProvider;
-    // Do not retain the checkbox state after the warning has served its
-    // purpose. Every later request starts with a fresh confirmation.
-    setAcceptedMicrosoftLater(false);
-    setView(provider);
   };
   const changeLanguage = async (language: string) => {
     if (language === bootstrap.settings.general.language) return;
@@ -106,7 +91,7 @@ export function FirstRun() {
         <div className={styles.security}><ShieldCheck size={19} weight="duotone" /><span>{uiText("common.texts.noTelemetryNoAdsNoCloudAccountRequirement", "No telemetry, no ads, no cloud account requirement.")}</span></div>
         <h1>{uiText("common.texts.welcomeToSmileLauncher", "Welcome to Smile LauncHer")}</h1>
         <p>{uiText("common.texts.buildIsolatedMinecraftInstancesAndKeepEveryLauncherOwned", "Build isolated Minecraft instances and keep every launcher-owned file in one place.")}</p>
-        {view === "choice" || view === "warning" ? <div className={styles.actions}>
+        {view === "choice" ? <div className={styles.actions}>
           <button className={`${common.button} ${styles.microsoftAction}`} type="button" onClick={() => void loginMicrosoft()} disabled={busy || !microsoft?.available} title={microsoft?.available ? undefined : uiText("common.texts.microsoftClientIdIsNotConfigured", "Microsoft client ID is not configured")}>
             <SignIn size={20} weight="bold" /><span><strong>{t("onboarding.continueMicrosoft", "Continue with Microsoft")}</strong><small>{t("onboarding.microsoftRecommendation", "Recommended for Minecraft: Java Edition")}</small></span><ArrowRight size={18} />
           </button>
@@ -131,13 +116,6 @@ export function FirstRun() {
         </form> : null}
       </div>
     </section>
-    {view === "warning" ? <div className={styles.warningOverlay}>
-      <section className={styles.warning} role="dialog" aria-modal="true" aria-labelledby="microsoft-warning-title">
-        <div className={styles.warningHeading}><WarningCircle size={25} weight="fill" /><h2 id="microsoft-warning-title">{t("onboarding.microsoftRecommended", "Microsoft account recommended")}</h2></div>
-        <p>{t("onboarding.warning", "Please sign in to Microsoft before adding an Offline or Ely.by account.")}</p>
-        <label className={styles.commitment}><input type="checkbox" checked={acceptedMicrosoftLater} onChange={(event) => setAcceptedMicrosoftLater(event.target.checked)} /><span>{t("onboarding.commitment", "I commit to sign in to a Microsoft account later.")}</span></label>
-        <div className={styles.formActions}><button className={common.ghostButton} type="button" onClick={backToChoice}>{uiText("common.texts.back", "Back")}</button><button className={common.button} type="button" disabled={!acceptedMicrosoftLater} onClick={continueToSecondaryProvider}>{t("onboarding.continue", "Continue")} <ArrowRight size={16} /></button></div>
-      </section>
-    </div> : null}
+
   </div>;
 }

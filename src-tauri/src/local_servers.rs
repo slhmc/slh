@@ -9,6 +9,18 @@ use tauri::{AppHandle, State};
 const HOST_BYTES: &[u8] = include_bytes!(env!("SLH_SERVER_HOST_PATH"));
 
 #[tauri::command]
+pub async fn apply_local_server_live(state: State<'_, AppState>, server_id: String, request: servers::live::LiveEdit) -> CommandResult<servers::live::LiveResult> {
+    let _gate = storage_cleanup::gate().read().await;
+    servers::live::apply(&state, &server_id, request).await.map_err(Into::into)
+}
+
+#[tauri::command]
+pub async fn update_local_server_memory(state: State<'_, AppState>, server_id: String, minimum: u32, maximum: u32) -> CommandResult<store::LocalServer> {
+    let _gate = storage_cleanup::gate().read().await;
+    store::update_memory(&state, &server_id, minimum, maximum).await.map_err(Into::into)
+}
+
+#[tauri::command]
 pub async fn get_local_server_metrics(state: State<'_, AppState>, server_id: String) -> CommandResult<servers::metrics::ServerMetrics> {
     servers::metrics::get(&state, &server_id).await.map_err(Into::into)
 }
@@ -382,6 +394,7 @@ pub async fn optimize_storage_database(
 
 #[tauri::command]
 pub async fn preview_server_launch(config: ServerConfig) -> CommandResult<String> {
+    if config.core == "horizon" { return Ok("horizon-client --resources <prepared-resources> --dedicated --nogui".into()); }
     let major = providers::required_java(&config.minecraft_version);
     let mut args = servers::config::jvm_arguments(&config, major)?;
     let entry = match config.core.as_str() {

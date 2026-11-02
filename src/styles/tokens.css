@@ -1,4 +1,9 @@
 :root {
+  /* Platform window chrome uses the established OS signal colors. */
+  --color-window-close: #ff5f57;
+  --color-window-minimize: #febc2e;
+  --color-window-maximize: #28c840;
+  --color-window-symbol: #302c27;
   color-scheme: dark;
   --color-bg: #1f2226;
   --color-sidebar: #1a1d20;

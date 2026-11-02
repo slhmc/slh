@@ -158,9 +158,7 @@ pub async fn check_launcher_updates(
 }
 
 fn display_launcher_version(version: &str) -> String {
-    // Cargo and Tauri require SemVer's three numeric fields. The product's
-    // fourth hotfix component is encoded as build metadata internally.
-    version.strip_suffix("+1").map_or_else(|| version.to_owned(), |base| format!("{base}.1"))
+    crate::updates::display_version(version)
 }
 
 #[tauri::command]

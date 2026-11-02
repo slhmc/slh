@@ -153,7 +153,8 @@
 .cardStatus > svg, .listStatus > svg { flex-shrink: 0; }
 .runningStatus { color: var(--color-success); }
 .failedStatus { color: var(--color-error); }
-.serverIconCard .listStatus { justify-content: center; }
+.serverIconCard .listStatus { position: absolute; top: 52px; left: calc(50% + 18px); display: grid; place-items: center; width: 20px; height: 20px; border: 1px solid var(--color-border); border-radius: var(--radius-xs); background: var(--color-surface); }
+.serverIconCard .listStatus > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .serverList > span { min-width: 0; overflow-wrap: anywhere; }
 .settingsCard > h2 { font-size: .875rem; font-weight: 700; }
 .identityPreview { display: flex; min-width: 0; align-items: start; gap: var(--space-4); }

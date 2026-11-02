@@ -102,6 +102,8 @@ export interface CurseForgeKeyStatus {
 
 export interface GeneralSettings {
   webview?: WebviewSettings;
+  confirmDestructiveActions?: boolean;
+  platformCustomization?: boolean;
   language: string;
   viewMode: ViewMode;
   instanceOrder?: string[];
@@ -188,6 +190,9 @@ export interface AppearancePreset {
 }
 
 export interface AppearanceSettings extends AppearanceColors {
+  systemControls?: boolean;
+  windowControlsStyle?: "auto" | "windows" | "macos" | "linux";
+  windowControlsSide?: "auto" | "left" | "right";
   beautifulHome?: boolean;
   homeCharacterFps?: number;
   homeCharacterCursorFollow?: boolean;

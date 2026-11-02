@@ -1,7 +1,9 @@
+import { revealControl } from "./revealControl";
 import { expect, test } from "@playwright/test";
 
 test("Java discovery fits long paths in rows and tiles and distinguishes disk search", async ({ page }) => {
   await page.goto("/#/settings/java");
+  await revealControl(page, '[class*="javaLocation"] code');
   const find = page.getByRole("button", { name: "Detect Java", exact: true }).last();
   await expect(find).toBeVisible();
   await page.getByRole("button", { name: "Search all disks", exact: true }).click();
@@ -34,6 +36,7 @@ test("Java discovery fits long paths in rows and tiles and distinguishes disk se
 
 test("shared busy arrows respect reduced motion and clear after failure", async ({ page }) => {
   await page.goto("/#/settings/java");
+  await revealControl(page, '[class*="javaLocation"] code');
   await expect(page.getByRole("button", { name: "Detect Java", exact: true }).last()).toBeVisible();
   await page.evaluate(async () => {
     const { useAppStore } = await import("/src/stores/appStore.ts");

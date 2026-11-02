@@ -70,6 +70,7 @@ impl Default for ServerConfig {
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct ServerDefaults {
+    pub port_allocation: String,
     pub directory: Option<String>,
     pub config: ServerConfig,
 }
@@ -86,7 +87,7 @@ pub struct LaunchPlan {
 pub fn validate(config: &ServerConfig) -> AppResult<()> {
     if ![
         "vanilla", "fabric", "forge", "quilt", "neoforge", "paper", "purpur", "leaf", "spigot", "bukkit",
-        "custom",
+        "custom", "horizon",
     ]
     .contains(&config.core.as_str())
     {
@@ -99,7 +100,7 @@ pub fn validate(config: &ServerConfig) -> AppResult<()> {
             "Invalid server launch preference".into(),
         ));
     }
-    if config.memory_min_mb < 256
+    if config.memory_min_mb < 128
         || config.memory_min_mb > config.memory_max_mb
         || config.memory_max_mb > 1_048_576
     {
@@ -456,16 +457,20 @@ pub fn batch_quote(value: &str) -> AppResult<String> {
 }
 pub fn start_script(plan: &LaunchPlan, windows: bool) -> AppResult<String> {
     let args = std::iter::once(&plan.java).chain(plan.args.iter());
+    let native_env = if plan.required_java == 0 {
+        if windows { "set \"HORIZON_HOME=%CD%\"\r\nset \"HORIZON_NO_AUDIO=1\"\r\nset \"HORIZON_NO_TELEMETRY=1\"\r\n" }
+        else { "export HORIZON_HOME=\"$PWD\" HORIZON_NO_AUDIO=1 HORIZON_NO_TELEMETRY=1\n" }
+    } else { "" };
     if windows {
         Ok(format!(
-            "@echo off\r\nsetlocal DisableDelayedExpansion\r\nchcp 65001 >nul\r\ncd /d \"%~dp0\"\r\n{}\r\n",
+            "@echo off\r\nsetlocal DisableDelayedExpansion\r\nchcp 65001 >nul\r\ncd /d \"%~dp0\"\r\n{native_env}{}\r\n",
             args.map(|s| batch_quote(s))
                 .collect::<AppResult<Vec<_>>>()?
                 .join(" ")
         ))
     } else {
         Ok(format!(
-            "#!/bin/sh\ncd -- \"$(CDPATH= cd -- \"$(dirname -- \"$0\")\" && pwd)\" || exit 1\nexec {}\n",
+            "#!/bin/sh\ncd -- \"$(CDPATH= cd -- \"$(dirname -- \"$0\")\" && pwd)\" || exit 1\n{native_env}exec {}\n",
             args.map(|s| shell_quote(s)).collect::<Vec<_>>().join(" ")
         ))
     }

@@ -300,6 +300,10 @@ pub async fn install(
         ));
     }
     let source = root.join("imports").join(&tag);
+    if instance.loader_type == "horizon-server" && crate::local_servers::horizon::reuse_prepared(state, &tag, &selected.sha256, version, &release).await? {
+        tokio::fs::write(root.join("installed.json"), serde_json::to_vec(&serde_json::json!({"release":tag,"minecraft":version,"archiveSha256":selected.sha256,"javaMajor":game.java_major}))?).await?;
+        return Ok(());
+    }
     let version_dir = source.join("versions").join(version);
     let value = import_metadata(
         &state.http,
@@ -360,6 +364,7 @@ pub async fn install(
                 !p.trim().is_empty() && minecraft_settings["javaMode"].as_str() == Some("custom")
             })
         });
+    let configured_java = if instance.loader_type == "horizon-server" { None } else { configured_java };
     let java = if let Some(path) = configured_java {
         super::java::inspect(Path::new(path)).await?
     } else {
@@ -387,6 +392,7 @@ pub async fn install(
         String::from_utf8_lossy(&help.stdout).to_string() + &String::from_utf8_lossy(&help.stderr);
     let modes = preparation_modes(&help)?;
     for mode in modes {
+        if instance.loader_type == "horizon-server" && mode != "--prepare" { continue; }
         super::installer::emit_progress(
             app,
             operation,

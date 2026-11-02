@@ -17,14 +17,6 @@
   transition: color 140ms ease, background 140ms ease, border-color 140ms ease, box-shadow 140ms ease, transform 100ms ease;
 }
 
-.button:active,
-.secondaryButton:active,
-.ghostButton:active,
-.dangerButton:active,
-.iconButton:active {
-  transform: translateY(1px);
-}
-
 .button:disabled,
 .secondaryButton:disabled,
 .ghostButton:disabled,

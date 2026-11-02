@@ -118,6 +118,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
         set({
           bootstrap,
           loading: false,
+          selectedInstanceId: get().selectedInstanceId ?? [...bootstrap.instances].sort((a, b) => (b.lastLaunchedAt ?? b.lastPlayedAt ?? b.createdAt).localeCompare(a.lastLaunchedAt ?? a.lastPlayedAt ?? a.createdAt))[0]?.id ?? null,
           viewMode: bootstrap.settings.general.viewMode,
         });
       } catch (error) {

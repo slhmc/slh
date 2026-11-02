@@ -11,7 +11,7 @@ test("wide settings use tiles, retain dock preference and group working switches
     await command("update_setting", { key: "general", value: { ...useAppStore.getState().bootstrap.settings.general, navigationPosition: "top", settingsNavigationPosition: "right" } });
     await useAppStore.getState().refresh();
   });
-  await expect(page.getByRole("switch").first()).toHaveAccessibleName("Check for launcher updates automatically");
+  await expect(page.getByRole("switch").first()).toHaveAccessibleName("Confirm dangerous actions");
   await expect(automatic).toHaveAttribute("aria-checked", "true");
   await automatic.click();
   await expect(automatic).toHaveAttribute("aria-checked", "false");

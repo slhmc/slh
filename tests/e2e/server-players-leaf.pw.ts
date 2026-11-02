@@ -13,35 +13,45 @@ test("Leaf is available in creation and keeps Bukkit path validation", async ({ 
   await expect(dialog.getByRole("button", { name: "Create server", exact: true })).toBeDisabled();
 });
 
-test("standard player lists support confirmation, persistence, removal and running-server protection", async ({ page }) => {
+test("standard player lists support confirmation, persistence, removal and live server changes", async ({ page }) => {
   await page.goto("/#/local-servers");
   await page.getByRole("button", { name: "Weekend", exact: true }).dblclick();
   await page.locator('[data-server-tab="settings"]').click();
-  await expect(page.getByRole("region", { name: "Whitelist", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "Whitelist", exact: true })).toHaveCount(1);
   await page.getByRole("checkbox", { name: "Whitelist", exact: true }).check();
   const whitelist = page.getByRole("region", { name: "Whitelist", exact: true });
+  await whitelist.locator("summary").click();
   await whitelist.getByRole("textbox", { name: "Player name", exact: true }).fill("Notch");
-  await whitelist.getByRole("textbox", { name: "UUID (optional)", exact: true }).fill("b50ad385-829d-3141-a216-7e7d7539ba7f");
+  await page.getByRole("tab", { name: "Administrators (OP)", exact: true }).click();
+  await page.getByRole("tab", { name: "Whitelist", exact: true }).click();
+  await expect(whitelist.getByRole("textbox", { name: "Player name", exact: true })).toHaveValue("Notch");
+  await expect(whitelist.getByRole("textbox", { name: "UUID (optional)", exact: true })).toHaveCount(0);
+  await expect(whitelist.getByRole("combobox", { name: "Account type", exact: true })).toHaveCount(0);
   await whitelist.getByRole("button", { name: "Add player", exact: true }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Cancel", exact: true }).click();
   await expect(whitelist.getByRole("listitem")).toHaveCount(0);
   await whitelist.getByRole("button", { name: "Add player", exact: true }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Confirm", exact: true }).click();
   await expect(whitelist.getByRole("listitem")).toContainText("Notch");
+  await page.getByRole("tab", { name: "Administrators (OP)", exact: true }).click();
   const ops = page.getByRole("region", { name: "Administrators (OP)", exact: true });
+  await ops.locator("summary").click();
   await ops.getByRole("textbox", { name: "Player name", exact: true }).fill("Admin");
-  await ops.getByRole("combobox").selectOption("2");
+  await ops.getByRole("combobox", { name: "Permission level (1–4)" }).selectOption("2");
   await ops.getByRole("button", { name: "Add player", exact: true }).click();
-  await expect(page.getByRole("dialog")).toContainText("level 2");
-  await page.getByRole("dialog").getByRole("button", { name: "Confirm", exact: true }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(ops.getByRole("listitem")).toContainText("Permission level: 2");
+  await page.getByRole("tab", { name: "Banned players", exact: true }).click();
   const bans = page.getByRole("region", { name: "Banned players", exact: true });
+  await bans.locator("summary").click();
   await bans.getByRole("textbox", { name: "Player name", exact: true }).fill("Griefer");
   await bans.getByRole("textbox", { name: "Ban reason (optional)", exact: true }).fill("Griefing");
   await bans.getByRole("button", { name: "Add player", exact: true }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Confirm", exact: true }).click();
   await expect(bans.getByRole("listitem")).toContainText("Griefing");
+  await page.getByRole("tab", { name: "Banned IP addresses", exact: true }).click();
   const ips = page.getByRole("region", { name: "Banned IP addresses", exact: true });
+  await ips.locator("summary").click();
   await ips.getByRole("textbox", { name: "IP address", exact: true }).fill("192.0.2.1");
   await ips.getByRole("button", { name: "Ban IP address", exact: true }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Confirm", exact: true }).click();
@@ -50,13 +60,27 @@ test("standard player lists support confirmation, persistence, removal and runni
   await expect(page.getByRole("status").filter({ hasText: "Settings saved." })).toBeVisible();
   await page.reload();
   await expect(whitelist.getByRole("listitem")).toContainText("Notch");
+  await page.getByRole("tab", { name: "Administrators (OP)", exact: true }).click();
   await expect(ops.getByRole("listitem")).toContainText("Admin");
+  await page.getByRole("tab", { name: "Banned IP addresses", exact: true }).click();
   await ips.getByRole("button", { name: "Remove 192.0.2.1", exact: true }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Confirm", exact: true }).click();
   await expect(ips.getByRole("listitem")).toHaveCount(0);
   await page.getByRole("button", { name: "Start", exact: true }).click();
   await page.locator('[data-server-tab="settings"]').click();
+  await page.getByRole("tab", { name: "Administrators (OP)", exact: true }).click();
+  await ops.locator("summary").click();
   await expect(ops.getByRole("button", { name: "Add player", exact: true })).toBeDisabled();
+  await ops.getByRole("textbox", { name: "Player name", exact: true }).fill("LiveAdmin");
+  await expect(ops.getByRole("button", { name: "Add player", exact: true })).toBeEnabled();
+  await expect(ops.getByRole("combobox")).toBeDisabled();
+  await ops.getByRole("button", { name: "Add player", exact: true }).click();
+  await expect(ops.getByRole("listitem").filter({ hasText: "LiveAdmin" })).toContainText("Permission level: 4");
+  await page.getByRole("tab", { name: "Java and launch", exact: true }).click();
+  await expect(page.getByRole("spinbutton", { name: "Maximum memory (MiB)", exact: true })).toBeEnabled();
+  await page.getByRole("tab", { name: "Players and access", exact: true }).click();
+  await page.getByRole("checkbox", { name: "Whitelist", exact: true }).uncheck();
+  await expect(page.getByRole("checkbox", { name: "Whitelist", exact: true })).not.toBeChecked();
 });
 
 for (const [locale, heading] of [["en-US", "Administrators (OP)"], ["ru-RU", "Администраторы (OP)"], ["de-DE", "Administratoren (OP)"]]) {
@@ -65,6 +89,7 @@ for (const [locale, heading] of [["en-US", "Administrators (OP)"], ["ru-RU", "А
     await page.goto("/#/local-servers"); await page.getByRole("button", { name: "Weekend", exact: true }).dblclick();
     await page.locator('[data-server-tab="settings"]').click();
     await page.setViewportSize({ width: 800, height: 560 });
+    await page.getByRole("tab", { name: heading, exact: true }).click();
     const ops = page.getByRole("region", { name: heading, exact: true });
     await ops.scrollIntoViewIfNeeded();
     expect(await ops.evaluate(node => node.scrollWidth <= node.clientWidth + 1)).toBe(true);

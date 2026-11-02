@@ -1,3 +1,4 @@
+import { providerMessage } from "../../lib/providerMessage";
 import { useUiText } from "../../i18n/UiText";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -191,7 +192,7 @@ export function AccountPopover() {
             <button className={common.secondaryButton} type="button" data-minimal-compact aria-label={uiText("accounts.texts.offline", "Offline")} onClick={() => setAddingOffline(true)}>
               <Plus size={16} weight="bold" /><span data-minimal-text>{uiText("accounts.texts.offline", "Offline")}</span>
             </button>
-            <button className={common.secondaryButton} type="button" data-minimal-compact aria-label={uiText("shell.texts.microsoft", "Microsoft")} disabled={!microsoft?.available || busy} title={microsoft?.message ?? uiText("shell.texts.signInWithTheSystemBrowser", "Sign in with the system browser")} onClick={() => void loginMicrosoft()}>
+            <button className={common.secondaryButton} type="button" data-minimal-compact aria-label={uiText("shell.texts.microsoft", "Microsoft")} disabled={!microsoft?.available || busy} title={(microsoft ? providerMessage(microsoft, uiText) : "") || uiText("shell.texts.signInWithTheSystemBrowser", "Sign in with the system browser")} onClick={() => void loginMicrosoft()}>
               <SignIn size={16} weight="bold" /><span data-minimal-text>{uiText("shell.texts.microsoft", "Microsoft")}</span>
             </button>
             <button className={common.secondaryButton} type="button" data-minimal-compact aria-label={uiText("shell.texts.elyBy", "Ely.by")} onClick={() => setAddingElyBy(true)}>

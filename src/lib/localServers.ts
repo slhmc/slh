@@ -1,4 +1,4 @@
-export const serverCores = ["vanilla", "fabric", "forge", "quilt", "neoforge", "paper", "purpur", "leaf", "spigot", "bukkit", "custom"] as const;
+export const serverCores = ["vanilla", "fabric", "forge", "quilt", "neoforge", "paper", "purpur", "leaf", "spigot", "bukkit", "custom", "horizon"] as const;
 export type ServerCore = typeof serverCores[number];
 export interface ServerConfig {
   core: ServerCore; minecraftVersion: string; coreVersion: string;
@@ -12,7 +12,7 @@ export interface ServerCollection {id:string;name:string;parentId:string|null;so
 export interface ServerLibraryView {view?:string;sort?:string;collection?:string;panelPosition?:string;selected?:string;tabsPosition?:string;tabOrder?:string[];visibleTabs?:string[];collapsedGroups?:string[];panel?:{showArtwork?:boolean;showMetadata?:boolean;hiddenActions?:string[];actionOrder?:string[]}}
 export interface LocalServer { propertiesRevision?: string; presentation?: ServerPresentation; id: string; name: string; path: string; groupId: string | null; config: ServerConfig; status: string; installed: boolean; createdAt: string }
 export interface ServerGroup { id: string; name: string; path: string; parentId: string | null }
-export interface ServerDefaults { directory: string | null; config: ServerConfig }
+export interface ServerDefaults { portAllocation?: "shared" | "increment"; directory: string | null; config: ServerConfig }
 export interface ServerOverview { collections?:ServerCollection[];view?:ServerLibraryView;issues?:string[]; servers: LocalServer[]; groups: ServerGroup[]; defaults: ServerDefaults; directory: string; defaultDirectory: string }
 export interface ServerCatalog { minecraftVersions: string[]; versions: { id: string; stable: boolean; javaMajor: number }[] }
 export interface ServerCoreCandidate { path: string; filename: string; minecraftVersion: string; core: string; requiredJava: number; fingerprint: string }

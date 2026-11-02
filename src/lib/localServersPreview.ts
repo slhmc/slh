@@ -279,7 +279,7 @@ function handlePreview(
   }
   if (name === "get_local_servers")
     return structuredClone({
-      servers,
+      servers: servers.map(server => ({ ...server, status: JSON.parse(localStorage.getItem("slh.previewDisplayedServerStates") ?? "{}")[server.id] ?? server.status })),
       groups,
       defaults,
       collections,
@@ -288,6 +288,7 @@ function handlePreview(
       directory: defaults.directory ?? root,
       defaultDirectory: root,
     });
+  if (name === "local_server_catalog" && args.core === "horizon") return { minecraftVersions: ["26.3"], versions: args.minecraftVersion ? [{id: "v0.2.97", stable: true, javaMajor: 0}] : [] };
   if (name === "local_server_catalog")
     return {
       minecraftVersions: ["1.21.4", "1.21.3", "24w45a"],
@@ -397,21 +398,46 @@ function handlePreview(
     localStorage.setItem("slh.previewServerCoreFiles", JSON.stringify(fixtures));
     return structuredClone(server);
   }
+  if (name === "update_local_server_memory") {
+    const minimum = Number(args.minimum), maximum = Number(args.maximum);
+    if (!Number.isInteger(minimum) || !Number.isInteger(maximum) || minimum < 128 || maximum < minimum || maximum > 1048576) throw Error("serverLive.memoryInvalid");
+    server.config.memoryMinMb = minimum; server.config.memoryMaxMb = maximum;
+    return structuredClone(server);
+  }
+  if (name === "apply_local_server_live") {
+    if (!["starting", "running"].includes(server.status)) throw Error("serverLive.unavailable");
+    const request = args.request as { kind: string; value: string; rule?: string };
+    const prefixes: Record<string, string> = { difficulty: "difficulty", gamemode: "defaultgamemode", idleTimeout: "setidletimeout", time: "time set", weather: "weather", worldBorder: "worldborder set", save: "save-all flush" };
+    const text = request.kind === "gamerule" ? `gamerule ${request.rule} ${request.value}` : `${prefixes[request.kind]}${request.value ? ` ${request.value}` : ""}`;
+    const commands = JSON.parse(localStorage.getItem("slh.previewLiveCommands") ?? "[]"); commands.push(text);
+    localStorage.setItem("slh.previewLiveCommands", JSON.stringify(commands));
+    return { command: text, lines: [`Server: ${text}`] };
+  }
   if (name === "get_server_players" || name === "edit_server_players") {
     const allLists = JSON.parse(localStorage.getItem("slh.previewPlayerLists") ?? "{}");
     const lists = allLists[server.id] ?? { whitelist: [], operators: [], bannedPlayers: [], bannedIps: [], revisions: { whitelist: "missing", operators: "missing", bannedPlayers: "missing", bannedIps: "missing" } };
     if (name === "edit_server_players") {
-      if (!["created", "stopped", "failed"].includes(server.status)) throw Error("Stop the server before changing its files");
+      if (!["created", "stopped", "failed", "running", "starting"].includes(server.status)) throw Error("serverPlayers.liveUnavailable");
       const request = args.request as { kind: string; action: string; name: string; uuid?: string; level?: number; reason?: string; expectedRevision: string };
+      if (request.kind === "whitelistState") {
+        server.config.properties["white-list"] = String(request.action === "add");
+        const disk = JSON.parse(localStorage.getItem("slh.previewServerProperties") ?? "{}");
+        disk[server.id] = Object.entries({ ...server.config.properties, ...readServerProperties(disk[server.id] ?? ""), "white-list": String(request.action === "add") }).map(([key, value]) => `${key}=${value}`).join("\n");
+        localStorage.setItem("slh.previewServerProperties", JSON.stringify(disk));
+        return { ...structuredClone(lists), runtimeState: server.status, whitelistEnabled: request.action === "add", operatorLevel: Number(readServerProperties(disk[server.id] ?? "")["op-permission-level"] ?? 4) };
+      }
       if (request.expectedRevision !== lists.revisions[request.kind]) throw Error("serverPlayers.changed");
       const key = request.uuid || request.name;
       const rows = lists[request.kind] as Array<{name?: string; uuid?: string; ip?: string}>;
-      lists[request.kind] = rows.filter(row => (row.uuid || row.ip || row.name) !== key);
-      if (request.action === "add") lists[request.kind].push(request.kind === "bannedIps" ? { ip: request.name, reason: request.reason, expires: "forever" } : { name: request.name, uuid: request.uuid || "b50ad385-829d-3141-a216-7e7d7539ba7f", level: request.level, ...(request.kind === "bannedPlayers" ? { reason: request.reason, expires: "forever" } : {}) });
+      lists[request.kind] = rows.filter(row => ["running", "starting"].includes(server.status)
+        ? (row.name || row.ip || "").toLowerCase() !== request.name.toLowerCase()
+        : request.action === "add" && !request.uuid ? (row.name || row.ip || "").toLowerCase() !== request.name.toLowerCase() : (row.uuid || row.ip || row.name) !== key);
+      if (request.action === "add") lists[request.kind].push(request.kind === "bannedIps" ? { ip: request.name, reason: request.reason, expires: "forever" } : { name: request.name, uuid: request.uuid || crypto.randomUUID(), level: request.level, ...(request.kind === "bannedPlayers" ? { reason: request.reason, expires: "forever" } : {}) });
       lists.revisions[request.kind] = crypto.randomUUID();
       allLists[server.id] = lists; localStorage.setItem("slh.previewPlayerLists", JSON.stringify(allLists));
     }
-    return structuredClone(lists);
+    const rawProperties = JSON.parse(localStorage.getItem("slh.previewServerProperties") ?? "{}")[server.id] ?? "";
+    return { ...structuredClone(lists), runtimeState: server.status, whitelistEnabled: server.config.properties["white-list"] === "true", operatorLevel: Number(readServerProperties(rawProperties)["op-permission-level"] ?? server.config.properties["op-permission-level"] ?? 4) };
   }
   if (name === "delete_local_server") {
     if (!["created", "stopped", "failed"].includes(server.status)) throw Error("Stop the server before changing its files");

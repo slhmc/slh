@@ -218,9 +218,16 @@ pub async fn list(state: &AppState) -> AppResult<Vec<LocalServer>> {
             properties_revision: None,
             id,
             name,
-            path,
+            path: path.clone(),
             group_id,
-            config: serde_json::from_str(&json)?,
+            config: {
+                let mut config: ServerConfig = serde_json::from_str(&json)?;
+                let properties = Path::new(&path).join("server.properties");
+                if plain_path(&properties).is_ok() && properties.metadata().is_ok_and(|m| m.len() <= 1024*1024) {
+                    if let Ok(text) = std::fs::read_to_string(properties) { import_properties(&mut config, &text); config.properties_text = text; }
+                }
+                config
+            },
             status,
             created_at,
             installed: plan.is_some(),
@@ -273,6 +280,7 @@ pub async fn overview(state: &AppState) -> AppResult<ServerOverview> {
 }
 
 pub async fn create(state: &AppState, request: CreateServer) -> AppResult<LocalServer> {
+    if request.config.core == "horizon" { crate::minecraft::horizon::ensure_enabled(&state.database).await?; }
     validate_component(&request.name)?;
     validate_component(&request.folder)?;
     validate(&request.config)?;
@@ -383,6 +391,19 @@ pub async fn update(
     sqlx::query("UPDATE local_servers SET name=?,config_json=?,plan_json=COALESCE(?,plan_json) WHERE id=?")
         .bind(name).bind(serde_json::to_string(&config)?).bind(resolved.as_ref().map(serde_json::to_string).transpose()?).bind(id).execute(&state.database).await?;
     if resolved.is_some(){sqlx::query("UPDATE server_library_entries SET readiness='ready',note=NULL WHERE server_id=?").bind(id).execute(&state.database).await?;}
+    get(state, id).await
+}
+/// Launch-only memory preferences; never rewrite a live server's properties.
+pub async fn update_memory(state: &AppState, id: &str, minimum: u32, maximum: u32) -> AppResult<LocalServer> {
+    if minimum < 128 || maximum < minimum || maximum > 1_048_576 {
+        return Err(AppError::InvalidInput("serverLive.memoryInvalid".into()));
+    }
+    let mut server = get(state, id).await?;
+    server.config.memory_min_mb = minimum;
+    server.config.memory_max_mb = maximum;
+    validate(&server.config)?;
+    sqlx::query("UPDATE local_servers SET config_json=json_set(config_json,'$.memoryMinMb',?,'$.memoryMaxMb',?) WHERE id=?")
+        .bind(minimum).bind(maximum).bind(id).execute(&state.database).await?;
     get(state, id).await
 }
 pub async fn read_config(state: &AppState, id: &str) -> AppResult<LocalServer> {
@@ -660,6 +681,7 @@ pub async fn set_status(state: &AppState, id: &str, status: &str) -> AppResult<(
 }
 pub async fn save_defaults(state: &AppState, value: Value) -> AppResult<Value> {
     let d: ServerDefaults = serde_json::from_value(value.clone())?;
+    if !["", "shared", "increment"].contains(&d.port_allocation.as_str()) { return Err(AppError::InvalidInput("Unknown server port allocation mode".into())); }
     validate(&d.config)?;
     if let Some(p) = &d.directory {
         plain_path(Path::new(p))?;

@@ -12,8 +12,8 @@ describe("launcher theme", () => {
   it("propagates status colors, radius and density to shared tokens", () => {
     const theme = buildTheme({ ...old, error: "#123456", density: "compact", radius: 0 }, "Test");
     expect(theme).toMatchObject({ "--radius-md": "0px", "--control-height": "32px", "--font-ui": "Test" });
-    expect(theme["--color-error" as keyof typeof theme]).toContain("#123456");
-    expect(theme["--color-error-soft" as keyof typeof theme]).toContain("#123456");
+    expect(theme["--color-error" as keyof typeof theme]).toBe("rgba(18, 52, 86, 1)");
+    expect(theme["--color-error-soft" as keyof typeof theme]).toBe("rgba(38, 46, 55, 1)");
   });
   it("measures readability for light and dark palettes", () => {
     expect(contrastRatio("#ffffff", "#000000")).toBe(21);

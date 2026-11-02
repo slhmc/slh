@@ -1,3 +1,5 @@
+import { useConfirmation } from "../../components/common/ConfirmationProvider";
+import { providerMessage } from "../../lib/providerMessage";
 import { SettingsSection, SettingRow, Toggle } from "../../components/settings/SettingControls";
 import { ServerDefaultsPanel } from "../../components/server/ServerDefaultsPanel";
 import { StorageCleanup } from "../../components/settings/StorageCleanup";
@@ -166,6 +168,7 @@ function appearanceColors(settings: AppearanceSettings): AppearanceColors {
 
 export function SettingsPage() {
   const uiText = useUiText();
+  const confirm = useConfirmation();
   const { section = "general" } = useParams();
   const { t, tr, locale, diagnostics = [] } = useI18n();
   const bootstrap = useAppStore((state) => state.bootstrap);
@@ -330,7 +333,7 @@ export function SettingsPage() {
     try {
       await command("update_setting", { key, value });
       await refresh();
-      if (success) pushToast({ tone: "success", title: tr(success), message: uiText("settings.texts.theSettingsDatabaseWasUpdated", "The settings database was updated.") });
+      if (success) pushToast({ tone: "success", title: tr(success), message: "" });
     } catch (error) {
       pushToast({ tone: "error", title: uiText("settings.texts.settingsWereNotSaved", "Settings were not saved"), message: String((error as { message?: string }).message ?? error) });
     }
@@ -401,6 +404,7 @@ export function SettingsPage() {
   };
 
   const deleteAccount = async (account: Account) => {
+    if (!await confirm({ title: uiText("audit.removeAccount", undefined, { name: account.username }), description: uiText("audit.removeAccountHint") })) return;
     try {
       await command("delete_account", { accountId: account.id });
       const accountOrder = (bootstrap.settings.general.accountOrder ?? []).filter((id) => id !== account.id);
@@ -665,12 +669,12 @@ export function SettingsPage() {
       <section className={styles.content}>
         {section === "general" ? (
           <SettingsSection title={t("settings.general", "General")} description={t("settings.generalDescription", "Language, library behavior, and launcher lifecycle.")}>
-            <SettingRow title={t("settings.language", "Language")} description={t("settings.languageDescription", "Installed locale files are loaded from launcher resources.")}>
+            <SettingRow title={t("settings.language", "Language")}>
               <select data-language-selector aria-label={t("settings.language", "Language")} className={common.select} value={locale} onChange={(event) => updateGeneral({ language: event.target.value })}>
                 {bootstrap.locales.map((locale) => <option value={locale.code} key={locale.code}>{locale.name}</option>)}
               </select>
             </SettingRow>
-            <div className={styles.languageTools}>
+            <details className={styles.disclosure} open={diagnostics.length > 0 || undefined}><summary>{uiText("audit.customLanguages")}</summary><div className={styles.languageTools}>
               <button className={common.secondaryButton} type="button" onClick={() => void command("open_languages_folder").catch((error) => pushToast({ tone: "error", title: "Could not open languages folder", message: error.message }))}>{uiText("settings.texts.openLanguagesFolder", "Open languages folder")}</button>
               <button className={common.secondaryButton} type="button" onClick={() => window.dispatchEvent(new Event("slh-refresh-languages"))}>{uiText("settings.texts.refreshLanguages", "Refresh languages")}</button>
               <button className={common.secondaryButton} type="button" onClick={() => void (async () => {
@@ -681,7 +685,7 @@ export function SettingsPage() {
               })()}>{uiText("settings.texts.exportLanguageTemplate", "Export language template")}</button>
               <p>{uiText("settings.texts.addAJsonTranslationToDataLanguagesSavedChanges", "Add a JSON translation to data/languages. Saved changes appear automatically without restarting SLH.")}</p>
               {diagnostics.map((item) => <p role="alert" key={item.path}><strong>{item.path}</strong><br />{uiText("settings.texts.couldNotReadLanguageFileCheckItsJsonSyntax", "Could not read language file. Check its JSON syntax and translation values.")}<br /><code>{item.reason}</code></p>)}
-            </div>
+            </div></details>
             <div className={styles.tileGrid}>
             <SettingRow title={t("settings.rememberLast", "Remember last section")} description={t("settings.rememberLastDescription", "Return to your previous main view after restart.")}>
               <Toggle checked={bootstrap.settings.general.rememberSection} onChange={(checked) => updateGeneral({ rememberSection: checked })} />
@@ -701,13 +705,13 @@ export function SettingsPage() {
             </div>
             <div className={styles.tileGrid}>
             <SettingRow title={uiText("settings.texts.instancePanelPosition", "Instance panel position")} description={uiText("settings.texts.chooseWhereTheSelectedInstancePanelAppearsInThe", "Choose where the selected instance panel appears in the library.")}>
-              <div className={styles.positionControl}><PositionArrow position={bootstrap.settings.general.instancePanelPosition ?? "right"} /><select className={common.select} value={bootstrap.settings.general.instancePanelPosition ?? "right"} onChange={(event) => updateGeneral({ instancePanelPosition: event.target.value as GeneralSettings["instancePanelPosition"] })}>
+              <div className={styles.positionControl}><PositionArrow position={bootstrap.settings.general.instancePanelPosition ?? "right"} /><select className={common.select} aria-label={uiText("settings.texts.instancePanelPosition", "Instance panel position")} value={bootstrap.settings.general.instancePanelPosition ?? "right"} onChange={(event) => updateGeneral({ instancePanelPosition: event.target.value as GeneralSettings["instancePanelPosition"] })}>
                 <option value="left">{uiText("settings.texts.left", "Left")}</option>
                 <option value="right">{uiText("settings.texts.right", "Right")}</option>
               </select></div>
             </SettingRow>
             <SettingRow title={uiText("settings.texts.instanceTabsPosition", "Instance tabs position")} description={uiText("settings.texts.chooseWhereTheOverviewModsAndOtherInstanceTabs", "Choose where the Overview, Mods, and other instance tabs are shown.")}>
-              <div className={styles.positionControl}><PositionArrow position={bootstrap.settings.general.instanceTabsPosition ?? "top"} /><select className={common.select} value={bootstrap.settings.general.instanceTabsPosition ?? "top"} onChange={(event) => updateGeneral({ instanceTabsPosition: event.target.value as GeneralSettings["instanceTabsPosition"] })}>
+              <div className={styles.positionControl}><PositionArrow position={bootstrap.settings.general.instanceTabsPosition ?? "top"} /><select className={common.select} aria-label={uiText("settings.texts.instanceTabsPosition", "Instance tabs position")} value={bootstrap.settings.general.instanceTabsPosition ?? "top"} onChange={(event) => updateGeneral({ instanceTabsPosition: event.target.value as GeneralSettings["instanceTabsPosition"] })}>
                 <option value="top">{uiText("settings.texts.top", "Top")}</option>
                 <option value="bottom">{uiText("instance.texts.bottom", "Bottom")}</option>
                 <option value="left">{uiText("settings.texts.left", "Left")}</option>
@@ -715,7 +719,7 @@ export function SettingsPage() {
               </select></div>
             </SettingRow>
             <SettingRow title={uiText("settings.texts.navigationPosition", "Navigation position")} description={uiText("settings.texts.chooseWhereTheMainLauncherNavigationIsDocked", "Choose where the main launcher navigation is docked.")}>
-              <div className={styles.positionControl}><PositionArrow position={bootstrap.settings.general.navigationPosition ?? "left"} /><select className={common.select} value={bootstrap.settings.general.navigationPosition ?? "left"} onChange={(event) => updateGeneral({ navigationPosition: event.target.value as GeneralSettings["navigationPosition"] })}>
+              <div className={styles.positionControl}><PositionArrow position={bootstrap.settings.general.navigationPosition ?? "left"} /><select className={common.select} aria-label={uiText("settings.texts.navigationPosition", "Navigation position")} value={bootstrap.settings.general.navigationPosition ?? "left"} onChange={(event) => updateGeneral({ navigationPosition: event.target.value as GeneralSettings["navigationPosition"] })}>
                 <option value="left">{uiText("settings.texts.left", "Left")}</option>
                 <option value="right">{uiText("settings.texts.right", "Right")}</option>
                 <option value="top">{uiText("settings.texts.top", "Top")}</option>
@@ -723,7 +727,7 @@ export function SettingsPage() {
               </select></div>
             </SettingRow>
             <SettingRow title={uiText("settings.texts.settingsNavigationPosition", "Settings navigation position")} description={uiText("settings.texts.chooseWhereSettingsSectionsAreShown", "Choose where settings sections are shown.")}>
-              <div className={styles.positionControl}><PositionArrow position={settingsNavigationPosition} /><select className={common.select} value={settingsNavigationPosition} onChange={(event) => updateGeneral({ settingsNavigationPosition: event.target.value as SettingsNavigationPosition })}>
+              <div className={styles.positionControl}><PositionArrow position={settingsNavigationPosition} /><select className={common.select} aria-label={uiText("settings.texts.settingsNavigationPosition", "Settings navigation position")} value={settingsNavigationPosition} onChange={(event) => updateGeneral({ settingsNavigationPosition: event.target.value as SettingsNavigationPosition })}>
                 <option value="left">{uiText("settings.texts.left", "Left")}</option>
                 <option value="right">{uiText("settings.texts.right", "Right")}</option>
               </select></div>
@@ -754,6 +758,11 @@ export function SettingsPage() {
               })}
             </div>
             <div className={styles.tileGrid}>
+            {bootstrap.settings.general.platformCustomization === true ? <>
+              <SettingRow title={uiText("audit.systemControls")}><Toggle checked={appearance.systemControls === true} onChange={systemControls => { const next = { ...appearance, systemControls }; setAppearance(next); void save("appearance", next); }} /></SettingRow>
+              <SettingRow title={uiText("audit.windowStyle")}><select className={common.select} value={appearance.windowControlsStyle ?? "auto"} onChange={event => { const next = { ...appearance, windowControlsStyle: event.target.value as AppearanceSettings["windowControlsStyle"] }; setAppearance(next); void save("appearance", next); }}>{["auto", "windows", "macos", "linux"].map(value => <option key={value} value={value}>{value === "auto" ? uiText("audit.followSystem") : value === "macos" ? "macOS" : value === "windows" ? "Windows" : "Linux"}</option>)}</select></SettingRow>
+              <SettingRow title={uiText("audit.windowSide")}><select className={common.select} value={appearance.windowControlsSide ?? "auto"} onChange={event => { const next = { ...appearance, windowControlsSide: event.target.value as AppearanceSettings["windowControlsSide"] }; setAppearance(next); void save("appearance", next); }}><option value="auto">{uiText("audit.followSystem")}</option><option value="left">{uiText("settings.texts.left")}</option><option value="right">{uiText("settings.texts.right")}</option></select></SettingRow>
+            </> : null}
             <SettingRow title={t("settings.interfaceScale", "Interface scale")} description={t("settings.interfaceScaleDescription", "Changes the whole launcher without changing the Minecraft resolution.")}>
               <div className={styles.scaleControl}>
                 <input
@@ -808,6 +817,7 @@ export function SettingsPage() {
                 void save("appearance", next, "Appearance saved");
               }} />
             </SettingRow>
+            <SettingRow title={uiText("settings.fitTitles", "Fit project names")} description={uiText("settings.fitTitlesHint", "Reduce the font by one pixel at a time to keep complete words on a line in Discover.")}><Toggle checked={appearance.fitProjectTitles === true} onChange={fitProjectTitles => { const next={...appearance,fitProjectTitles}; setAppearance(next); void save("appearance",next); }} /></SettingRow>
             </div>
             <div className={styles.tileGrid}>
             <SettingRow title={uiText("settings.texts.compactMenuBeta", "Compact settings menu (beta)")} description={uiText("settings.texts.compactMenuDescription", "Show settings as tiles. Turn off to use rows. Text size stays the same.")}>
@@ -817,7 +827,7 @@ export function SettingsPage() {
               <Toggle checked={bootstrap.settings.general.compactHeader === true} onChange={(checked) => updateGeneral({ compactHeader: checked })} label={uiText("settings.texts.compactTopBarExperimental", "Compact navigation (beta)")} />
             </SettingRow>
             </div>
-            <SettingRow title={uiText("settings.fitTitles", "Fit project names")} description={uiText("settings.fitTitlesHint", "Reduce the font by one pixel at a time to keep complete words on a line in Discover.")}><Toggle checked={appearance.fitProjectTitles === true} onChange={fitProjectTitles => { const next={...appearance,fitProjectTitles}; setAppearance(next); void save("appearance",next); }} /></SettingRow>
+            <details className={styles.disclosure}><summary>{uiText("audit.moreAppearance")}</summary><div className={styles.tileGrid}>
             <SettingRow className={styles.fontSettingRow} title={t("settings.interfaceFont", "Interface font")} description={t("settings.interfaceFontDescription", "The selected face is applied instantly. Local files are copied into data/fonts and loaded without restarting.")}>
               <div className={styles.fontControl}>
                 <select className={common.select} value={appearance.fontFamily ?? "pixeloid"} onChange={(event) => selectInterfaceFont(event.target.value as NonNullable<AppearanceSettings["fontFamily"]>)}>
@@ -830,7 +840,7 @@ export function SettingsPage() {
                 <small className={styles.fontPreview} data-minimal-text>{uiText("settings.texts.previewAaBb0123", "Preview: Aa Bb 0123")}</small>
               </div>
             </SettingRow>
-            <div className={styles.tileGrid}>
+            <div className={`${styles.tileGrid} ${styles.appearanceGeometry}`}>
             <SettingRow title={uiText("settings.texts.cornerRadius", "Corner radius")} description={uiText("settings.texts.adjustRoundedCornersThroughoutTheLauncher", "Adjust rounded corners throughout the launcher.")}><input className={common.input} type="number" min={0} max={24} value={appearance.radius} aria-label={uiText("settings.texts.cornerRadius", "Corner radius")} onChange={(event) => { const next = { ...appearance, radius: Math.max(0, Math.min(24, Number(event.target.value))) }; setAppearance(next); void save("appearance", next); }} /></SettingRow>
             <SettingRow title={uiText("settings.texts.interfaceDensity", "Interface density")} description={uiText("settings.texts.chooseComfortableOrCompactSpacing", "Choose comfortable or compact spacing.")}><select className={common.select} value={appearance.density} aria-label={uiText("settings.texts.interfaceDensity", "Interface density")} onChange={(event) => { const next = { ...appearance, density: event.target.value }; setAppearance(next); void save("appearance", next); }}><option value="comfortable">{uiText("settings.texts.comfortable", "Comfortable")}</option><option value="compact">{uiText("settings.texts.compact", "Compact")}</option></select></SettingRow>
             </div>
@@ -851,14 +861,16 @@ export function SettingsPage() {
               <p data-minimal-text>{t("settings.appearanceNote", "Theme mode follows the selected palette. Background images and animated wallpaper are intentionally unsupported.")}</p>
               <button className={common.button} type="button" onClick={() => void save("appearance", appearance, "Appearance saved")}>{uiText("settings.texts.savePalette", "Save palette")}</button>
             </div>
+            </div></details>
           </SettingsSection>
         ) : null}
 
         {section === "minecraft" ? (
           <SettingsSection title={uiText("settings.minecraft", "Minecraft")} description={uiText("settings.texts.globalLaunchDefaultsAndInstanceOrganization", "Global launch defaults and instance organization.")}>
-            <SettingRow title={uiText("settings.texts.defaultMemory", "Default memory")} description={uiText("settings.texts.newInstancesInheritThisMaximumRamValue", "New instances inherit this maximum RAM value.")}>
+            <SettingRow title={uiText("settings.javaMaxMemory")} description={uiText("settings.texts.newInstancesInheritThisMaximumRamValue", "New instances inherit this maximum RAM value.")}>
               <div className={styles.numeric}><input className={common.input} type="number" min={256} max={1048576} step={256} defaultValue={bootstrap.settings.minecraft.memoryMaxMb} key={bootstrap.settings.minecraft.memoryMaxMb} onBlur={(event) => updateMinecraft({ memoryMaxMb: Math.min(1048576, Math.max(256, Number(event.target.value))) })} /><span>{uiText("installation.texts.mb", "MB")}</span></div>
             </SettingRow>
+            <SettingRow title={uiText("settings.javaMinMemory")}><input className={common.input} type="number" min={256} step={256} aria-label={uiText("settings.javaMinMemory")} defaultValue={bootstrap.settings.minecraft.memoryMinMb} key={bootstrap.settings.minecraft.memoryMinMb} onBlur={event => updateMinecraft({ memoryMinMb: Math.min(bootstrap.settings.minecraft.memoryMaxMb, Math.max(256, Number(event.target.value))) })} /></SettingRow>
             <SettingRow className={styles.formSettingRow} title={uiText("settings.texts.instanceGroups", "Instance groups")} description={`${bootstrap.groups.length} ${uiText("settings.texts.customGroupsInThisLibrary", "custom groups in this library.")}`}>
               <div className={styles.inlineForm}><input className={common.input} value={groupName} onChange={(event) => setGroupName(event.target.value)} placeholder={uiText("library.newGroup", "New group")} /><button className={common.secondaryButton} type="button" disabled={!groupName.trim()} onClick={() => void createGroup()}><Plus size={16} /> {uiText("settings.texts.add", "Add")}</button></div>
             </SettingRow>
@@ -866,7 +878,6 @@ export function SettingsPage() {
           
             <SettingRow title={uiText("settings.gameFullscreen", "Start in fullscreen")} description={uiText("settings.gameFullscreenHint", "Open Minecraft Java Edition in fullscreen mode.")}><Toggle checked={bootstrap.settings.minecraft.fullscreen === true} onChange={fullscreen => updateMinecraft({fullscreen})} /></SettingRow>
             <SettingRow title={uiText("settings.gameResolution", "Game window size")} description={uiText("settings.gameResolutionHint", "Window width and height in pixels. Interface scale does not change these values.")}><div className={`${styles.inlineForm} ${styles.resolutionControl}`}><input aria-label={uiText("settings.gameWidth", "Window width")} className={common.input} type="number" min={320} max={16384} defaultValue={bootstrap.settings.minecraft.resolutionWidth} key={bootstrap.settings.minecraft.resolutionWidth} onBlur={e => updateMinecraft({resolutionWidth:Math.max(320,Math.min(16384,Number(e.target.value)))})} /><input aria-label={uiText("settings.gameHeight", "Window height")} className={common.input} type="number" min={240} max={16384} defaultValue={bootstrap.settings.minecraft.resolutionHeight} key={bootstrap.settings.minecraft.resolutionHeight} onBlur={e => updateMinecraft({resolutionHeight:Math.max(240,Math.min(16384,Number(e.target.value)))})} /></div></SettingRow>
-            <SettingRow title={uiText("settings.gameHide", "Hide the launcher during play")} description={uiText("settings.gameHideHint", "Hide SLH after Minecraft starts. Uses the same preference as General.")}><Toggle checked={bootstrap.settings.general.hideOnLaunch} onChange={hideOnLaunch => updateGeneral({hideOnLaunch})} /></SettingRow>
             <SettingRow title={uiText("settings.gameExit", "Close SLH after the game exits")} description={uiText("settings.gameExitHint", "Close SLH when the last running Java instance exits.")}><Toggle checked={bootstrap.settings.minecraft.closeLauncherOnExit === true} onChange={closeLauncherOnExit => updateMinecraft({closeLauncherOnExit})} /></SettingRow>
 </SettingsSection>
         ) : null}
@@ -874,12 +885,11 @@ export function SettingsPage() {
         {section === "java" ? (
           <SettingsSection title={uiText("settings.java", "Java")} description={uiText("settings.texts.slhInspectsRuntimeVersionOutputAndValidatesCompatibilityBefore", "SLH inspects runtime version output and validates compatibility before launch.")}>
 
-            <SettingRow className={styles.formSettingRow} title={uiText("settings.javaExecutable", "Java executable")} description={uiText("settings.javaExecutableHint", "Choose Java for instances without their own executable override.")}><div className={styles.inlineForm}><input className={common.input} aria-label={uiText("settings.javaExecutable", "Java executable")} defaultValue={bootstrap.settings.minecraft.javaPath ?? ""} key={bootstrap.settings.minecraft.javaPath ?? ""} onBlur={event => updateMinecraft({javaPath:event.target.value.trim() || null,javaMode:event.target.value.trim() ? "custom" : "auto"})} /><button className={common.secondaryButton} type="button" onClick={() => void chooseJavaExecutable()}>{uiText("common.browse", "Browse")}</button><button className={common.secondaryButton} type="button" onClick={() => void detectJava()}>{uiText("settings.texts.detectJava", "Detect Java")}</button></div></SettingRow>
             <SettingRow title={uiText("settings.javaAutoDetect", "Detect Java automatically")} description={uiText("settings.javaAutoDetectHint", "Find a compatible installed runtime when no executable is selected.")}><Toggle checked={bootstrap.settings.java.autoDetect !== false} onChange={autoDetect => updateJavaPreferences({autoDetect})} /></SettingRow>
             <SettingRow title={uiText("settings.javaAutoDownload", "Download Java automatically")} description={uiText("settings.javaAutoDownloadHint", "Download a verified Temurin runtime when no compatible Java is installed.")}><Toggle checked={bootstrap.settings.java.autoDownload !== false} onChange={autoDownload => updateJavaPreferences({autoDownload})} /></SettingRow>
+            <details className={styles.disclosure}><summary>{uiText("audit.moreJava")}</summary><div className={styles.tileGrid}>
+            <SettingRow className={styles.formSettingRow} title={uiText("settings.javaExecutable", "Java executable")} description={uiText("settings.javaExecutableHint", "Choose Java for instances without their own executable override.")}><div className={styles.inlineForm}><input className={common.input} aria-label={uiText("settings.javaExecutable", "Java executable")} defaultValue={bootstrap.settings.minecraft.javaPath ?? ""} key={bootstrap.settings.minecraft.javaPath ?? ""} onBlur={event => updateMinecraft({javaPath:event.target.value.trim() || null,javaMode:event.target.value.trim() ? "custom" : "auto"})} /><button className={common.secondaryButton} type="button" onClick={() => void chooseJavaExecutable()}>{uiText("common.browse", "Browse")}</button><button className={common.secondaryButton} type="button" onClick={() => void detectJava()}>{uiText("settings.texts.detectJava", "Detect Java")}</button></div></SettingRow>
             <SettingRow title={uiText("settings.javaSkipCheck", "Skip the Java compatibility check")} description={uiText("settings.javaSkipCheckHint", "Allow the chosen executable even if it is older than Minecraft requires. The game may fail to start.")}><Toggle checked={bootstrap.settings.java.skipCompatibilityCheck === true} onChange={skipCompatibilityCheck => updateJavaPreferences({skipCompatibilityCheck})} /></SettingRow>
-            <SettingRow title={uiText("settings.javaMinMemory", "Default minimum memory")} description={uiText("settings.javaMemoryHint", "Memory defaults for newly created instances; maximum memory is shared with Minecraft settings.")}><input className={common.input} aria-label={uiText("settings.javaMinMemory", "Default minimum memory")} type="number" min={256} step={256} defaultValue={bootstrap.settings.minecraft.memoryMinMb} key={bootstrap.settings.minecraft.memoryMinMb} onBlur={e => updateMinecraft({memoryMinMb:Math.max(256,Number(e.target.value))})} /></SettingRow>
-            <SettingRow title={uiText("settings.javaMaxMemory", "Default maximum memory")} description={uiText("settings.javaMemoryHint", "Memory defaults for newly created instances; maximum memory is shared with Minecraft settings.")}><input className={common.input} aria-label={uiText("settings.javaMaxMemory", "Default maximum memory")} type="number" min={256} step={256} defaultValue={bootstrap.settings.minecraft.memoryMaxMb} key={bootstrap.settings.minecraft.memoryMaxMb} onBlur={e => updateMinecraft({memoryMaxMb:Math.max(256,Number(e.target.value))})} /></SettingRow>
             <SettingRow title={uiText("settings.javaPermGen", "PermGen size (Java 7 and earlier)")} description={uiText("settings.javaPermGenHint", "Used only with legacy Java. Java 8 and newer ignore this preference.")}><input className={common.input} type="number" min={0} max={4096} defaultValue={bootstrap.settings.java.permGenMb ?? 128} onBlur={e => updateJavaPreferences({permGenMb:Math.max(0,Math.min(4096,Number(e.target.value)))})} /></SettingRow>
             <SettingRow title={uiText("settings.javaWarnMemory", "Warn when available memory is low")} description={uiText("settings.javaWarnMemoryHint", "Show a warning at launch if instance memory exceeds currently available RAM.")}><Toggle checked={bootstrap.settings.java.warnLowMemory !== false} onChange={warnLowMemory => updateJavaPreferences({warnLowMemory})} /></SettingRow>
             <SettingRow className={styles.formSettingRow} title={uiText("settings.javaArguments", "JVM arguments")} description={uiText("settings.javaArgumentsHint", "One argument per line. An argument containing spaces stays together. Applied to all Java instances.")}><textarea className={common.textarea} aria-label={uiText("settings.javaArguments", "JVM arguments")} defaultValue={bootstrap.settings.minecraft.jvmArgs.join("\n")} onBlur={e => updateMinecraft({jvmArgs:e.target.value.split("\n").map(v=>v.trim()).filter(Boolean)})} /></SettingRow>
@@ -894,11 +904,13 @@ export function SettingsPage() {
                 <div className={styles.runtime} key={runtime.path}><Coffee size={20} /><span><strong>{uiText("settings.java", "Java")}{" "}{runtime.majorVersion} · {runtime.version}{runtime.architecture ? ` · ${runtime.architecture}` : ""}</strong><small title={runtime.path}>{runtime.path}</small></span><span className={runtime.compatible ? common.successBadge : common.errorBadge}>{uiText(({ "disk scan": "settings.texts.javaSourceDisk", managed: "settings.texts.javaSourceManaged", PATH: "settings.texts.javaSourcePath", JAVA_HOME: "settings.texts.javaSourceHome", saved: "settings.texts.javaSourceSaved", custom: "settings.texts.javaSourceCustom" } as Record<string, string>)[runtime.source] ?? "settings.texts.javaSourceSystem")}</span></div>
               ))}
             </div>
+              <NavLink to="/settings/minecraft">{uiText("audit.memorySettings")}</NavLink>
+            </div></details>
           </SettingsSection>
         ) : null}
 
         {section === "bedrock" ? (
-          <SettingsSection title={uiText("installation.texts.bedrock", "Bedrock")} description={uiText("settings.texts.bedrockSupportIsWIPAndHasNot", "Bedrock support is W.I.P. and has not been fully verified on every Windows installation and Minecraft version.")}>
+          <SettingsSection title={uiText("installation.texts.bedrock", "Bedrock")}>
             <div className={styles.bedrockWarning} role="note">{tr(bootstrap.capabilities?.bedrock === false ? uiText("settings.texts.bedrockIsAvailableOnlyOnWindows", "Bedrock is available only on Windows") : "Bedrock support is W.I.P. and has not been fully verified on every Windows installation and Minecraft version.")}</div>
             <SettingRow title={uiText("settings.texts.enableBedrock", "Enable Bedrock")} description={uiText("settings.texts.allowCreatingInstallingAndLaunchingBedrockProfilesExistingProfiles", "Allow creating, installing, and launching Bedrock profiles. Existing profiles and game data are kept when disabled.")}>
               <Toggle checked={bootstrap.settings.bedrock.enabled} disabled={bootstrap.capabilities?.bedrock === false} onChange={(enabled) => updateBedrock({ enabled })} />
@@ -922,14 +934,14 @@ export function SettingsPage() {
         ) : null}
 
         {section === "accounts" ? (
-          <SettingsSection title={uiText("settings.accounts", "Accounts")} description={uiText("settings.texts.accountMetadataIsStoredInSqliteTokenMaterialBelongs", "Account metadata is stored in SQLite; token material belongs only in DPAPI-encrypted files.")}>
-            <div className={styles.accountList}>
+          <SettingsSection title={uiText("settings.accounts", "Accounts")}>
+            <Button onClick={() => useAppStore.getState().setAccountPopoverOpen(true)}>{uiText("audit.addAccount")}</Button><div className={styles.accountList}>
               {bootstrap.accounts.length === 0 ? <div className={styles.inlineEmpty}><UserCircle size={28} /><p>{uiText("settings.texts.addAnOfflineAccountFromTheSidebarAccountSwitcher", "Add an Offline account from the sidebar account switcher.")}</p></div> : orderedAccounts(bootstrap.accounts, bootstrap.settings.general.accountOrder).map((account, index, accounts) => (
-                <div className={styles.accountRow} key={account.id}><AccountAvatar account={account} className={styles.accountAvatar} /><span><strong>{account.username}</strong><small>{account.provider} · {account.providerUuid}</small></span><span className={account.active ? common.successBadge : common.badge}>{account.active ? uiText("accounts.texts.active", "Active") : account.authStatus}</span><span className={styles.accountActions}><button className={common.iconButton} type="button" aria-label={`${uiText("settings.texts.manageSkinAndCape", "Manage skin and cape")} ${account.username}`} onClick={() => { if (account.provider === "elyby") void openUrl("https://ely.by/skins"); else setAppearanceAccount(account); }}><Palette size={16} /></button><button className={common.iconButton} type="button" aria-label={`Move ${account.username} up`} disabled={index === 0} onClick={() => void moveAccount(account, -1)}>↑</button><button className={common.iconButton} type="button" aria-label={`Move ${account.username} down`} disabled={index === accounts.length - 1} onClick={() => void moveAccount(account, 1)}>↓</button><button className={`${common.iconButton} ${styles.removeAccount}`} type="button" aria-label={`Remove ${account.username}`} onClick={() => void deleteAccount(account)}><Trash size={16} /></button></span></div>
+                <div className={styles.accountRow} key={account.id}><AccountAvatar account={account} className={styles.accountAvatar} /><span><strong>{account.username}</strong><small>{account.provider} · {account.providerUuid}</small></span><span className={account.active ? common.successBadge : common.badge}>{account.active ? uiText("accounts.texts.active", "Active") : account.authStatus}</span><span className={styles.accountActions}>{!account.active ? <Button data-select-account onClick={() => void command("activate_account", { accountId: account.id }).then(refresh).catch(error => pushToast({ tone: "error", title: uiText("audit.failed"), message: String(error.message ?? error) }))}>{uiText("audit.selectAccount")}</Button> : null}<button className={common.iconButton} type="button" aria-label={`${uiText("settings.texts.manageSkinAndCape", "Manage skin and cape")} ${account.username}`} onClick={() => { if (account.provider === "elyby") void openUrl("https://ely.by/skins"); else setAppearanceAccount(account); }}><Palette size={16} /></button><button className={common.iconButton} type="button" aria-label={uiText("audit.moveUp", undefined, { name: account.username })} disabled={index === 0} onClick={() => void moveAccount(account, -1)}>↑</button><button className={common.iconButton} type="button" aria-label={uiText("audit.moveDown", undefined, { name: account.username })} disabled={index === accounts.length - 1} onClick={() => void moveAccount(account, 1)}>↓</button><button className={`${common.iconButton} ${styles.removeAccount}`} type="button" aria-label={uiText("audit.removeAccount", undefined, { name: account.username })} onClick={() => void deleteAccount(account)}><Trash size={16} /></button></span></div>
               ))}
             </div>
             <div className={styles.providerGrid}>
-              {bootstrap.providers.map((provider) => <div key={provider.provider}><strong>{provider.provider === "elyby" ? "Ely.by" : provider.provider[0].toUpperCase() + provider.provider.slice(1)}</strong><span className={provider.available ? common.successBadge : common.warningBadge}>{provider.available ? uiText("instance.texts.available", "Available") : uiText("instance.texts.unavailable", "Unavailable")}</span><p>{provider.message ?? uiText("settings.texts.readyToAddFromTheAccountSwitcher", "Ready to add from the account switcher.")}</p></div>)}
+              {bootstrap.providers.map((provider) => <div key={provider.provider}><strong>{provider.provider === "elyby" ? "Ely.by" : provider.provider[0].toUpperCase() + provider.provider.slice(1)}</strong><span className={provider.available ? common.successBadge : common.warningBadge}>{provider.available ? uiText("instance.texts.available", "Available") : uiText("instance.texts.unavailable", "Unavailable")}</span><p>{providerMessage(provider, uiText)}</p></div>)}
             </div>
           </SettingsSection>
         ) : null}
@@ -961,9 +973,9 @@ export function SettingsPage() {
         ) : null}
 
         {section === "downloads" ? (
-          <SettingsSection title={uiText("settings.downloads", "Downloads")} description={uiText("settings.texts.verifiedDownloadsUseRetryTemporaryFilesAndAtomicRename", "Verified downloads use retry, temporary files, and atomic rename.")}>
+          <SettingsSection title={uiText("settings.downloads", "Downloads")}>
             <SettingRow title={uiText("settings.texts.concurrentDownloads", "Concurrent downloads")} description={uiText("settings.texts.appliedToLibraryAssetLoaderAndModpackBatches", "Applied to library, asset, loader, and modpack batches.")}><ParallelDownloadsControl value={bootstrap.settings.downloads.concurrency} onChange={concurrency => save("downloads", { ...bootstrap.settings.downloads, concurrency })} /></SettingRow>
-            <SettingRow title={uiText("settings.texts.retryCount", "Retry count")} description={uiText("settings.texts.transientFailuresUseExponentialBackoff", "Transient failures use exponential backoff.")}><input className={common.input} type="number" min={0} max={8} value={bootstrap.settings.downloads.retries} onChange={(event) => void save("downloads", { ...bootstrap.settings.downloads, retries: Number(event.target.value) })} /></SettingRow>
+            <SettingRow title={uiText("settings.texts.retryCount", "Retry count")}><input className={common.input} type="number" min={0} max={8} value={bootstrap.settings.downloads.retries} onChange={(event) => void save("downloads", { ...bootstrap.settings.downloads, retries: Number(event.target.value) })} /></SettingRow>
             <SettingRow className={styles.formSettingRow} title={uiText("settings.curseforge.folder", "CurseForge downloads folder")} description={uiText("settings.curseforge.folderHint", "SLH looks here for files downloaded from CurseForge in your browser.")}>
               <div className={styles.javaLocation}><code>{bootstrap.settings.downloads.curseforgeDirectory ?? uiText("settings.curseforge.defaultFolder", "Windows Downloads folder")}</code><button className={common.secondaryButton} type="button" onClick={() => void (async () => {
                 const selected = await openDialog({ directory: true, multiple: false });
@@ -1047,7 +1059,7 @@ export function SettingsPage() {
         ) : null}
 
         {section === "privacy" ? (
-          <SettingsSection title={uiText("settings.privacy", "Privacy")} description={uiText("settings.texts.thisPersonalBuildHasNoAnalyticsAdvertisingTelemetryOr", "This personal build has no analytics, advertising, telemetry, or background data collection.")}>
+          <SettingsSection title={uiText("settings.privacy", "Privacy")}>
             <SettingRow title={uiText("settings.texts.telemetry", "Telemetry")} description={uiText("settings.texts.noTelemetryClientExistsInSlh", "No telemetry client exists in SLH.")}><span className={common.successBadge}>{uiText("settings.texts.alwaysOff", "Always off")}</span></SettingRow>
             <SettingRow title={uiText("settings.texts.crashReporting", "Crash reporting")} description={uiText("settings.texts.crashDataRemainsInLocalLogsUnlessYouCopy", "Crash data remains in local logs unless you copy it yourself.")}><span className={common.successBadge}>{uiText("settings.texts.localOnly", "Local only")}</span></SettingRow>
             <div className={styles.networkList}><strong>{uiText("settings.texts.servicesContactedOnlyWhenNeeded", "Services contacted only when needed")}</strong><p>{uiText("settings.texts.mojangMetadataAndAssetsMicrosoftAuthenticationWhenConfiguredModrinth", "Mojang metadata and assets, Microsoft authentication when configured, Modrinth, CurseForge when configured, Ely.by when used, and the chosen managed Java source.")}</p></div>
@@ -1055,7 +1067,9 @@ export function SettingsPage() {
         ) : null}
 
         {section === "advanced" ? (
-          <SettingsSection title={uiText("settings.advanced", "Advanced")} description={uiText("settings.texts.diagnosticsAndDeveloperControlsRemainExplicitAndNonDestructive", "Diagnostics and developer controls remain explicit and non-destructive.")}>
+          <SettingsSection title={uiText("settings.advanced", "Advanced")}>
+            <SettingRow title={uiText("audit.confirmActions")} description={uiText("audit.confirmActionsHint")}><Toggle checked={bootstrap.settings.general.confirmDestructiveActions !== false} onChange={confirmDestructiveActions => updateGeneral({ confirmDestructiveActions })} /></SettingRow>
+            <SettingRow title={uiText("audit.platformCustomization")} description={uiText("audit.platformCustomizationHint")}><Toggle checked={bootstrap.settings.general.platformCustomization === true} onChange={platformCustomization => updateGeneral({ platformCustomization })} /></SettingRow>
             <SettingRow title={uiText("settings.errorReports", "Error reports")} description={uiText("settings.errorReportsDescription", "Local reports for installation failures, downloads and game crashes are saved in the crash folder.")}>
               <button className={common.secondaryButton} type="button" onClick={() => void command("open_crash_report", { path: null }).catch(error => pushToast({ tone: "error", title: uiText("settings.errorReports", "Error reports"), message: error.message }))}>{uiText("settings.openCrashFolder", "Open crash folder")}</button>
             </SettingRow>
@@ -1065,7 +1079,7 @@ export function SettingsPage() {
             </SettingRow>
             </div>
             <div className={styles.tileGrid}>
-            <SettingRow className={styles.horizonSetting} title={uiText("settings.rustMinecraft", "Minecraft on Rust")} description={uiText("settings.rustMinecraftDescription", "Show compatible Horizon releases from GitHub. Requires Windows x64, Vulkan and a Microsoft account with Minecraft. Java is selected for preparation according to the release.")}>
+            <SettingRow onToggle={() => updateGeneral({ rustMinecraft: bootstrap.settings.general.rustMinecraft !== true })} className={styles.horizonSetting} title={uiText("settings.rustMinecraft", "Minecraft on Rust")} description={uiText("settings.rustMinecraftDescription", "Show compatible Horizon releases from GitHub. Requires Windows x64, Vulkan and a Microsoft account with Minecraft. Java is selected for preparation according to the release.")}>
               <div className={styles.horizonControls}>
                 <Toggle checked={bootstrap.settings.general.rustMinecraft === true} onChange={(checked) => updateGeneral({ rustMinecraft: checked })} />
                 <span className={styles.horizonMeta}>
@@ -1081,11 +1095,7 @@ export function SettingsPage() {
             </SettingRow>
             </div>
             {launcherUpdate ? <p className={`${styles.notice} ${launcherUpdate.updateAvailable ? styles.updateNotice : ""}`}>{launcherUpdate.updateAvailable ? `${uiText("settings.texts.newVersionAvailable", "New version available")}: ${launcherUpdate.latestVersion} · ${launcherUpdate.releaseName}` : `${uiText("settings.texts.launcherIsUpToDate", "Launcher is up to date")}: ${launcherUpdate.currentVersion}`}</p> : null}
-            <div className={styles.tileGrid}>
-            <SettingRow title={uiText("settings.texts.database", "Database")} description={uiText("settings.texts.sqliteWalForeignKeysAndForwardOnlyMigrations", "SQLite WAL, foreign keys, and forward-only migrations.")}><span className={common.successBadge}>{uiText("settings.texts.healthy", "Healthy")}</span></SettingRow>
-            <SettingRow title={uiText("settings.texts.logging", "Logging")} description={uiText("settings.texts.dailyLogFilesWithSecretRedactionBoundaries", "Daily log files with secret redaction boundaries.")}><span className={common.badge}>{uiText("settings.texts.info170322", "Info")}</span></SettingRow>
-            </div>
-            <p className={styles.notice}>{uiText("settings.texts.databaseResetForcedMetadataRefreshAndInstanceRepairAre", "Database reset, forced metadata refresh, and instance repair are withheld until each action has preview and confirmation.")}</p>
+
           </SettingsSection>
         ) : null}
       </section>

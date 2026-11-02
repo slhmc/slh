@@ -18,11 +18,11 @@
 .card:hover {
   border-color: var(--color-border-strong);
   background: var(--color-surface-3);
-  transform: translateY(-1px);
 }
 
-.card:active {
-  transform: translateY(0);
+@media (prefers-reduced-motion: no-preference) {
+  .card:hover { transform: translateY(-1px); }
+  .card:active { transform: translateY(0); }
 }
 
 .card.iconCard {
@@ -44,6 +44,12 @@
 .iconCard .selection { top: 4px; left: 4px; }
 .iconCard .progress { width: 100%; }
 .iconCard .progress strong { line-height: 1.4; overflow-wrap: anywhere; }
+.statusIndicator { position: absolute; z-index: 2; top: 112px; right: var(--space-2); display: grid; place-items: center; width: 20px; height: 20px; border: 1px solid var(--color-border); border-radius: var(--radius-xs); color: var(--color-text-muted); background: var(--color-surface); }
+.iconCard .statusIndicator { top: 52px; right: auto; left: calc(50% + 18px); }
+.listRow .statusIndicator { top: 30px; right: auto; left: 32px; }
+.statusRunning { color: var(--color-success); }
+.statusError { color: var(--color-error); }
+.statusText { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
 .card:focus-visible,
 .listRow:focus-visible {
@@ -246,3 +252,4 @@
 .actionMenu > div { left: 100%; right: auto; }
 
 .listRow .listProgress { grid-column: 2 / -1; min-width: 0; overflow-wrap: anywhere; line-height: 1.4; }
+

@@ -1,3 +1,4 @@
+import { ConfirmationProvider } from "../common/ConfirmationProvider";
 import { Outlet } from "react-router-dom";
 import { lazy, Suspense, useCallback, useState } from "react";
 import type { MouseEvent } from "react";
@@ -37,7 +38,7 @@ export function AppShell() {
   }, []);
 
   return (
-    <div className={styles.app} onContextMenu={(event) => event.preventDefault()}>
+    <ConfirmationProvider><div className={styles.app} onContextMenu={(event) => event.preventDefault()}>
       <Titlebar navigation={compactHeader ? <AppSidebar compact onContextMenu={openNavigationMenu} /> : undefined} />
       <div className={`${styles.workspace} ${compactHeader ? styles.compactWorkspace : navigationPositionClass}`}>
         {!compactHeader ? <AppSidebar onContextMenu={openNavigationMenu} /> : null}
@@ -51,6 +52,6 @@ export function AppShell() {
       <ToastCenter />
       <PackJobDialog />
       <NavigationContextMenu position={navigationMenuPosition} onClose={closeNavigationMenu} />
-    </div>
+    </div></ConfirmationProvider>
   );
 }

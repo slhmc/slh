@@ -36,6 +36,13 @@ pub async fn state_for(state: &AppState, id: &str, stored: &str) -> String {
     }
 }
 pub async fn effective_plan(app: &Host, state: &AppState, id: &str) -> AppResult<LaunchPlan> {
+    let native = store::get(state, id).await?;
+    if native.config.core == "horizon" {
+        crate::minecraft::horizon::ensure_enabled(&state.database).await?;
+        let mut plan = super::horizon::plan(&native)?;
+        plan.args.extend(native.config.server_args);
+        return Ok(plan);
+    }
     if super::recovery::inspect(state, id).await?.needs_repair {
         return Err(AppError::Conflict("serverCoreRepair.required".into()));
     }

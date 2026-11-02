@@ -1,3 +1,4 @@
+import { desktopPlatform } from "./lib/platformAppearance";
 import { LauncherUpdateDialog, requestLauncherUpdate } from "./components/common/LauncherUpdateDialog";
 import { useUiText } from "./i18n/UiText";
 import { useServerLibraryStore } from "./stores/serverLibraryStore";
@@ -86,6 +87,7 @@ function AppContent() {
   const bootstrap = useAppStore((state) => state.bootstrap);
   const loading = useAppStore((state) => state.loading);
   const serversScanned=useRef(false);
+  const zoomWrites = useRef<Promise<void>>(Promise.resolve());
   useEffect(() => {
     if (!bootstrap || serversScanned.current) return;
     serversScanned.current = true;
@@ -96,6 +98,10 @@ function AppContent() {
 
   useCurseForgeArchiveImport(bootstrap?.settings.downloads.curseforgeImportArchives === true,
     bootstrap?.settings.downloads.curseforgeDirectory);
+  useEffect(() => {
+    document.documentElement.dataset.platformUi = desktopPlatform();
+    document.documentElement.dataset.systemControls = String(bootstrap?.settings.general.platformCustomization === true && bootstrap.settings.appearance.systemControls === true);
+  }, [bootstrap?.settings.general.platformCustomization, bootstrap?.settings.appearance.systemControls]);
   const error = useAppStore((state) => state.error);
   const receiveProgress = useAppStore((state) => state.receiveProgress);
   const receiveLaunchState = useAppStore((state) => state.receiveLaunchState);
@@ -193,13 +199,16 @@ function AppContent() {
       const decrease = event.code === "Minus" || event.code === "NumpadSubtract";
       if (!increase && !decrease) return;
       event.preventDefault();
-      const current = bootstrap.settings.appearance.scalePercent;
-      const next = Math.max(50, Math.min(200, current + (increase ? 5 : -5)));
-      if (next === current) return;
-      void command("update_setting", {
-        key: "appearance",
-        value: { ...bootstrap.settings.appearance, scalePercent: next },
-      }).then(async () => { await refresh(); pushToast({ brief: true, tone: "info", title: "notifications.scaleChanged", params: { percent: next }, message: "" }); }).catch(() => undefined);
+      zoomWrites.current = zoomWrites.current.then(async () => {
+        const settings = useAppStore.getState().bootstrap?.settings;
+        if (!settings || settings.general.keyboardZoom === false) return;
+        const current = settings.appearance.scalePercent;
+        const next = Math.max(50, Math.min(200, current + (increase ? 5 : -5)));
+        if (next === current) return;
+        await command("update_setting", { key: "appearance", value: { ...settings.appearance, scalePercent: next } });
+        await refresh();
+        pushToast({ brief: true, tone: "info", title: "notifications.scaleChanged", params: { percent: next }, message: "" });
+      }).catch(() => undefined);
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
@@ -247,6 +256,7 @@ function AppContent() {
   if (error || !bootstrap) return <div className={styles.error}><WarningCircle size={42} /><h1>{uiText("common.texts.slhCouldNotStart", "SLH could not start")}</h1><p>{error?.message ?? uiText("common.texts.theLauncherBackendDidNotReturnStartupData", "The launcher backend did not return startup data.")}</p><button className={common.secondaryButton} type="button" onClick={() => void initialize()}>{uiText("common.retry", "Retry")}</button></div>;
 
   const appearance = bootstrap.settings.appearance;
+
   const fontFamily = appearance.fontFamily === "system"
     ? '"Segoe UI Variable", "Segoe UI", system-ui, sans-serif'
     : appearance.fontFamily === "monospace"

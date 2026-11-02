@@ -1,3 +1,4 @@
+import { revealControl } from "./revealControl";
 import { expect, test, type Page } from "@playwright/test";
 
 async function language(page: Page, code: string) {
@@ -24,6 +25,7 @@ test("switching language preserves an open form and unsaved palette", async ({ p
   await language(page, "de-DE");
   await expect(page.locator("input[data-preserved=yes]")).toHaveValue("My custom pack — draft");
   await page.goto("/#/settings/appearance");
+  await revealControl(page, "input[type=color]");
   const color = page.locator("input[type=color]").first();
   await color.fill("#123456");
   await language(page, "de-DE");
@@ -32,7 +34,7 @@ test("switching language preserves an open form and unsaved palette", async ({ p
 
 test("waiting installations retain their job across locale changes, use palette and support keyboard closure", async ({ page }) => {
   await page.goto("/#/library");
-  await page.getByRole("heading", { name: "Your Minecraft worlds, separated and ready" }).waitFor();
+  await page.getByRole("heading", { name: "Instance library" }).waitFor();
   await page.evaluate(async () => {
     const { usePackJobs } = await import("/src/stores/packJobs.ts");
     const { useAppStore } = await import("/src/stores/appStore.ts");
@@ -77,6 +79,7 @@ for (const code of ["en-US", "ru-RU", "de-DE"]) {
       await page.screenshot({ path: `artifacts/ui/${route.split("/")[0]}-${code}-800.png` });
     }
     await page.evaluate(() => location.hash = "/settings/appearance");
+    await revealControl(page, "input[type=color]");
     await expect(page.locator("input[type=color]").first()).toBeVisible();
     // Effective CSS viewport for a WebView setZoom(2) at 800×560.
     await page.setViewportSize({ width: 400, height: 280 });

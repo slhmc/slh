@@ -45,6 +45,6 @@ test("missing instance navigation keeps the existing Windows hook-order fix", as
   await page.evaluate(() => { window.location.hash = "/instance/missing-instance"; });
   await expect(page.getByRole("heading", { name: "Instance not found" })).toBeVisible();
   await page.getByRole("button", { name: "Back to Library" }).click();
-  await expect(page.getByRole("heading", { name: "Your Minecraft worlds, separated and ready" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Instance library" })).toBeVisible();
   expect(errors).toEqual([]);
 });

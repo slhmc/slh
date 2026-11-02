@@ -8,7 +8,8 @@
     "src/components/instance/CreateInstanceWizard.tsx",
     "src/components/instance/InstanceArtwork.tsx",
     "src/components/instance/InstanceSidePanel.tsx",
-    "src/stores/packJobs.ts"
+    "src/stores/packJobs.ts",
+    "src/lib/colorMix.ts"
   ],
   "text": [],
   "colorReasons": {
@@ -20,6 +21,7 @@
     "src/components/instance/CreateInstanceWizard.tsx": "Custom instance artwork presets",
     "src/components/instance/InstanceArtwork.tsx": "Artwork colors, Minecraft skins and canvases",
     "src/components/instance/InstanceSidePanel.tsx": "Preserved instance artwork during duplication",
-    "src/stores/packJobs.ts": "Placeholder instance artwork"
+    "src/stores/packJobs.ts": "Placeholder instance artwork",
+    "src/lib/colorMix.ts": "Computes RGBA values exclusively from semantic palette tokens for older WebKit; no fixed UI palette"
   }
 }

@@ -96,7 +96,6 @@ export function InstanceSidePanel({ instance, onDelete, onContextMenu }: Instanc
     }
   };
   const useStoreVersion = async (version: MinecraftVersionSummary) => {
-  const uiText = useUiText();
     setStoreDialogOpen(false);
     try {
       await command<Instance>("update_instance", {
@@ -225,8 +224,11 @@ export function InstanceSidePanel({ instance, onDelete, onContextMenu }: Instanc
         </button>
         {instance.loaderType === "bedrock" && installable ? <button className={common.secondaryButton} type="button" disabled={busy || storeLookupBusy || operationActive} onClick={() => void openBedrockStorePicker()}>{uiText("installation.texts.useStoreVersion", "Use Store version")}</button> : null}
         <div className={styles.quickGrid}>
-          {actionOrder.filter((id) => !panelOptions.hiddenActions.includes(id) && actionButtons[id]).map((id) => <span key={id}>{actionButtons[id]}</span>)}
+          {actionOrder.filter((id) => !panelOptions.hiddenActions.includes(id) && actionButtons[id] && (rawPanelOptions?.actionOrder || ["mods", "worlds", "folder", "settings"].includes(id))).map((id) => <span key={id}>{actionButtons[id]}</span>)}
         </div>
+        {!rawPanelOptions?.actionOrder && actionOrder.some(id => !panelOptions.hiddenActions.includes(id) && !["mods", "worlds", "folder", "settings"].includes(id) && actionButtons[id]) ? <details className={styles.moreActions} name="slh-action-menu" data-action-menu><summary className={common.secondaryButton}>{uiText("audit.moreActions")}</summary><div>
+          {actionOrder.filter(id => !panelOptions.hiddenActions.includes(id) && !["mods", "worlds", "folder", "settings"].includes(id) && actionButtons[id]).map(id => <span key={id}>{actionButtons[id]}</span>)}
+        </div></details> : null}
         {panelOptions.showMetadata ? <div className={styles.metadata}>
           <div><Clock size={16} /><span>{formatPlaytime(instance.playtimeSeconds, locale, tr)}</span></div>
           <div><span>{uiText("installation.texts.status", "Status")}</span><span className={instance.status === "error" ? common.errorBadge : instance.status === "installed" ? common.successBadge : common.badge}>{tr(instance.status)}</span></div>
