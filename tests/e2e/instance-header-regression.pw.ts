@@ -1,4 +1,14 @@
 import {test, expect} from "@playwright/test";
+test("default instance actions remain buttons in one grid", async ({page}) => {
+  await page.goto("/#/library");
+  await page.getByRole("button", {name:"Latest release",exact:true}).click();
+  for (const width of [800, 1440]) {
+    await page.setViewportSize({width, height: width === 800 ? 560 : 900});
+    await expect(page.getByRole("button", {name:"Delete instance",exact:true})).toBeAttached();
+    await expect(page.getByText("More actions", {exact:true})).toHaveCount(0);
+    await page.screenshot({path:`artifacts/ui/instance-actions-${width}.png`});
+  }
+});
 test("instance header keeps artwork, identity and launch action visible", async ({page}) => {
   await page.goto("/#/instance/preview-2?tab=mods");
   const header = page.locator('header[class*="header"]').first();

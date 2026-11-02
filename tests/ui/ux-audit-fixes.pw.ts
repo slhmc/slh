@@ -16,7 +16,6 @@ test("instance deletion asks once, cancels safely and honors the warning prefere
   await page.goto("/#/library");
   const card = page.getByRole("button", { name: "Latest release", exact: true });
   await card.click();
-  await page.getByText("More actions", { exact: true }).click();
   await page.getByRole("button", { name: "Delete instance", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "Delete instance", exact: true });
   await expect(dialog).toBeVisible();
@@ -31,7 +30,6 @@ test("instance deletion asks once, cancels safely and honors the warning prefere
   await expect(warnings).toHaveAttribute("aria-checked", "false");
   await route(page, "/library");
   await card.click();
-  await page.getByText("More actions", { exact: true }).click();
   await page.getByRole("button", { name: "Delete instance", exact: true }).click();
   await expect(card).toHaveCount(0);
   await expect(page.locator("dialog[open]")).toHaveCount(0);

@@ -93,10 +93,34 @@ pub async fn connect(paths: &PortablePaths) -> AppResult<SqlitePool> {
                 if repair_legacy_initial_migration(&pool).await? => {}
             Err(sqlx::migrate::MigrateError::VersionMismatch(18))
                 if repair_local_home_migration(&pool).await? => {}
+            Err(sqlx::migrate::MigrateError::VersionMismatch(version))
+                if repair_line_ending_checksum(&pool, version).await? => {}
             Err(error) => return Err(error.into()),
         }
     }
     Ok(pool)
+}
+
+// Local and GitHub builds previously embedded different LF/CRLF bytes.
+// Recognize only the exact same SQL with normalized line endings; never
+// rerun an applied migration or accept arbitrary changed migration content.
+async fn repair_line_ending_checksum(pool: &SqlitePool, version: i64) -> AppResult<bool> {
+    use sha2::{Digest, Sha384};
+    let Some(expected) = MIGRATOR.iter().find(|m| m.version == version) else { return Ok(false); };
+    let lf = expected.sql.as_str().replace("\r\n", "\n");
+    let crlf = lf.replace('\n', "\r\n");
+    let actual: Option<Vec<u8>> = sqlx::query_scalar("SELECT checksum FROM _sqlx_migrations WHERE version = ? AND success = 1")
+        .bind(version).fetch_optional(pool).await?;
+    let Some(actual) = actual else { return Ok(false); };
+    if actual.as_slice() == expected.checksum.as_ref()
+        || ![lf.as_bytes(), crlf.as_bytes()].iter().any(|sql| Sha384::digest(sql).as_slice() == actual.as_slice()) {
+        return Ok(false);
+    }
+    let changed = sqlx::query("UPDATE _sqlx_migrations SET checksum = ? WHERE version = ? AND checksum = ? AND success = 1")
+        .bind(expected.checksum.as_ref()).bind(version).bind(&actual).execute(pool).await?;
+    if changed.rows_affected() != 1 { return Ok(false); }
+    tracing::warn!(version, "normalized an exact LF/CRLF migration checksum without reapplying SQL");
+    Ok(true)
 }
 
 pub async fn all_settings(pool: &SqlitePool) -> AppResult<Value> {
@@ -264,6 +288,48 @@ pub async fn instance(pool: &SqlitePool, id: &str) -> AppResult<Instance> {
 
 #[cfg(test)]
 mod tests {
+    #[tokio::test]
+    #[ignore = "requires an explicit isolated SQLite fixture"]
+    async fn existing_profile_fixture_opens_without_changing_settings_or_instances() {
+        let fixture = std::env::var_os("SLH_DATABASE_UPGRADE_FIXTURE").expect("fixture path");
+        let root = tempfile::tempdir().unwrap();
+        let paths = crate::portable::PortablePaths::from_executable(&root.path().join("SLH.exe"), Some(root.path().to_path_buf())).unwrap();
+        std::fs::create_dir_all(&paths.data).unwrap();
+        std::fs::copy(fixture, paths.database()).unwrap();
+        let pool = sqlx::sqlite::SqlitePoolOptions::new().connect_with(sqlx::sqlite::SqliteConnectOptions::new().filename(paths.database())).await.unwrap();
+        let before = super::all_settings(&pool).await.unwrap();
+        let instances: i64 = sqlx::query_scalar("SELECT count(*) FROM instances").fetch_one(&pool).await.unwrap();
+        let accounts: i64 = sqlx::query_scalar("SELECT count(*) FROM accounts").fetch_one(&pool).await.unwrap();
+        pool.close().await;
+        let pool = super::connect(&paths).await.unwrap();
+        assert_eq!(super::all_settings(&pool).await.unwrap(), before);
+        assert_eq!(sqlx::query_scalar::<_, i64>("SELECT count(*) FROM instances").fetch_one(&pool).await.unwrap(), instances);
+        assert_eq!(sqlx::query_scalar::<_, i64>("SELECT count(*) FROM accounts").fetch_one(&pool).await.unwrap(), accounts);
+        pool.close().await;
+    }
+    #[tokio::test]
+    async fn line_ending_only_migration_changes_preserve_existing_data() {
+        use sha2::{Digest, Sha384};
+        let root = tempfile::tempdir().unwrap();
+        let paths = crate::portable::PortablePaths::from_executable(&root.path().join("SLH.exe"), Some(root.path().to_path_buf())).unwrap();
+        std::fs::create_dir_all(&paths.data).unwrap();
+        let pool = super::connect(&paths).await.unwrap();
+        let settings = super::all_settings(&pool).await.unwrap();
+        let schema: Vec<(String, Option<String>)> = sqlx::query_as("SELECT name,sql FROM sqlite_master ORDER BY name").fetch_all(&pool).await.unwrap();
+        for migration in super::MIGRATOR.iter().filter(|m| [21, 23].contains(&m.version)) {
+            let lf = migration.sql.as_str().replace("\r\n", "\n");
+            let crlf = lf.replace('\n', "\r\n");
+            let alternate = if Sha384::digest(lf.as_bytes()).as_slice() == migration.checksum.as_ref() { crlf } else { lf };
+            sqlx::query("UPDATE _sqlx_migrations SET checksum=? WHERE version=?").bind(Sha384::digest(alternate.as_bytes()).as_slice()).bind(migration.version).execute(&pool).await.unwrap();
+        }
+        pool.close().await;
+        let pool = super::connect(&paths).await.unwrap();
+        assert_eq!(super::all_settings(&pool).await.unwrap(), settings);
+        assert_eq!(sqlx::query_as::<_,(String,Option<String>)>("SELECT name,sql FROM sqlite_master ORDER BY name").fetch_all(&pool).await.unwrap(), schema);
+        sqlx::query("UPDATE _sqlx_migrations SET checksum=? WHERE version=21").bind(vec![0_u8;48]).execute(&pool).await.unwrap();
+        pool.close().await;
+        assert!(super::connect(&paths).await.is_err(), "unrecognized SQL changes must still block startup");
+    }
     #[tokio::test]
     async fn upgrades_known_local_home_checksum_without_resetting_preferences() {
         use sha2::{Digest, Sha384};
