@@ -85,13 +85,7 @@ mod tests {
         let mut general = crate::database::setting(&state.database, "general").await.unwrap();
         general["rustMinecraft"] = true.into();
         crate::database::set_setting(&state.database, "general", &general).await.unwrap();
-        let created = super::super::store::create(&state, request()).await;
-        if !cfg!(all(target_os = "windows", target_arch = "x86_64")) {
-            assert!(matches!(created, Err(AppError::Unavailable(_))), "unsupported platforms must reject the native engine");
-            state.database.close().await;
-            return;
-        }
-        let server = created.unwrap();
+        let server = super::super::store::create(&state, request()).await.unwrap();
         std::fs::write(Path::new(&server.path).join("server.properties"), "server-port=25568\n").unwrap();
         assert_eq!(super::super::store::get(&state, &server.id).await.unwrap().config.properties["server-port"], "25568");
         std::fs::write(Path::new(&server.path).join("server.properties"), "server-port=25565\n").unwrap();
@@ -102,7 +96,13 @@ mod tests {
         std::fs::write(private.join("installed.json"), br#"{"release":"v0.2.97","minecraft":"26.3"}"#).unwrap();
         std::fs::write(release.join("horizon-client.exe"), b"fixture").unwrap();
         std::fs::write(release.join(".local/horizon-client/26.3/horizon-resources.json"), b"{}").unwrap();
-        let plan = super::super::runtime::effective_plan(&Host::silent(), &state, &server.id).await.unwrap();
+        let planned = super::super::runtime::effective_plan(&Host::silent(), &state, &server.id).await;
+        if !cfg!(all(target_os = "windows", target_arch = "x86_64")) {
+            assert!(matches!(planned, Err(AppError::Unavailable(_))), "unsupported platforms must reject native launch");
+            state.database.close().await;
+            return;
+        }
+        let plan = planned.unwrap();
         assert_eq!(plan.required_java, 0);
         assert!(plan.java.ends_with("horizon-client.exe"));
         assert!(plan.args.contains(&"--dedicated".into()));
