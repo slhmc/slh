@@ -29,7 +29,7 @@ Run this on the matching platform, using x86_64-unknown-linux-gnu, x86_64-apple-
 
 Windows portable packages include portable.flag and keep data beside the executable. Fresh Windows installers include a separate installer marker and use per-user application data; existing legacy data beside the executable is preserved. Linux/macOS use platform user-data directories by default. The macOS app ZIP is a movable app bundle; it does not bundle player data or Java.
 
-GitHub Actions builds on Windows, Linux and both Mac architectures, tests the code and assembles a draft v0.2.0 release with SHA-256 sums after all builds succeed. Packages are unsigned; macOS bundles have ad-hoc signatures and are not notarized.
+GitHub Actions builds on Windows, Linux and both Mac architectures, tests the code and assembles a draft release with SHA-256 sums after all builds succeed. Packages are unsigned; macOS bundles have ad-hoc signatures and are not notarized.
 
 ## Verification
 

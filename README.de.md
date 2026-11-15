@@ -1,98 +1,118 @@
-<p align="center">
-  <img src="assets/readme/Smile_LauncHer_logo.png" width="360" alt="Smile LauncHer">
-</p>
+<p align="center"><img src="assets/readme/SLHmain.png" width="420" alt="Smile LauncHer"></p>
 
 # Smile LauncHer
 
-Ein lokaler Minecraft: Java Edition Launcher für Windows.
+Ein Minecraft-Launcher für Windows, macOS und Linux mit getrennten Java-Instanzen, Inhaltskatalogen und Verwaltung lokaler Server.
 
-**Sprachen:** [English](README.md) · [Русский](README.ru.md) · [Deutsch](README.de.md)
-
-SLH trennt Minecraft-Instanzen voneinander, verwaltet Konten und Java lokal und installiert kompatible Inhalte in die ausgewählte Instanz. Der Launcher basiert auf Tauri, React, TypeScript, Rust und SQLite.
-
-> **Status:** Entwicklungsversion. Sichere wichtige Welten, bevor du einen neuen Build ausprobierst.
+[English](README.md) · [Русский](README.ru.md) · [Deutsch](README.de.md)
 
 ## Funktionen
 
-- Getrennte Minecraft-Instanzen mit Gruppen, Raster-/Listenansicht, Logs, Welten, Screenshots und individuellen Einstellungen.
-- Vanilla, Fabric, Forge, NeoForge und Quilt.
-- Microsoft-, Ely.by- und Offline-Konten.
-- Modrinth-Suche und geprüfte Installation; CurseForge ist verfügbar, wenn der Zugriff eingerichtet ist.
-- Verwaltetes Eclipse Temurin Java 8, 17, 21 und 25 sowie Erkennung vorhandener Java-Laufzeiten.
-- Englisch, Russisch und Deutsch sind enthalten; eigene Übersetzungen werden unterstützt.
-- Optionaler lokaler Austausch ausgewählter Dateien zwischen Instanzen mit expliziter Einrichtung und Backups.
-- Keine Analytik und keine Werbung. Launcher-Daten bleiben auf dem lokalen Gerät.
+- Java-Instanzen mit Vanilla, Fabric, Forge, NeoForge und Quilt, Gruppen, Raster-/Listenansicht und eigenen Einstellungen.
+- Microsoft-, Ely.by- und Offline-Konten, verwaltete Java-Laufzeiten und Erkennung installierter Versionen.
+- Modrinth- und CurseForge-Kataloge für Modpacks, Mods, Ressourcenpakete und Shader mit Versions- und Loaderfiltern.
+- Lokale Server mit Konsole, Konfiguration, Zugriffslisten und Installation von Java-Serverkernen.
+- Eigene Bilder für Instanzen und Server, Drehung, Einrasten sowie Rückgängig/Wiederholen.
+- Java-Absturzdiagnose mit Logbelegen und Verweisen auf passende Einstellungen.
+- Lokale Synchronisierung ausgewählter Dateien zwischen Instanzen.
+- Themes, Panelpositionen, konfigurierbare Animationen und ein optionaler 3D-Charakter auf der Startseite.
+- Deutsch, Englisch und Russisch sowie eigene Übersetzungsdateien.
+
+Bedrock ist nur unter Windows verfügbar und verwendet gemeinsame offizielle Spieldaten. Installierte Store- und Preview-Pakete können eingebunden werden; Preview wird über Store/Xbox installiert. Eine Isolation des offiziellen Bedrock ist derzeit nicht verfügbar. Siehe [Bedrock-Unterstützung](docs/bedrock-support.md).
+
+Die optionale Integration des Rust-Clients und -Servers Horizon ist experimentell und benötigt kompatible Veröffentlichungen und Hardware.
 
 ## Screenshots
 
-<p align="center"><img src="assets/readme/Home.png" alt="SLH-Startseite" width="100%"></p>
+In Chrome mit der Browser-Vorschau und Demonstrationsdaten aufgenommen. Kontonamen, Instanzen und Katalogergebnisse sind Beispiele.
 
-<p align="center"><img src="assets/readme/Library.png" alt="SLH-Instanzbibliothek" width="100%"></p>
+<img src="assets/readme/Home.png" alt="Startseite" width="100%">
 
-<p align="center"><img src="assets/readme/Discover.png" alt="SLH Discover" width="100%"></p>
+<details>
+<summary>Instanzbibliothek</summary>
 
-<p align="center"><img src="assets/readme/SettingsAppearance.png" alt="SLH-Erscheinungsbild-Einstellungen" width="100%"></p>
+<img src="assets/readme/Library.png" alt="Instanzbibliothek" width="100%">
 
-<p align="center"><img src="assets/readme/SettingsSync.png" alt="SLH-Synchronisierungseinstellungen" width="100%"></p>
+</details>
 
-<table>
-  <tr>
-    <td width="50%"><img src="assets/readme/Skin1.png" alt="SLH-Skinauswahl"></td>
-    <td width="50%"><img src="assets/readme/Skin2.png" alt="SLH-Skin-Einstellungen"></td>
-  </tr>
-</table>
+<details>
+<summary>Inhaltskataloge</summary>
+
+<img src="assets/readme/Discover.png" alt="Inhaltskataloge" width="100%">
+
+</details>
+
+<details>
+<summary>Lokale Server</summary>
+
+<img src="assets/readme/Servers.png" alt="Lokale Server" width="100%">
+
+</details>
+
+<details>
+<summary>Bildeditor</summary>
+
+<img src="assets/readme/Artwork.png" alt="Bildeditor" width="100%">
+
+</details>
+
+<details>
+<summary>Darstellung</summary>
+
+<img src="assets/readme/SettingsAppearance.png" alt="Darstellung" width="100%">
+
+</details>
+
+<details>
+<summary>Synchronisierung einrichten</summary>
+
+<img src="assets/readme/SettingsSync.png" alt="Synchronisierung einrichten" width="100%">
+
+</details>
 
 ## Download
 
-Lade den passenden Build über [GitHub Releases](https://github.com/gareldd/slh/releases) herunter.
+Wähle auf [GitHub Releases](https://github.com/slhmc/slh/releases) ein Paket für dein Betriebssystem. Testversionen sind als Pre-release gekennzeichnet.
 
-| Paket | Verwende es, wenn … |
-| --- | --- |
-| `*-setup.exe` | du eine geführte Standardinstallation möchtest. |
-| `*.msi` | du ein MSI für manuelle oder verwaltete Bereitstellung brauchst. |
-| `portable/` | du einen eigenständigen Ordner möchtest. Entpacke den **gesamten** Ordner auf ein beschreibbares lokales Laufwerk und starte `SLH.exe`. |
+| Plattform | Installer / Paket | Portable / App-Archiv |
+| --- | --- | --- |
+| Windows x64 | EXE, MSI | Portable ZIP |
+| macOS Intel | DMG | App ZIP |
+| macOS Apple Silicon | DMG | App ZIP |
+| Linux x64 | DEB, RPM | AppImage |
 
-Portable Releases enthalten ein Archiv mit einer festen WebView2-Laufzeit. SLH entpackt diese beim ersten Start automatisch; zusätzliche Downloads oder eine Browser-Installation sind nicht nötig.
+Entpacke das vollständige Windows-Portable-ZIP in einen beschreibbaren Ordner und starte SLH.exe. Daten liegen neben der Anwendung. Neue Installer-Installationen verwenden den Benutzerdatenordner; bestehende Daten älterer Installationen bleiben erhalten. macOS/Linux verwenden standardmäßig die jeweiligen Benutzerdatenverzeichnisse.
 
-Release-Pakete sind absichtlich leer: Sie enthalten keine Konten, Instanzen, Java-Installationen, Welten, Logs oder Caches.
+Windows benötigt Microsoft Edge WebView2 Evergreen. Fehlt die Laufzeit, folge dem Launcher-Link zum Microsoft-Installer und starte SLH erneut. macOS verwendet System-WebKit, Linux benötigt WebKitGTK. Minecraft, Java und Inhalte werden bei Bedarf heruntergeladen.
 
-## Datenschutz und Konten
+Windows-/Linux-Pakete sind unsigniert. macOS-Pakete sind ad hoc signiert und nicht notarisiert.
 
-SLH speichert Daten lokal. Für die Microsoft-Anmeldung wird eine konfigurierte Client-ID benötigt; die Verfügbarkeit von CurseForge hängt von der eingerichteten Zugriffsmethode oder einem Schlüssel ab. `data/` darf niemals committet oder veröffentlicht werden: Der Ordner kann Konten, Tokens, Welten und private Serverdaten enthalten.
+## Daten und Konten
 
-## Aus dem Quellcode bauen
+Profile und Einstellungen werden lokal gespeichert. Anmeldung, Downloads und Updateprüfungen kontaktieren die jeweiligen Dienste. Microsoft-Anmeldung und CurseForge-Zugriff hängen bei eigenen Builds von der Konfiguration ab. Siehe [Authentifizierung](AUTH.md) und [CurseForge-Zugriff](CURSEFORGE_RELAY.md).
 
-Für die Entwicklung unter Windows werden Node.js/npm, Rust mit MSVC-Toolchain, Visual Studio Build Tools mit **Desktop development with C++** und Microsoft Edge WebView2 Runtime benötigt.
+Der Datenordner kann Zugangsdaten, Welten und private Serverinformationen enthalten. Halte ihn privat und sichere wichtige Welten vor Versionswechseln und Tests von Vorabversionen.
 
-```powershell
-npm install
+## Bauen und mitwirken
+
+Plattformvoraussetzungen und Paketerstellung stehen in [BUILDING.md](BUILDING.md), Entwicklungsanweisungen in [DEVELOPMENT.md](DEVELOPMENT.md). Unter Windows muss zusätzlich der dort beschriebene Bedrock-Helfer gebaut werden.
+
+React und TypeScript bilden die Oberfläche. Tauri/Rust übernimmt Spielstart, Dateien und SQLite-Speicherung.
+
+```sh
+git clone --recurse-submodules https://github.com/slhmc/slh.git
+cd slh
+npm ci
 npm run tauri:dev
 ```
 
-Prüfungen:
-
-```powershell
-npm run build
-npm test
-cargo test --manifest-path src-tauri/Cargo.toml
-```
-
-Anleitungen für Portable-Pakete und Installer: [DEVELOPMENT.md](DEVELOPMENT.md), [PORTABLE.md](PORTABLE.md).
-
-> **Veröffentliche niemals deinen persönlichen Ordner `release/SLH-Portable`.** Das Portable-Buildskript erhält dessen `data/`, damit der Entwicklungs-Launcher seine Daten nicht verliert. Erstelle für GitHub einen sauberen Ordner und prüfe vor dem Upload, dass `data/` keine Dateien enthält.
-
-## Architektur
-
-Die React-Oberfläche wird in WebView2 angezeigt. Rust/Tauri erledigt privilegierte Aufgaben wie Dateien, SQLite, Java, Minecraft-Start und Netzwerkanfragen über eine typisierte IPC-Schnittstelle. Während der Entwicklung kann `localhost` verwendet werden; veröffentlichte Builds laden die Oberfläche aus gebündelten lokalen Dateien und stellen keinen öffentlichen Webserver bereit.
-
-## Dokumentation
+## Dokumentation und Support
 
 - [Architektur](ARCHITECTURE.md)
-- [Authentifizierung](AUTH.md)
 - [Sprachen](LANGUAGES.md)
-- [Portable-Speicher](PORTABLE.md)
-- [Fehler melden oder Verbesserung vorschlagen](https://github.com/gareldd/slh/issues)
+- [Portabler Speicher](PORTABLE.md)
+- [Fehler melden oder Funktion vorschlagen](https://github.com/slhmc/slh/issues)
 
 ## Lizenz
 
-SLH wird unter der GNU General Public License v3.0 (GPLv3) veröffentlicht. Siehe [LICENSE](LICENSE).
+GNU General Public License v3.0. Siehe [LICENSE](LICENSE).
