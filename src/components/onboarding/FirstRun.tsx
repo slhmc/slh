@@ -4,6 +4,7 @@ import { ArrowRight, ShieldCheck, SignIn } from "../icons";
 import { command } from "../../lib/tauri";
 import { useAppStore } from "../../stores/appStore";
 import { BrandLogo } from "../brand/BrandLogo";
+import { FirstRunWindowControls } from "./FirstRunWindowControls";
 import common from "../common/Common.module.css";
 import styles from "./FirstRun.module.css";
 import { useI18n } from "../../i18n/I18nProvider";
@@ -85,6 +86,7 @@ export function FirstRun() {
   };
 
   return <div className={styles.backdrop}>
+    <FirstRunWindowControls />
     <section className={styles.panel} aria-label={uiText("common.texts.welcomeToSmileLauncher", "Welcome to Smile LauncHer")}>
       <div className={styles.artwork}><BrandLogo variant="icon" /><BrandLogo variant="wordmark" /><span>{uiText("common.texts.minecraftOnYourTerms", "Minecraft, on your terms.")}</span></div>
       <div className={styles.content}>

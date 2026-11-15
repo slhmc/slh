@@ -73,6 +73,7 @@ pub struct ServerDefaults {
     pub port_allocation: String,
     pub directory: Option<String>,
     pub config: ServerConfig,
+    pub players: super::players::DefaultPlayers,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

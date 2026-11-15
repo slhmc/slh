@@ -11,8 +11,9 @@ export function ErrorText({ message, reportPath }: { message: string; reportPath
   const [expanded, setExpanded] = useState(false);
   const technical = engine.isDiagnostic(message) || !isLocalized(message);
   const report = reportPath ?? engine.diagnosticReportPath(message);
+  const bedrockKey = message.match(/\bbedrock\.[a-zA-Z]+\b/)?.[0];
   return <span className={styles.error}>
-    <span>{isLocalized(message) ? tr(message) : t("common.texts.tryAgainIfItContinuesCheckTheAppLog", "Try again. If it continues, check the app log.")}</span>
+    <span>{bedrockKey && isLocalized(bedrockKey) ? tr(bedrockKey) : isLocalized(message) ? tr(message) : t("common.texts.tryAgainIfItContinuesCheckTheAppLog", "Try again. If it continues, check the app log.")}</span>
     {technical ? <><button className={styles.disclosure} type="button" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>{t("common.texts.technicalDetails", "Technical details")}</button>{expanded ? <span className={styles.diagnostic}>{message}</span> : null}</> : null}
     {report ? <FailureReportLink path={report} /> : null}
   </span>;

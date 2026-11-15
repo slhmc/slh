@@ -5,7 +5,7 @@ import { command } from "../../lib/tauri";
 import type { GeneralSettings, SidebarNavigationItem } from "../../lib/types";
 import { useAppStore } from "../../stores/appStore";
 import { useI18n } from "../../i18n/I18nProvider";
-import { defaultSidebarNavigation, sidebarNavigation, sidebarSettings } from "./AppSidebar";
+import { sidebarPreferences, sidebarNavigation, sidebarSettings } from "./AppSidebar";
 import styles from "./NavigationContextMenu.module.css";
 
 const items = [...sidebarNavigation, sidebarSettings];
@@ -58,9 +58,7 @@ export function NavigationContextMenu({ position, onClose }: NavigationContextMe
     menuRef.current.style.top = `${y}px`;
   }, [position]);
 
-  const visibleIds = bootstrap?.settings.general.visibleNavigation ?? defaultSidebarNavigation;
-  const order = [...(bootstrap?.settings.general.navigationOrder ?? defaultSidebarNavigation)];
-  const visible = new Set(visibleIds);
+  const { order, visible } = sidebarPreferences(bootstrap?.settings.general);
   const toggle = async (id: SidebarNavigationItem) => {
     if (!bootstrap) return;
     const next = new Set(visible);

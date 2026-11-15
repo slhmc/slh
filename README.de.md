@@ -4,9 +4,7 @@
 
 # Smile LauncHer
 
-Ein Minecraft-Launcher für Windows, macOS und Linux.
-
-**Aktuelles Pre-Release:** [SLH 0.2.3](https://github.com/slhmc/slh/releases/tag/v0.2.3).
+Ein lokaler Minecraft: Java Edition Launcher für Windows.
 
 **Sprachen:** [English](README.md) · [Русский](README.ru.md) · [Deutsch](README.de.md)
 

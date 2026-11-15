@@ -75,9 +75,9 @@ test("Appearance presets, instance deletion, and the WebView menu boundary are e
   expect(contextMenuAllowed).toBe(true);
 
   await page.goto("/#/instance/preview-1?tab=settings");
-  await expect(page.getByRole("heading", { name: "Delete instance" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Delete" })).toBeVisible();
   await page.getByRole("button", { name: "Delete", exact: true }).click();
-  await page.getByRole("dialog", { name: "Delete instance", exact: true }).getByRole("button", { name: "Delete", exact: true }).click();
+  await page.getByRole("dialog", { name: "Delete", exact: true }).getByRole("button", { name: "Delete", exact: true }).click();
   await expect(page).toHaveURL(/#\/library$/);
   await expect(page.getByRole("heading", { name: "Instance library" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Actions for Latest release" })).toHaveCount(0);
@@ -152,4 +152,19 @@ test("Servers and diagnostics routes expose real controls and honest empty histo
   await expect(page.getByText("SLH relay", { exact: true })).toBeVisible();
   await expect(page.getByText("Available", { exact: true }).last()).toBeVisible();
   await expect(page.getByPlaceholder("Paste approved key locally")).toHaveAttribute("type", "password");
+});
+
+test("instance tabs keep Library active in main navigation", async ({ page }) => {
+  for (const size of [{ width: 800, height: 560 }, { width: 1440, height: 900 }]) {
+    await page.setViewportSize(size);
+    for (const tab of ["overview", "mods", "settings", "logs"]) {
+      await page.goto(`/#/instance/preview-2?tab=${tab}`);
+      const library = page.locator('[data-navigation-item="library"]');
+      await expect(library).toHaveAttribute("aria-current", "page");
+      await expect(page.locator('[data-navigation-item="settings"]')).not.toHaveAttribute("aria-current", "page");
+    }
+    await page.screenshot({ path: `artifacts/ui/library-navigation-${size.width}.png` });
+  }
+  await page.goto("/#/home");
+  await expect(page.locator('[data-navigation-item="library"]')).not.toHaveAttribute("aria-current", "page");
 });

@@ -1,4 +1,12 @@
 .backdrop { position: fixed; inset: 0; z-index: 120; display: grid; place-items: center; padding: 30px; background: var(--color-overlay-strong); backdrop-filter: blur(8px); }
+.windowBar { position: absolute; z-index: 1; inset: 0 0 auto; height: var(--titlebar-height); display: flex; user-select: none; }
+.firstRunControls { position: absolute; top: 0; height: 100%; }
+.left { left: 0; }
+.right { right: 0; }
+.firstRunControls button:not(:hover):not(:focus-visible) { background: transparent !important; }
+.firstRunControls button svg, .firstRunControls button::before { opacity: 0 !important; }
+.firstRunControls button:hover svg, .firstRunControls button:focus-visible svg, .firstRunControls button:hover::before, .firstRunControls button:focus-visible::before { opacity: 1 !important; }
+@media (hover: none) { .firstRunControls button svg, .firstRunControls button::before { opacity: 1 !important; } }
 .panel { display: grid; width: min(900px, 100%); min-height: 540px; grid-template-columns: 0.9fr 1.1fr; overflow: hidden; border: 1px solid var(--color-border-strong); border-radius: var(--radius-lg); background: var(--color-surface); box-shadow: var(--shadow-dialog); }
 .artwork { position: relative; display: grid; align-content: center; justify-items: center; padding: 46px; background: radial-gradient(circle at 35% 28%, color-mix(in srgb, var(--color-accent) 25%, transparent), transparent 40%), var(--color-surface-deeper); }
 .artwork img:first-child { width: 130px; height: 130px; margin-bottom: 22px; }
@@ -27,3 +35,4 @@
 .offlineForm { gap: 15px; }
 .formActions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 2px; }
 @media (max-width: 720px) { .backdrop { padding: 16px; overflow: auto; } .panel { grid-template-columns: 1fr; min-height: 0; } .artwork { display: none; } .content { padding: 32px 25px; } .secondaryActions { width: 100%; } }
+@media (max-height: 650px) { .backdrop { padding-top: var(--titlebar-height); overflow-y: auto; } .panel { min-height: 0; } .content, .artwork { padding: var(--space-4) var(--space-6); } .security { margin-bottom: var(--space-2); } .content > p { margin-bottom: var(--space-3); } }

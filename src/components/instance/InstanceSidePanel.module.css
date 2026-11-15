@@ -100,6 +100,23 @@
   cursor: pointer;
 }
 
+.panel .quickGrid[data-list="true"] {
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-1);
+}
+
+.quickGrid[data-list="true"] button {
+  grid-template-columns: auto minmax(0, 1fr);
+  place-items: center start;
+  min-height: var(--control-height);
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+}
+
+.quickGrid[data-list="true"] button span {
+  text-align: start;
+}
+
 .quickGrid button:hover {
   border-color: var(--color-border-strong);
   color: var(--color-text);
@@ -210,3 +227,7 @@
   from { opacity: 0; transform: translateX(12px); }
 }
 
+
+/* Keep artwork and controls in normal flow when the side panel is short. */
+.scroll[data-instance-panel-scroll] { display: flex; flex-direction: column; }
+.scroll[data-instance-panel-scroll] > * { flex-shrink: 0; }

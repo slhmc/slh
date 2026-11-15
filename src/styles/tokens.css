@@ -1,4 +1,6 @@
 :root {
+  --motion-icon-duration: 300ms;
+  --instance-action-height: 45px;
   /* Platform window chrome uses the established OS signal colors. */
   --color-window-close: #ff5f57;
   --color-window-minimize: #febc2e;

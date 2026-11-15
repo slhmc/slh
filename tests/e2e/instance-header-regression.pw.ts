@@ -1,10 +1,39 @@
 import {test, expect} from "@playwright/test";
+
+test("Russian header launch and stop actions keep the same control geometry", async ({page}) => {
+  await page.goto("/#/settings/general");
+  await page.locator('[data-language-selector]').selectOption("ru-RU");
+  await page.goto("/#/instance/preview-2?tab=mods");
+  const header = page.locator('header[class*="header"]').first();
+  for (const width of [800, 1440]) {
+    await page.setViewportSize({width, height: width === 800 ? 560 : 900});
+    const sizes: Array<{width:number; height:number}> = [];
+    for (const status of ["installed", "running"] as const) {
+      await page.evaluate(async status => {
+        const {useAppStore} = await import("/src/stores/appStore.ts");
+        useAppStore.setState(state => ({bootstrap: {...state.bootstrap!, instances: state.bootstrap!.instances.map(instance => instance.id === "preview-2" ? {...instance, status} : instance)}}));
+      }, status);
+      const action = header.getByRole("button", {name: status === "installed" ? "Играть" : "Остановить", exact: true});
+      await expect(action).toBeVisible();
+      await expect(action).toHaveCSS("min-height", "45px");
+      const folder = header.getByRole("button", {name: "Папка", exact: true});
+      const box = await action.boundingBox();
+      const folderBox = await folder.boundingBox();
+      expect(box!.height).toBeCloseTo(folderBox!.height, 1);
+      expect(box!.x + box!.width).toBeLessThanOrEqual(width);
+      sizes.push({width: box!.width, height: box!.height});
+      await page.screenshot({path: `artifacts/ui/instance-header-${status}-${width}.png`});
+    }
+    expect(sizes[0].height).toBeCloseTo(sizes[1].height, 1);
+    expect(sizes[0].width).toBeCloseTo(sizes[1].width, 1);
+  }
+});
 test("default instance actions remain buttons in one grid", async ({page}) => {
   await page.goto("/#/library");
   await page.getByRole("button", {name:"Latest release",exact:true}).click();
   for (const width of [800, 1440]) {
     await page.setViewportSize({width, height: width === 800 ? 560 : 900});
-    await expect(page.getByRole("button", {name:"Delete instance",exact:true})).toBeAttached();
+    await expect(page.getByRole("button", {name:"Delete",exact:true})).toBeAttached();
     await expect(page.getByText("More actions", {exact:true})).toHaveCount(0);
     const labelsFit = await page.locator('[class*="quickGrid"] button span').evaluateAll(labels => labels.every(label => label.scrollWidth <= label.clientWidth + 1));
     expect(labelsFit).toBe(true);
@@ -42,7 +71,7 @@ test("configured side actions do not show an empty More menu", async ({page}) =>
     await useAppStore.getState().refresh();
   });
   await page.getByRole("button", {name:"Latest release",exact:true}).click();
-  await expect(page.getByRole("button", {name:"Delete instance",exact:true})).toBeVisible();
+  await expect(page.getByRole("button", {name:"Delete",exact:true})).toBeVisible();
   await expect(page.getByText("More actions", {exact:true})).toHaveCount(0);
   await expect(page.getByText("Multiplayer servers", {exact:true})).toHaveCount(0);
 });

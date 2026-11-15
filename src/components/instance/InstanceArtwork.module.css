@@ -30,12 +30,14 @@
 
 .card {
   width: 100%;
-  height: 132px;
+  aspect-ratio: 1.6;
+  height: auto;
 }
 
 .large {
   width: 100%;
-  height: 178px;
+  aspect-ratio: 1.6;
+  height: auto;
 }
 
 .vanilla,

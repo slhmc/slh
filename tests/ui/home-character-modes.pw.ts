@@ -42,41 +42,30 @@ test("character switches between live 3D, a cached portrait and off without reta
   await page.waitForFunction(() => document.querySelector("canvas")?.height! > 400);
 });
 
-test("appearance exposes 2-1-0 vertically in tiles and horizontally in rows",async ({page}) => {
+test("appearance exposes three direct mode choices in tiles and rows", async ({ page }) => {
   await page.goto("/#/settings/appearance");
-  const control = page.getByRole("group",{name:"Home character",exact:true});
-  await expect(control).toBeVisible();
-  await expect(control.getByRole("button")).toHaveText(["2 · 3D","1 · Image","0 · Off"]);
-  await control.getByRole("button",{name:"1 · Image",exact:true}).click();
-  await expect(control.getByRole("button",{name:"1 · Image",exact:true})).toHaveAttribute("aria-pressed","true");
-  const slider = control.getByRole("slider");
-  await expect(slider).toHaveValue("1");
-  await slider.focus();
-  await slider.press("ArrowUp");
-  await expect(slider).toHaveValue("2");
-  await slider.press("End");
-  await expect(slider).toHaveValue("0");
-  await slider.press("ArrowLeft");
-  await expect(slider).toHaveValue("1");
-  await expect(page.getByRole("slider",{name:"Player FPS",exact:true})).toHaveCount(0);
-  for (const rows of [false,true]) {
-    await page.evaluate(async rows => {
-      const {command} = await import("/src/lib/tauri.ts");
-      const {useAppStore} = await import("/src/stores/appStore.ts");
-      const store = useAppStore.getState();
-      await command("update_setting",{key:"general",value:{...store.bootstrap.settings.general,compactSettings:rows}});
-      await store.refresh();
-    },rows);
-    await expect.poll(() => control.evaluate(element => getComputedStyle(element).flexDirection)).toBe(rows ? "row" : "column");
-    await slider.scrollIntoViewIfNeeded();
-    const box = await slider.boundingBox();
-    await slider.click({position:rows ? {x:box!.width-5,y:box!.height/2} : {x:box!.width/2,y:box!.height-5}});
-    await expect(slider).toHaveValue("0");
-    await slider.click({position:rows ? {x:5,y:box!.height/2} : {x:box!.width/2,y:5}});
-    await expect(slider).toHaveValue("2");
-    await slider.click({position:{x:box!.width/2,y:box!.height/2}});
-    await expect(slider).toHaveValue("1");
-    await page.screenshot({path:`artifacts/performance/character-setting-${rows ? "rows" : "tiles"}.png`});
+  const control = page.getByRole("group", { name: "Home character", exact: true });
+  for (const tiles of [true, false]) {
+    await page.getByRole("switch", { name: "Compact settings menu (beta)", exact: true }).setChecked(tiles);
+    await expect(control.getByRole("button")).toHaveText(["3D", "Image", "Off"]);
+    const image = control.getByRole("button", { name: "Image", exact: true });
+    await image.click();
+    await expect(image).toHaveAttribute("aria-pressed", "true");
+    const fps = page.getByRole("slider", { name: "Player FPS", exact: true });
+    await expect(fps).toBeDisabled();
+    await control.getByRole("button", { name: "3D", exact: true }).focus();
+    await page.keyboard.press("Space");
+    await expect(fps).toBeEnabled();
+    await page.keyboard.press("Tab");
+    await expect(image).toBeFocused();
+    await page.keyboard.press("Tab");
+    const off = control.getByRole("button", { name: "Off", exact: true });
+    await expect(off).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(off).toHaveAttribute("aria-pressed", "true");
+    await expect(fps).toBeDisabled();
+    await expect(control.getByRole("slider")).toHaveCount(0);
+    await page.screenshot({ path: `artifacts/performance/character-setting-${tiles ? "tiles" : "rows"}.png` });
   }
 });
 

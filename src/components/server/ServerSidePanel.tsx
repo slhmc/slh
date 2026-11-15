@@ -1,4 +1,5 @@
 import { useI18n } from "../../i18n/I18nProvider";
+import { useAppStore } from "../../stores/appStore";
 import { useState } from "react";
 import { ActionVisibilityMenu } from "../common/ActionVisibilityMenu";
 import { LibrarySidePanelSurface } from "../common/LibraryChrome";
@@ -21,6 +22,7 @@ export function ServerSidePanel({ server, view, groups, busy, status, onChange, 
   onGroup: (id: string | null) => void; onDeleted: () => void;
 }) {
   const t = useUiText();
+  const listActions = useAppStore(state => { const appearance = state.bootstrap?.settings.appearance; return appearance?.serverActionsAsList ?? appearance?.instanceActionsAsList ?? false; });
   const { locale } = useI18n();
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const [groupOpen, setGroupOpen] = useState(false);
@@ -42,7 +44,7 @@ export function ServerSidePanel({ server, view, groups, busy, status, onChange, 
       <div className={panel.identity}><h2><bdi>{server.name}</bdi></h2><p data-minimal-text>{t("settings.minecraft")} {server.config.minecraftVersion} · {t(`localServers.cores.${server.config.core}`)}</p></div>
       <ServerLaunchButton server={server} busy={busy} onClick={() => onAction(stoppedServer(server) ? "start" : "stop")} />
       {!serverReady(server) ? <p>{t(server.presentation?.readiness === "missing" ? "serverLibrary.missingHint" : "serverLibrary.setupHint")}</p> : null}
-      <div className={panel.quickGrid}>{order.filter(id => !hidden.includes(id)).map(id => {
+      <div className={panel.quickGrid} data-list={listActions}>{order.filter(id => !hidden.includes(id)).map(id => {
         const key = id as keyof typeof icons; const Icon = icons[key];
         return <span key={id}><button type="button" data-minimal-compact aria-label={t(labels[key])} className={id === "delete" ? panel.deleteAction : undefined} disabled={busy || id === "delete" && !stoppedServer(server)} onClick={() => run(id)}><Icon size={19} /><span data-minimal-text>{t(labels[key])}</span></button></span>;
       })}</div>

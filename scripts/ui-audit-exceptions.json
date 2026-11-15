@@ -9,7 +9,10 @@
     "src/components/instance/InstanceArtwork.tsx",
     "src/components/instance/InstanceSidePanel.tsx",
     "src/stores/packJobs.ts",
-    "src/lib/colorMix.ts"
+    "src/lib/colorMix.ts",
+    "src/lib/artwork.ts",
+    "src/components/common/ColorInput.tsx",
+    "src/components/instance/ArtworkEditor.tsx"
   ],
   "text": [],
   "colorReasons": {
@@ -22,6 +25,9 @@
     "src/components/instance/InstanceArtwork.tsx": "Artwork colors, Minecraft skins and canvases",
     "src/components/instance/InstanceSidePanel.tsx": "Preserved instance artwork during duplication",
     "src/stores/packJobs.ts": "Placeholder instance artwork",
-    "src/lib/colorMix.ts": "Computes RGBA values exclusively from semantic palette tokens for older WebKit; no fixed UI palette"
+    "src/lib/colorMix.ts": "Computes RGBA values exclusively from semantic palette tokens for older WebKit; no fixed UI palette",
+    "src/lib/artwork.ts": "User artwork defaults, not interface surface colors",
+    "src/components/common/ColorInput.tsx": "Color spectrum and user-selected colors",
+    "src/components/instance/ArtworkEditor.tsx": "Reset to the existing user artwork default palette"
   }
 }

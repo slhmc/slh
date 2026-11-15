@@ -435,9 +435,9 @@ export function AccountAppearanceDialog({ account, onClose, onChanged }: Props) 
     <div className={styles.footerActions}>
       <Button disabled={busy} onClick={requestClose}>{editorOpen ? <><span className={styles.fullBack}>{uiText("accounts.appearance.backToSkins", "Back to skins")}</span><span className={styles.shortBack}>{uiText("common.texts.back", "Back")}</span></> : uiText("common.close", "Close")}</Button>
       {appearance?.provider === "elyby" ? <Button variant="primary" onClick={() => void openUrl("https://ely.by/skins")}>{uiText("accounts.texts.manageOnElyBy", "Manage on Ely.by")}</Button>
-        : editorOpen ? <Button variant="primary" disabled={!editorHasChanges || !appearance?.canChangeSkin} busy={busy} onClick={() => void saveEditor()}><Check size={16} />{uiText("accounts.texts.saveSkin", "Save skin")}</Button>
-        : catalogCapeOpen ? <Button variant="primary" disabled={!capeChanged || !appearance?.canChangeCape} busy={busy} onClick={() => void applySelectedCape()}><Check size={16} />{uiText("accounts.texts.apply", "Apply")}</Button>
-        : appearance ? <><Button disabled={busy || !appearance.canChangeSkin} onClick={openEditor}><Image size={16} />{uiText("accounts.appearance.customize", "Customize")}</Button><Button variant="primary" disabled={!canApplySelectedSkin || !appearance.canChangeSkin} busy={busy} onClick={() => void applySelectedSkin()}><Check size={16} />{uiText("accounts.texts.apply", "Apply")}</Button></> : null}
+        : editorOpen ? <Button variant="primary" disabled={!editorHasChanges || !appearance?.canChangeSkin} busy={busy} onClick={() => void saveEditor()} icon={<Check size={16} />}>{uiText("accounts.texts.saveSkin", "Save skin")}</Button>
+        : catalogCapeOpen ? <Button variant="primary" disabled={!capeChanged || !appearance?.canChangeCape} busy={busy} onClick={() => void applySelectedCape()} icon={<Check size={16} />}>{uiText("accounts.texts.apply", "Apply")}</Button>
+        : appearance ? <><Button disabled={busy || !appearance.canChangeSkin} onClick={openEditor}><Image size={16} />{uiText("accounts.appearance.customize", "Customize")}</Button><Button variant="primary" disabled={!canApplySelectedSkin || !appearance.canChangeSkin} busy={busy} onClick={() => void applySelectedSkin()} icon={<Check size={16} />}>{uiText("accounts.texts.apply", "Apply")}</Button></> : null}
     </div>
   </div>;
 

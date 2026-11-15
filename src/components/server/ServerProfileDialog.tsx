@@ -7,6 +7,8 @@ import { command } from "../../lib/tauri";
 import { safeServerFolder, type LocalServer, type ServerOverview } from "../../lib/localServers";
 import { Dialog } from "../common/Dialog";
 import { Button, Progress } from "../common/Controls";
+import { supportsPlayerLists } from "../../lib/serverCapabilities";
+import { ServerDefaultPlayersEditor } from "./ServerDefaultPlayers";
 import { ServerConfigFields } from "./ServerConfigFields";
 import common from "../common/Common.module.css";
 import styles from "./Servers.module.css";
@@ -32,14 +34,18 @@ export function ServerProfileDialog({ overview, server, groupId, collectionId, o
     }
     return c;
   });
+  const [players, setPlayers] = useState(() => structuredClone(overview.defaults.players ?? { whitelist: [], operators: [], bannedPlayers: [], bannedIps: [] }));
+  const playersSupported = supportsPlayerLists(config);
+  const incompatiblePlayers = !playersSupported && (Object.values(players).some(rows => rows.length > 0) || config.properties["white-list"] === "true");
   const [createdId, setCreatedId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const chosenParent=overview.groups.find(g=>g.id===group)?.path ?? overview.directory;
   const compatibleJavaPath=!(server?.path ?? `${chosenParent}/${folder}`).split(/[\\/]/).some(part=>part.endsWith("!"));
   const compatibleFolder=!["paper","purpur","leaf","spigot","bukkit"].includes(config.core) || !/[!+]/.test(server?.path ?? `${chosenParent}/${folder}`);
-  const valid = compatibleJavaPath && compatibleFolder && name.trim() && (server || folder.trim()) && config.minecraftVersion && config.coreVersion && config.eulaAccepted && config.memoryMinMb >= 128 && config.memoryMaxMb >= config.memoryMinMb && (config.core !== "custom" || config.customJar);
+  const valid = !incompatiblePlayers && compatibleJavaPath && compatibleFolder && name.trim() && (server || folder.trim()) && config.minecraftVersion && config.coreVersion && config.eulaAccepted && config.memoryMinMb >= 128 && config.memoryMaxMb >= config.memoryMinMb && (config.core !== "custom" || config.customJar);
   const save = async () => {
+    if (busy || !config.eulaAccepted) return;
     if (!name.trim()) { setNameInvalid(true); nameInput.current?.focus(); nameInput.current?.scrollIntoView({block:"center", behavior:"smooth"}); return; }
     if (!valid) return; setBusy(true); setError("");
     try {
@@ -47,7 +53,7 @@ export function ServerProfileDialog({ overview, server, groupId, collectionId, o
       else {
         let id = createdId;
         if (!id) {
-          const created = await command<LocalServer>("create_local_server", { request: { name, folder, groupId: null, config } });
+          const created = await command<LocalServer>("create_local_server", { request: { name, folder, groupId: null, config, players } });
           id = created.id; setCreatedId(id); await command("organize_server_library",{serverId:id,collectionId:collection,before:null}); onChanged(); onClose();
         } else await command("update_local_server", { serverId: id, name, config });
         await command("install_local_server", { serverId: id });
@@ -56,7 +62,7 @@ export function ServerProfileDialog({ overview, server, groupId, collectionId, o
     } catch (reason) { setError(String((reason as Error).message ?? reason)); if (!server && createdId === null) useAppStore.getState().pushToast({tone:"error", title:"localServers.installing", message:String((reason as Error).message ?? reason)}); onChanged(); }
     finally { setBusy(false); }
   };
-  return <Dialog open className={styles.profileDialog} title={t(server ? "localServers.editServer" : "localServers.createServer")} description={t("localServers.profileHint")} width="xlarge" onClose={() => { if (!busy) onClose(); }} footer={<><Button disabled={busy} onClick={onClose}>{t("common.close")}</Button><Button variant="primary" busy={busy} disabled={!valid && Boolean(name.trim())} onClick={() => void save()}>{t(server ? "common.save" : createdId ? "localServers.retryInstallation" : "localServers.createServer")}</Button></>}>
+  return <Dialog open className={styles.profileDialog} title={t(server ? "localServers.editServer" : "localServers.createServer")} description={t("localServers.profileHint")} width="xlarge" onClose={() => { if (!busy) onClose(); }} footer={<><Button disabled={busy} onClick={onClose}>{t("common.close")}</Button><Button variant="primary" busy={busy} disabled={!config.eulaAccepted || (!valid && Boolean(name.trim()))} onClick={() => void save()}>{t(server ? "common.save" : createdId ? "localServers.retryInstallation" : "localServers.createServer")}</Button></>}>
     <fieldset disabled={busy} className={styles.config}>
       <div className={`${styles.grid} ${styles.identity}`}>
         <label className={styles.field}><span>{t("localServers.name")}</span><input ref={nameInput} aria-invalid={nameInvalid && !name.trim()} className={`${common.input} ${nameInvalid && !name.trim() ? styles.invalidField : ""}`} value={name} maxLength={128} onChange={e => { setName(e.target.value); if (!server && !createdId && (!folder || folder === safeServerFolder(name))) setFolder(safeServerFolder(e.target.value)); }} /></label>
@@ -64,8 +70,8 @@ export function ServerProfileDialog({ overview, server, groupId, collectionId, o
       </div>
       {!compatibleFolder ? <p className={styles.error} role="alert">{t("localServers.paperPath")}</p> : null}
       {!compatibleJavaPath ? <p className={styles.error} role="alert">{t("localServers.javaResourcePath")}</p> : null}
-      <ServerConfigFields value={config} onChange={setConfig} pinned={Boolean(server?.installed)} />
-      {!server ? <label className={styles.check}><input type="checkbox" checked={config.eulaAccepted} onChange={e => setConfig({ ...config, eulaAccepted: e.target.checked })} /><span>{t("localServers.acceptEula")} <Button variant="ghost" onClick={() => void openUrl("https://www.minecraft.net/eula")}>{t("localServers.readEula")}</Button></span></label> : null}
+      <ServerConfigFields playersTemplate={!server ? <ServerDefaultPlayersEditor creation disabled={!playersSupported} value={players} onChange={setPlayers} /> : undefined} value={config} onChange={setConfig} pinned={Boolean(server?.installed)} />
+      {!server ? <label className={`${styles.check} ${styles.eulaAcceptance}`}><input type="checkbox" checked={config.eulaAccepted} onChange={e => setConfig({ ...config, eulaAccepted: e.target.checked })} /><span>{t("localServers.acceptEula")} <Button variant="ghost" onClick={() => void openUrl("https://www.minecraft.net/eula")}>{t("localServers.readEula")}</Button></span></label> : null}
       {busy ? <Progress label={t(server ? "localServers.saving" : "localServers.installing")} /> : null}
       {error ? <p className={styles.error} role="alert"><ErrorText message={error} /></p> : null}
     </fieldset>

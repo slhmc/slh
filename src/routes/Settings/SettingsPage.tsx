@@ -1,3 +1,6 @@
+import { ColorInput } from "../../components/common/ColorInput";
+import { ActionListSettingsControl } from "../../components/settings/ActionListSettingsControl";
+import { AnimationSettingsControl } from "../../components/settings/AnimationSettingsControl";
 import { useConfirmation } from "../../components/common/ConfirmationProvider";
 import { providerMessage } from "../../lib/providerMessage";
 import { SettingsSection, SettingRow, Toggle } from "../../components/settings/SettingControls";
@@ -169,7 +172,8 @@ function appearanceColors(settings: AppearanceSettings): AppearanceColors {
 export function SettingsPage() {
   const uiText = useUiText();
   const confirm = useConfirmation();
-  const { section = "general" } = useParams();
+  const { section: requestedSection = "general" } = useParams();
+  const section = sections.some(item => item.id === requestedSection) ? requestedSection : "general";
   const { t, tr, locale, diagnostics = [] } = useI18n();
   const bootstrap = useAppStore((state) => state.bootstrap);
   const refresh = useAppStore((state) => state.refresh);
@@ -193,6 +197,7 @@ export function SettingsPage() {
   const [syncAllInstances, setSyncAllInstances] = useState(true);
   const [syncInstances, setSyncInstances] = useState<string[]>([]);
   const [syncSources, setSyncSources] = useState<Record<string, string>>({});
+  const [syncFormOpen, setSyncFormOpen] = useState(false);
   const [syncBusy, setSyncBusy] = useState(false);
   const [storageSummary, setStorageSummary] = useState<StorageSummary | null>(null);
   const [diagnosticsLoading, setDiagnosticsLoading] = useState(false);
@@ -272,7 +277,7 @@ export function SettingsPage() {
   }, [bootstrap, pushToast, refresh, settingsNavigationPosition, tr]);
 
   const beginSettingsDockDrag = (event: React.PointerEvent<HTMLElement>) => {
-    if (!event.ctrlKey || event.button !== 0) return;
+    if (!event.ctrlKey || event.button !== 0 || !bootstrap?.settings.general.ctrlPanelDrag) return;
     event.preventDefault();
     settingsDockDragRef.current = { startX: event.clientX, startY: event.clientY, active: false };
   };
@@ -587,6 +592,8 @@ export function SettingsPage() {
     setSyncMappings(await command<SyncMapping[]>("list_sync_mappings"));
   };
 
+  const syncCategoryName = (category: string) => uiText(({ options: "settings.syncSetup.options", servers: "settings.syncSetup.servers", resourcepacks: "installation.texts.resourcePacks", screenshots: "installation.texts.screenshots", "mod-configs": "settings.texts.modConfigs", worlds: "installation.texts.worlds" } as Record<string, string>)[category] ?? category);
+
   const createSyncMapping = async () => {
     if ((!syncAllInstances && syncInstances.length === 0) || !syncInitialSource) return;
     if (syncCategory === "worlds") {
@@ -598,7 +605,7 @@ export function SettingsPage() {
     }
     setSyncBusy(true);
     try {
-      await command<SyncMapping>("create_sync_mapping", {
+      const created = await command<SyncMapping>("create_sync_mapping", {
         request: {
           category: syncCategory,
           instanceIds: syncAllInstances ? ["*"] : syncInstances,
@@ -607,7 +614,9 @@ export function SettingsPage() {
           acknowledgeWorldRisk: syncCategory === "worlds",
         },
       });
+      setSyncSources(current => ({ ...current, [created.id]: syncInitialSource === "shared" ? "" : syncInitialSource }));
       await reloadSyncMappings();
+      setSyncFormOpen(false);
       pushToast({ tone: "success", title: uiText("settings.texts.syncMappingCreated", "Sync mapping created"), message: uiText("settings.texts.theInitialSourceWasCopiedAndAHashSnapshot", "The initial source was copied and a hash snapshot was recorded.") });
     } catch (error) {
       pushToast({ tone: "error", title: uiText("settings.texts.syncMappingWasNotCreated", "Sync mapping was not created"), message: String((error as { message?: string }).message ?? error) });
@@ -617,7 +626,7 @@ export function SettingsPage() {
   };
 
   const syncNow = async (mapping: SyncMapping) => {
-    const source = syncSources[mapping.id] ?? bootstrap.instances.find((instance) => mapping.instanceIds.includes("*") || mapping.instanceIds.includes(instance.id))?.id;
+    const source = syncSources[mapping.id];
     if (!source) return;
     setSyncBusy(true);
     try {
@@ -643,7 +652,7 @@ export function SettingsPage() {
   };
 
   const removeSyncMapping = async (mapping: SyncMapping) => {
-    if (!window.confirm(`${uiText("settings.texts.removeThe", "Remove the")} ${mapping.category} ${uiText("settings.texts.mappingSharedFilesAndBackupsWillBeKept", "mapping? Shared files and backups will be kept.")}`)) return;
+    if (!window.confirm(`${uiText("settings.texts.removeThe", "Remove the")} ${syncCategoryName(mapping.category)} ${uiText("settings.texts.mappingSharedFilesAndBackupsWillBeKept", "mapping? Shared files and backups will be kept.")}`)) return;
     try {
       await command("delete_sync_mapping", { mappingId: mapping.id });
       await reloadSyncMappings();
@@ -654,7 +663,7 @@ export function SettingsPage() {
 
   return (
     <div data-minimalism={bootstrap.settings.appearance.minimalism === true} className={`${styles.layout} ${settingsNavigationPosition === "right" ? styles.navRight : ""} ${bootstrap.settings.general.compactSettings === true ? styles.compactSettings : ""}`}>
-      <aside ref={settingsNavRef} className={styles.nav} onPointerDown={beginSettingsDockDrag} data-slh-context-menu="true" onContextMenu={(event) => {
+      <aside data-slh-dock="settingsNavigationPosition" ref={settingsNavRef} className={styles.nav} onPointerDown={beginSettingsDockDrag} data-slh-context-menu="true" onContextMenu={(event) => {
         event.preventDefault();
         window.dispatchEvent(new Event("slh-context-menu-open"));
         setSettingsNavigationMenuPosition({ x: event.clientX, y: event.clientY });
@@ -690,6 +699,9 @@ export function SettingsPage() {
             <SettingRow title={t("settings.rememberLast", "Remember last section")} description={t("settings.rememberLastDescription", "Return to your previous main view after restart.")}>
               <Toggle checked={bootstrap.settings.general.rememberSection} onChange={(checked) => updateGeneral({ rememberSection: checked })} />
             </SettingRow>
+            <SettingRow title={t("settings.rememberSettings")} description={t("settings.rememberSettingsDescription")}>
+              <Toggle checked={bootstrap.settings.general.rememberSettingsSection === true} onChange={(checked) => updateGeneral({ rememberSettingsSection: checked })} />
+            </SettingRow>
             <SettingRow title={t("settings.hideOnLaunch", "Hide while Minecraft runs")} description={t("settings.hideOnLaunchDescription", "Keep SLH available by default while capturing launch state.")}>
               <Toggle checked={bootstrap.settings.general.hideOnLaunch} onChange={(checked) => updateGeneral({ hideOnLaunch: checked })} />
             </SettingRow>
@@ -698,9 +710,6 @@ export function SettingsPage() {
             </SettingRow>
             <SettingRow title={uiText("settings.texts.keyboardInterfaceScaling", "Keyboard interface scaling")} description={uiText("settings.texts.useCtrlAndCtrlToChangeTheInterfaceScale", "Use Ctrl + and Ctrl - to change the interface scale by 5%.")}>
               <Toggle checked={bootstrap.settings.general.keyboardZoom !== false} onChange={(checked) => updateGeneral({ keyboardZoom: checked })} />
-            </SettingRow>
-            <SettingRow title={uiText("settings.texts.showUngroupedInstances", "Show ungrouped instances")} description={uiText("settings.texts.keepTheUngroupedSectionVisibleInTheLibraryYou", "Keep the Ungrouped section visible in the library. You can also change this from its context menu.")}>
-              <Toggle checked={bootstrap.settings.general.hideUngrouped !== true} onChange={(checked) => updateGeneral({ hideUngrouped: !checked })} />
             </SettingRow>
             </div>
             <div className={styles.tileGrid}>
@@ -732,6 +741,7 @@ export function SettingsPage() {
                 <option value="right">{uiText("settings.texts.right", "Right")}</option>
               </select></div>
             </SettingRow>
+            <SettingRow title={uiText("settings.ctrlPanelDrag")} description={uiText("settings.ctrlPanelDragHint")}><Toggle checked={bootstrap.settings.general.ctrlPanelDrag===true} onChange={ctrlPanelDrag=>updateGeneral({ctrlPanelDrag})}/></SettingRow>
             </div>
           </SettingsSection>
         ) : null}
@@ -786,29 +796,26 @@ export function SettingsPage() {
                 void save("appearance", next, "Appearance saved");
               }} />
             </SettingRow>
-            {appearance.beautifulHome !== false ? <SettingRow className={styles.homeSubsetting} title={t("settings.character.title")} description={t("settings.character.description")}>
-              <HomeCharacterModeControl value={appearance.homeCharacterMode} vertical={bootstrap.settings.general.compactSettings !== true} onChange={mode => {
-                const next = {...appearance,homeCharacterMode:mode};
-                setAppearance(next);
-                void save("appearance",next);
-              }} />
-            </SettingRow> : null}
-            {appearance.beautifulHome !== false && bootstrap.settings.general.compactSettings !== true ? <SettingRow title={uiText("settings.character3d", "3D character settings")}>
-              <div className={styles.character3dControls}><label><span>{uiText("settings.character.followCursor", "Follow cursor")}</span><Toggle label={uiText("settings.character.followCursor", "Follow cursor")} checked={appearance.homeCharacterCursorFollow === true} disabled={homeCharacterMode(appearance.homeCharacterMode) !== 2} onChange={checked => { const next = { ...appearance, homeCharacterCursorFollow: checked }; setAppearance(next); void save("appearance", next); }} /></label><div><span>{uiText("accounts.texts.playerFps", "Player FPS")}</span><HomeCharacterFpsControl disabled={homeCharacterMode(appearance.homeCharacterMode) !== 2} value={appearance.homeCharacterFps} onCommit={(fps) => {
-                const next = { ...appearance, homeCharacterFps: fps };
-                setAppearance(next);
-                void save("appearance", next);
-              }} /></div></div>
-            </SettingRow> : null}
-            {appearance.beautifulHome !== false && bootstrap.settings.general.compactSettings === true ? <SettingRow className={styles.homeSubsetting} title={uiText("accounts.texts.playerFps", "Player FPS")} description={uiText("settings.texts.160FpsOrUnlimitedTheSliderSnapsTo", "1–60 FPS or unlimited. The slider snaps to 30 FPS. Rendering pauses when the window is minimized.")}>
-              <HomeCharacterFpsControl disabled={homeCharacterMode(appearance.homeCharacterMode) !== 2} value={appearance.homeCharacterFps} onCommit={(fps) => {
-                const next = { ...appearance, homeCharacterFps: fps };
-                setAppearance(next);
-                void save("appearance", next);
-              }} />
-            </SettingRow> : null}
-            {appearance.beautifulHome !== false && bootstrap.settings.general.compactSettings === true ? <SettingRow className={styles.homeSubsetting} title={uiText("settings.character.followCursor", "Follow cursor")}>
-              <Toggle label={uiText("settings.character.followCursor", "Follow cursor")} checked={appearance.homeCharacterCursorFollow === true} disabled={homeCharacterMode(appearance.homeCharacterMode) !== 2} onChange={checked => { const next = { ...appearance, homeCharacterCursorFollow: checked }; setAppearance(next); void save("appearance", next); }} />
+            {appearance.beautifulHome !== false ? <SettingRow className={`${styles.homeSubsetting} ${styles.characterSetting}`} title={t("settings.character.title")} description={t("settings.character.compactDescription")}>
+              <div className={styles.characterControls}>
+                <HomeCharacterModeControl value={appearance.homeCharacterMode} onChange={mode => {
+                  const next = { ...appearance, homeCharacterMode: mode };
+                  setAppearance(next);
+                  void save("appearance", next);
+                }} />
+                <div className={styles.character3dControls}>
+                  <div className={styles.characterFpsRow}><span>{uiText("settings.character.fpsLabel", "FPS")}</span><HomeCharacterFpsControl compact disabled={homeCharacterMode(appearance.homeCharacterMode) !== 2} value={appearance.homeCharacterFps} onCommit={fps => {
+                    const next = { ...appearance, homeCharacterFps: fps };
+                    setAppearance(next);
+                    void save("appearance", next);
+                  }} /></div>
+                  <label><span>{uiText("settings.character.followCursor", "Follow cursor")}</span><Toggle label={uiText("settings.character.followCursor", "Follow cursor")} checked={appearance.homeCharacterCursorFollow === true} disabled={homeCharacterMode(appearance.homeCharacterMode) !== 2} onChange={checked => {
+                    const next = { ...appearance, homeCharacterCursorFollow: checked };
+                    setAppearance(next);
+                    void save("appearance", next);
+                  }} /></label>
+                </div>
+              </div>
             </SettingRow> : null}
             <SettingRow title={t("settings.minimalism", "Minimalism")} description={t("settings.minimalismDescription", "Hide secondary labels and descriptions while keeping essential controls and icons.")}>
               <Toggle checked={appearance.minimalism === true} onChange={(checked) => {
@@ -820,6 +827,12 @@ export function SettingsPage() {
             <SettingRow title={uiText("settings.fitTitles", "Fit project names")} description={uiText("settings.fitTitlesHint", "Reduce the font by one pixel at a time to keep complete words on a line in Discover.")}><Toggle checked={appearance.fitProjectTitles === true} onChange={fitProjectTitles => { const next={...appearance,fitProjectTitles}; setAppearance(next); void save("appearance",next); }} /></SettingRow>
             </div>
             <div className={styles.tileGrid}>
+            <SettingRow title={t("settings.instanceActionsAsList", "Show instance actions as a list")}>
+              <ActionListSettingsControl appearance={appearance} onChange={next => { setAppearance(next); void save("appearance", next); }} />
+            </SettingRow>
+            <SettingRow title={uiText("settings.iconMorphing")} description={uiText("settings.iconMorphingHint")}>
+              <AnimationSettingsControl appearance={appearance} onChange={next => { setAppearance(next); void save("appearance", next); }} />
+            </SettingRow>
             <SettingRow title={uiText("settings.texts.compactMenuBeta", "Compact settings menu (beta)")} description={uiText("settings.texts.compactMenuDescription", "Show settings as tiles. Turn off to use rows. Text size stays the same.")}>
               <Toggle checked={bootstrap.settings.general.compactSettings !== true} onChange={(checked) => updateGeneral({ compactSettings: !checked })} />
             </SettingRow>
@@ -853,7 +866,7 @@ export function SettingsPage() {
               ] as Array<[keyof AppearanceColors, string]>).map(([key, label]) => (
                 <label className={styles.colorField} key={key}>
                   <span>{uiText(label)}</span>
-                  <span><input type="color" value={String(appearance[key])} onChange={(event) => setAppearance({ ...appearance, [key]: event.target.value, activePresetId: "custom" })} /><code>{String(appearance[key])}</code></span>
+                  <span><ColorInput type="color" value={String(appearance[key])} onChange={(event) => setAppearance({ ...appearance, [key]: event.target.value, activePresetId: "custom" })} /><code>{String(appearance[key])}</code></span>
                 </label>
               ))}
             </div>
@@ -893,18 +906,17 @@ export function SettingsPage() {
             <SettingRow title={uiText("settings.javaPermGen", "PermGen size (Java 7 and earlier)")} description={uiText("settings.javaPermGenHint", "Used only with legacy Java. Java 8 and newer ignore this preference.")}><input className={common.input} type="number" min={0} max={4096} defaultValue={bootstrap.settings.java.permGenMb ?? 128} onBlur={e => updateJavaPreferences({permGenMb:Math.max(0,Math.min(4096,Number(e.target.value)))})} /></SettingRow>
             <SettingRow title={uiText("settings.javaWarnMemory", "Warn when available memory is low")} description={uiText("settings.javaWarnMemoryHint", "Show a warning at launch if instance memory exceeds currently available RAM.")}><Toggle checked={bootstrap.settings.java.warnLowMemory !== false} onChange={warnLowMemory => updateJavaPreferences({warnLowMemory})} /></SettingRow>
             <SettingRow className={styles.formSettingRow} title={uiText("settings.javaArguments", "JVM arguments")} description={uiText("settings.javaArgumentsHint", "One argument per line. An argument containing spaces stays together. Applied to all Java instances.")}><textarea className={common.textarea} aria-label={uiText("settings.javaArguments", "JVM arguments")} defaultValue={bootstrap.settings.minecraft.jvmArgs.join("\n")} onBlur={e => updateMinecraft({jvmArgs:e.target.value.split("\n").map(v=>v.trim()).filter(Boolean)})} /></SettingRow>
-            <SettingRow className={styles.javaLocationRow} title={uiText("settings.texts.managedJavaDownloadLocation", "Managed Java download location")} description={uiText("settings.texts.chooseWhereSlhStoresDownloadedTemurinRuntimesExistingManaged", "Choose where SLH stores downloaded Temurin runtimes. Existing managed Java installations remain detectable.")}>
+            <SettingRow className={`${styles.javaLocationRow} ${styles.formSettingRow}`} title={uiText("settings.texts.managedJavaDownloadLocation", "Managed Java download location")} description={uiText("settings.texts.chooseWhereSlhStoresDownloadedTemurinRuntimesExistingManaged", "Choose where SLH stores downloaded Temurin runtimes. Existing managed Java installations remain detectable.")}>
               <div className={styles.javaLocation}><code title={bootstrap.settings.java?.installDirectory ?? `${bootstrap.portableRoot}\\data\\java`}>{bootstrap.settings.java?.installDirectory ?? `${bootstrap.portableRoot}\\data\\java`}</code><button className={common.secondaryButton} type="button" disabled={managedJavaBusy !== null} onClick={() => void chooseManagedJavaDirectory()}>{uiText("settings.texts.chooseFolder", "Choose folder")}</button>{bootstrap.settings.java?.installDirectory ? <button className={common.ghostButton} type="button" disabled={managedJavaBusy !== null} onClick={() => void resetManagedJavaDirectory()}>{uiText("settings.texts.useDefault", "Use default")}</button> : null}</div>
             </SettingRow>
             <div className={styles.actionHeader}><div><strong>{uiText("settings.texts.detectedRuntimes", "Detected runtimes")}</strong><p role="status">{javaLoading ? <><BusyIndicator /> {uiText(javaFullScan ? "settings.texts.javaFullScanBusy" : "settings.texts.javaQuickScanBusy")}</> : uiText("settings.texts.javaQuickScanHint")}</p></div><div className={styles.javaScanActions}>{javaLoading ? <button className={common.secondaryButton} type="button" disabled={!javaFullScan} onClick={() => void command("cancel_java_discovery")}>{uiText("settings.texts.cancelScan", "Cancel scan")}</button> : <><Button disabled={managedJavaBusy !== null} onClick={() => void detectJava()}>{uiText("settings.texts.detectJava", "Detect Java")}</Button><Button disabled={managedJavaBusy !== null} onClick={() => void detectJava(true)}>{uiText("settings.texts.javaFullScan")}</Button></>}</div></div>
-            <div className={styles.javaInstallBar}><span><strong>{uiText("settings.texts.managedTemurin", "Managed Temurin")}</strong><small>{uiText("settings.texts.verifiedJresFromAdoptiumForThisWindowsArchitecture", "Verified JREs from Adoptium for this Windows architecture")}</small></span>{[8, 17, 21, 25].map((major) => <Button key={major} busy={managedJavaBusy === major} disabled={managedJavaBusy !== null || javaLoading} onClick={() => void installManagedJava(major)}>{managedJavaBusy === major ? null : <DownloadSimple size={15} />} {managedJavaBusy === major ? uiText("installation.texts.installing", "Installing") : `Java ${major}`}</Button>)}</div>
+            <div className={styles.javaInstallBar}><span><strong>{uiText("settings.texts.managedTemurin", "Managed Temurin")}</strong><small>{uiText("settings.texts.verifiedJresFromAdoptiumForThisWindowsArchitecture", "Verified JREs from Adoptium for this Windows architecture")}</small></span>{[8, 17, 21, 25].map((major) => <Button key={major} busy={managedJavaBusy === major} icon={<DownloadSimple size={15} />} disabled={managedJavaBusy !== null || javaLoading} onClick={() => void installManagedJava(major)}>{managedJavaBusy === major ? uiText("installation.texts.installing", "Installing") : `Java ${major}`}</Button>)}</div>
             {javaDownload ? <div className={styles.javaProgress}><Progress label={uiText(javaDownload.messageKey ?? "installation.texts.installing", javaDownload.message, javaDownload.params)} value={javaDownload.total && javaDownload.total > 0 ? Math.min(100, javaDownload.completed / javaDownload.total * 100) : null} /></div> : null}
             <div className={styles.runtimeList} aria-busy={javaLoading}>
               {java.length === 0 ? <div className={styles.inlineEmpty}>{javaLoading ? <BusyIndicator size={28} /> : <Coffee size={28} />}<p>{javaLoading ? uiText("settings.texts.javaQuickScanBusy") : javaSearched ? uiText("settings.texts.javaNotFound") : uiText("settings.texts.runDetectionToInspectAvailableJavaExecutables", "Run detection to inspect available Java executables.")}</p></div> : java.map((runtime) => (
                 <div className={styles.runtime} key={runtime.path}><Coffee size={20} /><span><strong>{uiText("settings.java", "Java")}{" "}{runtime.majorVersion} · {runtime.version}{runtime.architecture ? ` · ${runtime.architecture}` : ""}</strong><small title={runtime.path}>{runtime.path}</small></span><span className={runtime.compatible ? common.successBadge : common.errorBadge}>{uiText(({ "disk scan": "settings.texts.javaSourceDisk", managed: "settings.texts.javaSourceManaged", PATH: "settings.texts.javaSourcePath", JAVA_HOME: "settings.texts.javaSourceHome", saved: "settings.texts.javaSourceSaved", custom: "settings.texts.javaSourceCustom" } as Record<string, string>)[runtime.source] ?? "settings.texts.javaSourceSystem")}</span></div>
               ))}
             </div>
-              <NavLink to="/settings/minecraft">{uiText("audit.memorySettings")}</NavLink>
             </div></details>
           </SettingsSection>
         ) : null}
@@ -914,11 +926,6 @@ export function SettingsPage() {
             <div className={styles.bedrockWarning} role="note">{tr(bootstrap.capabilities?.bedrock === false ? uiText("settings.texts.bedrockIsAvailableOnlyOnWindows", "Bedrock is available only on Windows") : "Bedrock support is W.I.P. and has not been fully verified on every Windows installation and Minecraft version.")}</div>
             <SettingRow title={uiText("settings.texts.enableBedrock", "Enable Bedrock")} description={uiText("settings.texts.allowCreatingInstallingAndLaunchingBedrockProfilesExistingProfiles", "Allow creating, installing, and launching Bedrock profiles. Existing profiles and game data are kept when disabled.")}>
               <Toggle checked={bootstrap.settings.bedrock.enabled} disabled={bootstrap.capabilities?.bedrock === false} onChange={(enabled) => updateBedrock({ enabled })} />
-            </SettingRow>
-            <SettingRow title={uiText("settings.texts.defaultProfileMode", "Default profile mode")} description={uiText("settings.texts.sharedStoreDataMakesPackImportsAvailableThroughMinecraft", "Shared Store data makes pack imports available through Minecraft. Isolated profiles keep their own worlds and packs.")}>
-              <select className={common.select} value={bootstrap.settings.bedrock.defaultProfileMode} onChange={(event) => updateBedrock({ defaultProfileMode: event.target.value as BedrockSettings["defaultProfileMode"] })}>
-                <option value="shared">{uiText("installation.texts.sharedStoreData", "Shared Store data")}</option><option value="isolated">{uiText("installation.texts.isolatedProfile", "Isolated profile")}</option>
-              </select>
             </SettingRow>
             <SettingRow title={uiText("settings.texts.showPreviewVersions", "Show preview versions")} description={uiText("settings.texts.includeExperimentalBedrockVersionsByDefaultWhenCreatingA", "Include experimental Bedrock versions by default when creating a new profile.")}>
               <Toggle checked={bootstrap.settings.bedrock.showPreviewVersions} onChange={(showPreviewVersions) => updateBedrock({ showPreviewVersions })} />
@@ -1008,31 +1015,34 @@ export function SettingsPage() {
         ) : null}
 
         {section === "sync" ? (
-          <SettingsSection title={uiText("settings.sync", "Sync")} description={uiText("settings.texts.sharedFoldersAutomaticallyFeedCurrentInstancesAndEveryInstance", "Shared folders automatically feed current instances and every instance created later.")}>
-            <div className={styles.safetyCallout}><ShieldCheck size={25} weight="duotone" /><div><strong>{uiText("settings.texts.worldSynchronizationIsOff", "World synchronization is off")}</strong><p>{uiText("settings.texts.worldOverwritesRequireExplicitAcknowledgementABackupAndA", "World overwrites require explicit acknowledgement, a backup, and a check that Minecraft is not running.")}</p></div></div>
-            <SettingRow title={uiText("settings.syncRust", "Sync with Rust instances")} description={uiText("settings.syncRustDescription", "Include Rust instances in shared options, servers and other configured mappings.")}><Toggle checked={bootstrap.settings.sync.rustEnabled === true} onChange={checked => void save("sync", { ...bootstrap.settings.sync, rustEnabled: checked })} /></SettingRow>
-            <SettingRow title={uiText("settings.texts.allowWorldMappings", "Allow world mappings")} description={uiText("settings.texts.stillRequiresConfirmationForEveryNewlyCreatedMapping", "Still requires confirmation for every newly created mapping.")}><Toggle checked={bootstrap.settings.sync.worldsEnabled} onChange={(checked) => void save("sync", { ...bootstrap.settings.sync, worldsEnabled: checked }, checked ? "World mapping gate enabled" : "World mapping gate disabled")} /></SettingRow>
-            <div className={styles.sharedLibrary}><span><strong>{uiText("settings.texts.sharedLibrary", "Shared library")}</strong><small>{uiText("settings.texts.optionsServersResourcepacksScreenshotsModConfigsAndWorlds", "options, servers, resourcepacks, screenshots, mod-configs, and worlds")}</small></span><button className={common.secondaryButton} type="button" onClick={() => void command("reveal_shared_path").catch((error) => pushToast({ tone: "error", title: uiText("settings.texts.sharedFolderCouldNotBeOpened", "Shared folder could not be opened"), message: String((error as { message?: string }).message ?? error) }))}>{uiText("settings.texts.openSharedFolder", "Open shared folder")}</button></div>
-            <div className={styles.syncForm}>
+          <SettingsSection title={uiText("settings.sync", "Sync")} description={uiText("settings.syncSetup.intro")}>
+            <div className={styles.sharedLibrary}><span><strong>{uiText("settings.syncSetup.configured")}</strong></span><button className={common.secondaryButton} type="button" onClick={() => void command("reveal_shared_path").catch((error) => pushToast({ tone: "error", title: uiText("settings.texts.sharedFolderCouldNotBeOpened", "Shared folder could not be opened"), message: String((error as { message?: string }).message ?? error) }))}>{uiText("settings.texts.openSharedFolder", "Open shared folder")}</button></div>
+            <div className={styles.syncToolbar}><Button variant={syncFormOpen ? "secondary" : "primary"} disabled={syncBusy} aria-expanded={syncFormOpen} aria-controls="sync-setup-form" onClick={() => setSyncFormOpen(open => !open)}>{syncFormOpen ? uiText("common.cancel") : uiText("settings.syncSetup.create")}</Button></div>
+            {syncFormOpen ? <fieldset disabled={syncBusy} aria-label={uiText("settings.syncSetup.create")} id="sync-setup-form" className={styles.syncForm}>
               <div className={styles.syncFields}>
-                <label><span>{uiText("settings.texts.content", "Content")}</span><select className={common.select} value={syncCategory} onChange={(event) => setSyncCategory(event.target.value as SyncMapping["category"])}><option value="options">{uiText("settings.texts.options", "Options")}</option><option value="servers">{uiText("navigation.servers", "Servers")}</option><option value="resourcepacks">{uiText("installation.texts.resourcePacks", "Resource packs")}</option><option value="screenshots">{uiText("installation.texts.screenshots", "Screenshots")}</option><option value="mod-configs">{uiText("settings.texts.modConfigs", "Mod configs")}</option><option value="worlds">{uiText("installation.texts.worlds", "Worlds")}</option></select></label>
-                <label><span>{uiText("settings.texts.initialSource", "Initial source")}</span><select className={common.select} value={syncInitialSource} onChange={(event) => setSyncInitialSource(event.target.value)}><option value="shared">{uiText("settings.texts.sharedLibrary", "Shared library")}</option>{bootstrap.instances.filter((instance) => syncAllInstances || syncInstances.includes(instance.id)).map((instance) => <option value={instance.id} key={instance.id}>{instance.name}</option>)}</select></label>
+                <label><span>{uiText("settings.syncSetup.content")}</span><select className={common.select} value={syncCategory} onChange={(event) => setSyncCategory(event.target.value as SyncMapping["category"])}><option value="options">{uiText("settings.syncSetup.options")}</option><option value="servers">{uiText("settings.syncSetup.servers")}</option><option value="resourcepacks">{uiText("installation.texts.resourcePacks", "Resource packs")}</option><option value="screenshots">{uiText("installation.texts.screenshots", "Screenshots")}</option><option value="mod-configs">{uiText("settings.texts.modConfigs", "Mod configs")}</option><option value="worlds">{uiText("installation.texts.worlds", "Worlds")}</option></select></label>
+
               </div>
               <div className={styles.syncInstances}>
-                <strong>{uiText("settings.texts.destinationInstances", "Destination instances")}</strong>
-                <label><input type="checkbox" checked={syncAllInstances} onChange={(event) => setSyncAllInstances(event.target.checked)} /><span>{uiText("settings.texts.allCurrentAndFutureInstances", "All current and future instances")}</span><small>{uiText("settings.texts.recommended", "Recommended")}</small></label>
+                <strong>{uiText("settings.syncSetup.targets")}</strong>
+                <label><input type="checkbox" checked={syncAllInstances} onChange={(event) => { setSyncAllInstances(event.target.checked); if (!event.target.checked && !syncInstances.includes(syncInitialSource)) setSyncInitialSource("shared"); }} /><span>{uiText("settings.texts.allCurrentAndFutureInstances", "All current and future instances")}</span><small>{uiText("settings.texts.recommended", "Recommended")}</small></label>
                 {!syncAllInstances ? bootstrap.instances.map((instance) => <label key={instance.id}><input type="checkbox" checked={syncInstances.includes(instance.id)} onChange={(event) => { const next = event.target.checked ? [...syncInstances, instance.id] : syncInstances.filter((id) => id !== instance.id); setSyncInstances(next); if (syncInitialSource !== "shared" && !next.includes(syncInitialSource)) setSyncInitialSource("shared"); }} /><span>{instance.name}</span><small>{instance.minecraftVersion}</small></label>) : null}
                 {!syncAllInstances && bootstrap.instances.length === 0 ? <p>{uiText("settings.texts.noInstancesExistYetUseTheRecommendedAllInstances", "No instances exist yet. Use the recommended all-instances scope to prepare shared content now.")}</p> : null}
               </div>
-              <div className={styles.syncCreate}><p>{uiText("settings.texts.afterSetupSlhAppliesTheSharedCopyWhenAn", "After setup, SLH applies the shared copy when an instance is created or imported, before launch, and after Minecraft exits. Manual update remains optional.")}</p><button className={common.button} type="button" disabled={syncBusy || (!syncAllInstances && syncInstances.length === 0) || !syncInitialSource} onClick={() => void createSyncMapping()}>{syncBusy ? <BusyIndicator /> : null}{syncBusy ? uiText("installation.texts.creating", "Creating") : uiText("settings.texts.enableAutomaticSync", "Enable automatic sync")}</button></div>
-            </div>
+              <div className={styles.syncFields}>                <label><span>{uiText("settings.syncSetup.source")}</span><select className={common.select} value={syncInitialSource} onChange={(event) => setSyncInitialSource(event.target.value)}><option value="shared">{uiText("settings.texts.sharedLibrary", "Shared library")}</option>{bootstrap.instances.filter((instance) => syncAllInstances || syncInstances.includes(instance.id)).map((instance) => <option value={instance.id} key={instance.id}>{instance.name}</option>)}</select></label><p>{uiText("settings.syncSetup.sourceHint")}<br />{syncInitialSource === "shared" ? uiText("settings.syncSetup.sharedHint") : null}</p></div>
+              {syncCategory === "worlds" ? <div className={styles.safetyCallout}><ShieldCheck size={25} /><p>{uiText("settings.syncSetup.worldRisk")}</p></div> : null}
+              <div className={styles.syncCreate}><p>{uiText("settings.syncSetup.auto")}</p><button className={common.button} type="button" disabled={syncBusy || (!syncAllInstances && syncInstances.length === 0) || !syncInitialSource || (syncCategory === "worlds" && !bootstrap.settings.sync.worldsEnabled)} onClick={() => void createSyncMapping()}>{syncBusy ? <BusyIndicator /> : null}{syncBusy ? uiText("installation.texts.creating", "Creating") : uiText("settings.syncSetup.create")}</button></div>
+            </fieldset> : null}
             <div className={styles.mappingList}>
-              {syncMappings.length === 0 ? <div className={styles.inlineEmpty}><Database size={28} /><p>{uiText("settings.texts.noSyncMappingsCreateOneAboveToStartSharing", "No sync mappings. Create one above to start sharing files.")}</p></div> : syncMappings.map((mapping) => {
+              {syncMappings.length === 0 ? syncFormOpen ? null : <div className={styles.inlineEmpty}><Database size={28} /><p>{uiText("settings.syncSetup.emptyHint")}</p></div> : syncMappings.map((mapping) => {
                 const available = bootstrap.instances.filter((instance) => mapping.instanceIds.includes("*") || mapping.instanceIds.includes(instance.id));
-                const source = syncSources[mapping.id] ?? available[0]?.id ?? "";
-                return <div className={styles.mappingRow} key={mapping.id}><span><strong>{mapping.category}</strong><small>{mapping.instanceIds.includes("*") ? uiText("settings.texts.automaticForAllCurrentAndFutureInstances", "Automatic for all current and future instances") : `${mapping.instanceIds.length} selected instances`}{mapping.lastSyncAt ? ` · ${new Date(mapping.lastSyncAt).toLocaleString(locale)}` : ""}</small></span><select className={common.select} aria-label={`Source for ${mapping.category}`} value={source} onChange={(event) => setSyncSources((current) => ({ ...current, [mapping.id]: event.target.value }))}>{available.map((instance) => <option key={instance.id} value={instance.id}>{instance.name}</option>)}</select><button className={common.secondaryButton} type="button" disabled={syncBusy || !mapping.enabled || !source} onClick={() => void syncNow(mapping)}>{syncBusy ? <BusyIndicator /> : null}{uiText("settings.texts.updateNow", "Update now")}</button><Toggle checked={mapping.enabled} onChange={() => void toggleSyncMapping(mapping)} /><button className={common.iconButton} type="button" aria-label={`Remove ${mapping.category} mapping`} onClick={() => void removeSyncMapping(mapping)}><Trash size={16} /></button></div>;
+                const source = syncSources[mapping.id] ?? "";
+                return <div className={styles.mappingRow} key={mapping.id}><span><strong>{syncCategoryName(mapping.category)}</strong><small>{mapping.instanceIds.includes("*") ? uiText("settings.texts.automaticForAllCurrentAndFutureInstances", "Automatic for all current and future instances") : uiText("settings.syncSetup.selected", undefined, { count: mapping.instanceIds.length })}{mapping.lastSyncAt ? ` · ${new Date(mapping.lastSyncAt).toLocaleString(locale)}` : ""}</small></span><label className={styles.mappingSource}><span>{uiText("settings.syncSetup.manual")}</span><select className={common.select} aria-label={uiText("settings.syncSetup.manual")} value={source} onChange={(event) => setSyncSources((current) => ({ ...current, [mapping.id]: event.target.value }))}><option value="">{uiText("settings.syncSetup.chooseManual")}</option>{available.map((instance) => <option key={instance.id} value={instance.id}>{instance.name}</option>)}</select></label><button className={common.secondaryButton} type="button" disabled={syncBusy || !mapping.enabled || !source} onClick={() => void syncNow(mapping)}>{syncBusy ? <BusyIndicator /> : null}{uiText("settings.texts.updateNow", "Update now")}</button><Toggle label={uiText("settings.syncSetup.enabled")} checked={mapping.enabled} onChange={() => void toggleSyncMapping(mapping)} /><button className={common.iconButton} type="button" aria-label={uiText("settings.syncSetup.remove")} onClick={() => void removeSyncMapping(mapping)}><Trash size={16} /></button></div>;
               })}
             </div>
+            <details className={styles.disclosure}><summary>{uiText("settings.syncSetup.advanced")}</summary>            <SettingRow title={uiText("settings.syncRust", "Sync with Rust instances")} description={uiText("settings.syncRustDescription", "Include Rust instances in shared options, servers and other configured mappings.")}><Toggle checked={bootstrap.settings.sync.rustEnabled === true} onChange={checked => void save("sync", { ...bootstrap.settings.sync, rustEnabled: checked })} /></SettingRow>
+            <SettingRow title={uiText("settings.texts.allowWorldMappings", "Allow world mappings")} description={uiText("settings.texts.stillRequiresConfirmationForEveryNewlyCreatedMapping", "Still requires confirmation for every newly created mapping.")}><Toggle checked={bootstrap.settings.sync.worldsEnabled} onChange={(checked) => void save("sync", { ...bootstrap.settings.sync, worldsEnabled: checked }, checked ? "World mapping gate enabled" : "World mapping gate disabled")} /></SettingRow>
+</details>
           </SettingsSection>
         ) : null}
 
@@ -1046,7 +1056,7 @@ export function SettingsPage() {
             <SettingRow title={uiText("settings.texts.followOutput", "Follow output")} description={uiText("settings.texts.scrollToNewLinesWhileTheConsoleIsOpen", "Scroll to new lines while the console is open.")}><Toggle checked={consoleSettings.autoScroll} onChange={(checked) => updateConsole({ autoScroll: checked })} /></SettingRow>
             <SettingRow title={uiText("settings.texts.fontSize", "Font size")} description={uiText("settings.texts.sizeOfConsoleTextInPixels", "Size of console text in pixels.")}><div className={styles.numeric}><input className={common.input} type="number" min={10} max={22} value={consoleSettings.fontSize} onChange={(event) => updateConsole({ fontSize: Number(event.target.value) })} /><span>{uiText("settings.texts.px", "px")}</span></div></SettingRow>
             <SettingRow title={uiText("settings.texts.lineHistory", "Line history")} description={uiText("settings.texts.maximumNumberOfRecentLinesKeptInTheInterface", "Maximum number of recent lines kept in the interface.")}><input className={common.input} type="number" min={250} max={10000} step={250} value={consoleSettings.maxLines} onChange={(event) => updateConsole({ maxLines: Number(event.target.value) })} /></SettingRow>
-            <div className={styles.consoleColors}>{consoleColors.map(([key, label]) => <label key={key}><span>{tr(label)}</span><span><input type="color" value={consoleSettings[key]} onChange={(event) => updateConsole({ [key]: event.target.value })} /><code>{consoleSettings[key]}</code></span></label>)}</div>
+            <div className={styles.consoleColors}>{consoleColors.map(([key, label]) => <label key={key}><span>{tr(label)}</span><span><ColorInput type="color" value={consoleSettings[key]} onChange={(event) => updateConsole({ [key]: event.target.value })} /><code>{consoleSettings[key]}</code></span></label>)}</div>
             <div className={styles.consoleActions}><button className={common.secondaryButton} type="button" onClick={() => updateConsole(defaultConsoleSettings)}>{uiText("settings.texts.restoreDefaultColors", "Restore default colors")}</button></div>
             <div className={styles.consolePreview} style={{ background: consoleSettings.background, color: consoleSettings.foreground, fontSize: `${consoleSettings.fontSize}px` }}>
               <span><time style={{ color: consoleSettings.timestamp }}>[20:45:10]</time><b style={{ color: consoleSettings.info }}>{" "}{uiText("settings.texts.info", "[INFO]")}</b> {uiText("settings.texts.minecraftClientIsStarting", "Minecraft client is starting")}</span>

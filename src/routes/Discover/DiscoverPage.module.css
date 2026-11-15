@@ -423,3 +423,8 @@
 .emptyResult h2 { font-size:var(--text-body); line-height:1.5; }
 
 .planItems > div > span:first-child { min-width:0; overflow-wrap:anywhere; }
+
+.projectPage { display: grid; gap: var(--space-6); min-width: 0; width: min(1440px, 100%); margin-inline: auto; }
+.projectPage .detailsDialog { padding: var(--space-6); border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface); }
+
+.projectPage > header { min-height: var(--control-height); margin-bottom: 0; align-items: center; }

@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { fpsFromSlider, homeCharacterFps } from "../../lib/homeCharacterFps";
 import styles from "./HomeCharacterFpsControl.module.css";
 
-export function HomeCharacterFpsControl({ value, onCommit, disabled = false }: { value?: number; disabled?: boolean; onCommit: (fps: number) => void }) {
+export function HomeCharacterFpsControl({ value, onCommit, disabled = false, compact = false }: { value?: number; disabled?: boolean; compact?: boolean; onCommit: (fps: number) => void }) {
   const uiText = useUiText();
   
   const [draft, setDraft] = useState(() => homeCharacterFps(value));
@@ -18,7 +18,7 @@ export function HomeCharacterFpsControl({ value, onCommit, disabled = false }: {
     onCommit(pending.current);
   };
   const change = (fps: number) => { pending.current = fps; dirty.current = true; setDraft(fps); };
-  return <div className={styles.control} aria-disabled={disabled}>
+  return <div className={`${styles.control} ${compact ? styles.compact : ""}`} aria-disabled={disabled}>
     <div className={styles.track}>
       <input disabled={disabled} type="range" min={1} max={61} step={1} value={draft === 0 ? 61 : draft}
         aria-label={uiText("accounts.texts.playerFps", "Player FPS")} aria-valuetext={draft === 0 ? uiText("accounts.texts.unlimited", "Unlimited") : `${draft} FPS`}
@@ -31,6 +31,6 @@ export function HomeCharacterFpsControl({ value, onCommit, disabled = false }: {
       <button disabled={disabled} type="button" className={`${styles.magnet} ${styles.magnet60}`} aria-label={uiText("accounts.texts.60Fps", "60 FPS")}
         onClick={() => { change(60); commit(); }}>60</button>
     </div>
-    <strong>{draft === 0 ? uiText("accounts.texts.unlimited", "Unlimited") : `${draft} FPS`}</strong>
+    <strong aria-hidden="true">{draft === 0 ? "∞" : draft}</strong>
   </div>;
 }

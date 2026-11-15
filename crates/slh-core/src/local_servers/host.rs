@@ -75,6 +75,35 @@ struct Shared {
     seq: u64,
 }
 
+#[derive(Default)]
+struct StopDelivery { ready: bool, requested: bool, sent: bool }
+impl StopDelivery {
+    fn request(&mut self) -> bool { self.requested = true; self.sent = false; self.take_ready() }
+    fn observe(&mut self, text: &str) -> bool {
+        if text.contains("Done (") || text.contains("For help, type") { self.ready = true; }
+        self.take_ready()
+    }
+    fn take_ready(&mut self) -> bool {
+        if self.ready && self.requested && !self.sent { self.sent = true; true } else { false }
+    }
+}
+
+pub(super) fn normalized_console_command(command: &str) -> AppResult<&str> {
+    if command.len() > 4096 || command.contains(['\0', '\r', '\n']) {
+        return Err(AppError::InvalidInput("Enter one server command".into()));
+    }
+    let command = command.trim().strip_prefix('/').unwrap_or(command.trim());
+    Ok(command)
+}
+fn console_command(command: &str) -> AppResult<String> {
+    Ok(format!("{}\n", normalized_console_command(command)?))
+}
+async fn write_console<W: tokio::io::AsyncWrite + Unpin>(stdin: &mut W, command: &str) -> AppResult<()> {
+    stdin.write_all(console_command(command)?.as_bytes()).await?;
+    stdin.flush().await?;
+    Ok(())
+}
+
 pub fn process_identity(pid: u32) -> Option<u64> {
     use sysinfo::{Pid, ProcessRefreshKind, ProcessesToUpdate, System};
     let mut system = System::new();
@@ -342,13 +371,17 @@ pub async fn run(plan: HostPlan) -> AppResult<()> {
             });
         }
     });
+    let mut stopping = StopDelivery { ready: plan.launch.required_java == 0, ..StopDelivery::default() };
     let exit = loop {
         tokio::select! {
             status=child.wait()=>break status,
             Some((text,stream))=line_rx.recv()=>{
                 let mut state=shared.write().await;state.seq+=1;
                 // A running Java process is distinct from a fully ready Minecraft server.
-                if state.info.state=="starting" && (text.contains("Done (") || text.contains("For help, type")){state.info.state="running".into();let _=save_run(&plan.run_file,&state.info);}
+                if stopping.observe(&text) {
+                    if let Err(error) = write_console(&mut stdin, "stop").await { state.info.error = Some(error.to_string()); stopping.sent = false; }
+                }
+                if state.info.state=="starting" && (text.contains("Done (") || text.contains("For help, type")) { state.info.state="running".into();let _=save_run(&plan.run_file,&state.info); }
                 let line=ServerLine{seq:state.seq,text,stream,timestamp:chrono::Utc::now().to_rfc3339()};
                 if let Ok(mut bytes)=serde_json::to_vec(&line){bytes.push(b'\n');let _=log.write_all(&bytes).await;}
                 state.lines.push_back(line);while state.lines.len()>2000{state.lines.pop_front();}
@@ -356,10 +389,25 @@ pub async fn run(plan: HostPlan) -> AppResult<()> {
             },
             Some(control)=control_rx.recv()=>{
                 let mut state=shared.write().await;
+                state.info.error = None;
                 match control.request.action.as_str(){
-                    "stop"=>{let _=stdin.write_all(b"stop\n").await;let _=stdin.flush().await;state.info.state="stopping".into();},
+                    "stop"=>{
+                        if stopping.request() {
+                            if let Err(error) = write_console(&mut stdin, "stop").await { state.info.error = Some(error.to_string()); stopping.sent = false; }
+                        }
+                        state.info.state="stopping".into();
+                    },
                     "kill"=>{let _=child.start_kill();state.info.state="stopping".into();},
-                    "command"=>{if control.request.command.len()<=4096 && !control.request.command.contains(['\0','\r','\n']){let _=stdin.write_all(format!("{}\n",control.request.command).as_bytes()).await;let _=stdin.flush().await;}},_=>{}
+                    "command"=>{
+                        match console_command(&control.request.command) {
+                            Ok(command) if command == "stop\n" => {
+                                if stopping.request() { if let Err(error) = write_console(&mut stdin, "stop").await { state.info.error = Some(error.to_string()); stopping.sent = false; } }
+                                state.info.state="stopping".into();
+                            },
+                            Ok(_) => if let Err(error) = write_console(&mut stdin, &control.request.command).await { state.info.error = Some(error.to_string()); },
+                            Err(error) => state.info.error = Some(error.to_string()),
+                        }
+                    },_=>{}
                 }
                 let _=save_run(&plan.run_file,&state.info);let _=control.result.send(snapshot(&state,control.request.cursor));
             }
@@ -455,6 +503,73 @@ pub fn saved_console(path: &Path, cursor: u64) -> Vec<ServerLine> {
 }
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn console_process_fixture() {
+        let args: Vec<_> = std::env::args().collect();
+        if !args.iter().any(|arg| arg == "--include-ignored") || !args.iter().any(|arg| arg == "--exact") { return; }
+        use std::io::{BufRead, Write};
+        let (send, receive) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            let mut line = String::new();
+            std::io::stdin().lock().read_line(&mut line).unwrap();
+            let _ = send.send(line);
+        });
+        assert!(receive.recv_timeout(std::time::Duration::from_secs(1)).is_err(), "command arrived before the server was ready");
+        println!("Done (1.0s)! For help, type help");
+        std::io::stdout().flush().unwrap();
+        assert_eq!(receive.recv_timeout(std::time::Duration::from_secs(5)).unwrap(), "stop\n");
+    }
+
+    #[tokio::test]
+    async fn host_defers_stop_until_child_is_ready_then_observes_clean_exit() {
+        let directory = tempfile::tempdir().unwrap();
+        let run_file = directory.path().join("run.json");
+        let plan = super::HostPlan {
+            server_id: "fixture".into(), run_file: run_file.clone(), log_file: directory.path().join("console.jsonl"),
+            launch: super::LaunchPlan {
+                java: std::env::current_exe().unwrap().to_string_lossy().into_owned(),
+                args: vec!["--exact".into(), "local_servers::host::tests::console_process_fixture".into(), "--nocapture".into(), "--include-ignored".into()],
+                directory: directory.path().to_string_lossy().into_owned(), required_java: 21,
+            },
+        };
+        let host = tokio::spawn(super::run(plan));
+        let info = tokio::time::timeout(std::time::Duration::from_secs(5), async {
+            loop {
+                if let Ok(info) = super::read_run(&run_file) { break info; }
+                tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+            }
+        }).await.unwrap();
+        let response = super::request(&info, "stop", "", 0).await.unwrap();
+        assert_eq!(response.state, "stopping");
+        tokio::time::timeout(std::time::Duration::from_secs(8), host).await.unwrap().unwrap().unwrap();
+        let result = super::read_run(&run_file).unwrap();
+        assert_eq!(result.state, "stopped");
+        assert_eq!(result.exit_code, Some(0));
+    }
+    #[test]
+    fn stop_waits_for_ready_and_later_manual_retries_are_allowed() {
+        let mut stop = super::StopDelivery::default();
+        assert!(!stop.request());
+        assert!(!stop.observe("Loading worlds"));
+        assert!(stop.observe("Done (20.941s)! For help, type help"));
+        assert!(!stop.observe("Ready for connections"));
+        assert!(stop.request());
+        assert!(!stop.observe("Saving players"));
+    }
+
+    #[tokio::test]
+    async fn console_writes_plain_stop_and_preserves_command_arguments() {
+        use tokio::io::AsyncReadExt;
+        let (mut input, mut output) = tokio::io::duplex(128);
+        super::write_console(&mut input, "/stop").await.unwrap();
+        let mut bytes = [0; 5];
+        output.read_exact(&mut bytes).await.unwrap();
+        assert_eq!(&bytes, b"stop\n");
+        assert_eq!(super::console_command(" stop ").unwrap(), "stop\n");
+        assert_eq!(super::console_command("/say https://example.com/a/b").unwrap(), "say https://example.com/a/b\n");
+        assert!(super::console_command("stop\nsay unsafe").is_err());
+        assert!(super::console_command("/stop\r").is_err());
+    }
     use super::*;
     #[tokio::test]
     async fn legacy_hosts_get_a_stable_public_console_run_identity() {

@@ -1,0 +1,14 @@
+.controls { width: 100%; display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.speed { width: 80px; min-width: 0; font-variant-numeric: tabular-nums; }
+.options { display: grid; gap: var(--space-3); }
+.overall { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); padding-bottom: var(--space-3); border-bottom: 1px solid var(--color-border); }
+.option { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: var(--space-3); min-height: var(--control-height); }
+.option > strong { overflow-wrap: anywhere; font-weight: 400; }
+
+.more { margin-left: auto; flex-shrink: 0; }
+.animationDialog { width: min(816px, calc(100vw - 48px)); }
+.animationDialog .options { gap: var(--space-4); }
+.animationDialog .option { min-height: 54px; }
+.kindLabel { display: grid; gap: var(--space-1); }
+.kindLabel strong { font-weight: 400; }
+.kindLabel small { color: var(--color-text-muted); font-size: var(--text-caption); line-height: 1.5; }

@@ -1,3 +1,20 @@
+/** Windows package revisions are not CurseForge game-version tags. */
+export function bedrockContentVersion(version: string): string {
+  const parts = version.split(".");
+  if (Number(parts[0]) >= 26) parts.unshift("1");
+  return parts.slice(0, 3).join(".");
+}
+
+export function bedrockPackageMatchesVersion(requested: string, installed: string): boolean {
+  const request = requested.split(".").map(Number);
+  const actual = installed.split(".").map(Number);
+  if (request.some(value => !Number.isFinite(value)) || actual.length !== 4 || actual.some(value => !Number.isFinite(value))) return false;
+  if (request[0] >= 26) request.unshift(1);
+  while (request.length < 4) request.push(0);
+  const display = [actual[0], actual[1], Math.floor(actual[2] / 100), actual[2] % 100];
+  return request.length === 4 && request.every((value, index) => value === display[index]);
+}
+
 export function bedrockToastAction(
   tr: (source: string) => string,
   message: string,

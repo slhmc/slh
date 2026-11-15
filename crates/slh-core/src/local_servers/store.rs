@@ -39,6 +39,7 @@ pub struct CreateServer {
     pub folder: String,
     pub group_id: Option<String>,
     pub config: ServerConfig,
+    pub players: Option<super::players::DefaultPlayers>,
 }
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -169,6 +170,7 @@ pub async fn defaults(state: &AppState) -> AppResult<ServerDefaults> {
     let value = database::setting(&state.database, "servers").await?;
     let result: ServerDefaults = serde_json::from_value(value)?;
     validate(&result.config)?;
+    super::players::validate_defaults(&result.players)?;
     if let Some(dir) = &result.directory {
         plain_path(Path::new(dir))?;
     }
@@ -289,6 +291,7 @@ pub async fn create(state: &AppState, request: CreateServer) -> AppResult<LocalS
             "Accept Minecraft EULA before creating this server".into(),
         ));
     }
+    let template = defaults(state).await?;
     let directory = if let Some(group) = &request.group_id {
         PathBuf::from(
             groups(state)
@@ -299,7 +302,7 @@ pub async fn create(state: &AppState, request: CreateServer) -> AppResult<LocalS
                 .path,
         )
     } else {
-        root(state, &defaults(state).await?)
+        root(state, &template)
     };
     let path = directory.join(&request.folder);
     validate_server_path(&request.config.core, &path)?;
@@ -308,21 +311,83 @@ pub async fn create(state: &AppState, request: CreateServer) -> AppResult<LocalS
             "The server folder already exists".into(),
         ));
     }
+    // Resolve before creating files or a database row, so failed lookups leave no partial server.
+    let players = request.players.as_ref().unwrap_or(&template.players);
+    let player_lists = super::players::resolve_defaults(state, &path, &request.config, players).await?;
     std::fs::create_dir_all(&directory)?;
-    std::fs::create_dir(&path)?;
     let id = Uuid::new_v4().to_string();
-    let result=sqlx::query("INSERT INTO local_servers(id,name,path,group_id,data_relative,config_json) VALUES (?,?,?,?,?,?)")
-        .bind(&id).bind(&request.name).bind(path.to_string_lossy().as_ref()).bind(&request.group_id).bind(relative(state,&path)).bind(serde_json::to_string(&request.config)?).execute(&state.database).await;
-    if let Err(e) = result {
-        let _ = std::fs::remove_dir(&path);
-        return Err(e.into());
-    }
-    atomic_write(
-        &path.join("eula.txt"),
-        b"# Accepted explicitly when creating this SLH server\neula=true\n",
-    )?;
-    write_properties(&path, &request.config)?;
+    let mut created = NewServerDirectory::create(&path, &id)?;
+    let mut tx = state.database.begin().await?;
+    let result: AppResult<()> = async {
+        created.write("eula.txt", b"# Accepted explicitly when creating this SLH server\neula=true\n")?;
+        created.write("server.properties", properties_text(&request.config.properties_text, &request.config).as_bytes())?;
+        for (filename, rows) in &player_lists {
+            if !rows.is_empty() { created.write(filename, &serde_json::to_vec_pretty(rows)?)?; }
+        }
+        sqlx::query("INSERT INTO local_servers(id,name,path,group_id,data_relative,config_json) VALUES (?,?,?,?,?,?)")
+            .bind(&id).bind(&request.name).bind(path.to_string_lossy().as_ref()).bind(&request.group_id)
+            .bind(relative(state,&path)).bind(serde_json::to_string(&request.config)?).execute(&mut *tx).await?;
+        Ok(())
+    }.await;
+    if let Err(error) = result { tx.rollback().await?; return Err(error); }
+    tx.commit().await?;
+    created.committed = true;
     get(state, &id).await
+}
+
+/// Owns only files created in a directory this operation itself created.
+/// Cleanup is deliberately nonrecursive, preserving files added by another process.
+struct NewServerDirectory {
+    path: PathBuf,
+    marker: PathBuf,
+    token: Vec<u8>,
+    files: Vec<(PathBuf, Vec<u8>)>,
+    committed: bool,
+}
+impl NewServerDirectory {
+    fn create(path: &Path, id: &str) -> AppResult<Self> {
+        plain_path(path)?;
+        std::fs::create_dir(path)?;
+        let marker = path.join(format!(".slh-creating-{id}"));
+        let token = Uuid::new_v4().to_string().into_bytes();
+        if let Err(error) = std::fs::write(&marker, &token) {
+            let _ = std::fs::remove_dir(path);
+            return Err(error.into());
+        }
+        Ok(Self { path: path.into(), marker, token, files: vec![], committed: false })
+    }
+    fn write(&mut self, name: &str, bytes: &[u8]) -> AppResult<()> {
+        use std::io::Write;
+        let file = self.path.join(name);
+        plain_path(&file)?;
+        let mut output = std::fs::OpenOptions::new().write(true).create_new(true).open(&file)?;
+        // Track the exact bytes written even if a later write fails.
+        self.files.push((file, vec![]));
+        let owned = &mut self.files.last_mut().unwrap().1;
+        while owned.len() < bytes.len() {
+            match output.write(&bytes[owned.len()..]) {
+                Ok(0) => return Err(std::io::Error::from(std::io::ErrorKind::WriteZero).into()),
+                Ok(count) => { let start = owned.len(); owned.extend_from_slice(&bytes[start..start + count]); }
+                Err(error) if error.kind() == std::io::ErrorKind::Interrupted => continue,
+                Err(error) => return Err(error.into()),
+            }
+        }
+        Ok(())
+    }
+}
+impl Drop for NewServerDirectory {
+    fn drop(&mut self) {
+        if plain_path(&self.path).is_err() || std::fs::read(&self.marker).ok().as_deref() != Some(self.token.as_slice()) { return; }
+        if !self.committed {
+            for (path, bytes) in self.files.iter().rev() {
+                if plain_path(path).is_ok() && std::fs::read(path).ok().as_deref() == Some(bytes.as_slice()) {
+                    let _ = std::fs::remove_file(path);
+                }
+            }
+        }
+        let _ = std::fs::remove_file(&self.marker);
+        if !self.committed { let _ = std::fs::remove_dir(&self.path); }
+    }
 }
 
 pub fn write_properties(path: &Path, config: &ServerConfig) -> AppResult<()> {
@@ -359,10 +424,19 @@ pub async fn update(
     let current = idle(state, id).await?;
     validate_component(name)?;
     validate(&config)?;
+    if !super::players::supports_player_lists(&config)
+        && config.properties.get("white-list").is_some_and(|value| value == "true")
+        && current.config.properties.get("white-list").is_none_or(|value| value != "true") {
+        return Err(AppError::InvalidInput("serverPlayers.unsupportedCompatibility".into()));
+    }
+    if current.config.core != config.core || current.config.minecraft_version != config.minecraft_version {
+        super::players::guard_core_change(&current.path, &config)?;
+    }
     if current.installed
         && (current.config.core != config.core
             || current.config.minecraft_version != config.minecraft_version
-            || current.config.core_version != config.core_version)
+            || current.config.core_version != config.core_version
+            || current.config.custom_jar != config.custom_jar)
     {
         return Err(AppError::InvalidInput(
             "Installed core versions are pinned; create another profile to use a different core"
@@ -402,8 +476,9 @@ pub async fn update_memory(state: &AppState, id: &str, minimum: u32, maximum: u3
     server.config.memory_min_mb = minimum;
     server.config.memory_max_mb = maximum;
     validate(&server.config)?;
-    sqlx::query("UPDATE local_servers SET config_json=json_set(config_json,'$.memoryMinMb',?,'$.memoryMaxMb',?) WHERE id=?")
-        .bind(minimum).bind(maximum).bind(id).execute(&state.database).await?;
+    let changed = sqlx::query("UPDATE local_servers SET config_json=json_set(config_json,'$.memoryMinMb',?,'$.memoryMaxMb',?) WHERE id=? AND status != 'installing'")
+        .bind(minimum).bind(maximum).bind(id).execute(&state.database).await?.rows_affected();
+    if changed != 1 { return Err(AppError::Conflict("Wait for server installation before changing memory".into())); }
     get(state, id).await
 }
 pub async fn read_config(state: &AppState, id: &str) -> AppResult<LocalServer> {
@@ -683,6 +758,7 @@ pub async fn save_defaults(state: &AppState, value: Value) -> AppResult<Value> {
     let d: ServerDefaults = serde_json::from_value(value.clone())?;
     if !["", "shared", "increment"].contains(&d.port_allocation.as_str()) { return Err(AppError::InvalidInput("Unknown server port allocation mode".into())); }
     validate(&d.config)?;
+    super::players::validate_defaults(&d.players)?;
     if let Some(p) = &d.directory {
         plain_path(Path::new(p))?;
     }
@@ -690,7 +766,7 @@ pub async fn save_defaults(state: &AppState, value: Value) -> AppResult<Value> {
     Ok(value)
 }
 
-fn properties_revision(path: &Path) -> AppResult<String> {
+pub(super) fn properties_revision(path: &Path) -> AppResult<String> {
     use sha2::{Digest, Sha256};
     plain_path(path)?;
     if path.metadata().is_ok_and(|meta| meta.len() > 1024 * 1024) { return Err(AppError::InvalidInput("Server properties exceed 1 MiB".into())); }
@@ -750,4 +826,30 @@ pub async fn delete(state: &AppState, id: &str, expected_path: &str) -> AppResul
     if let Some(target) = target { std::fs::remove_dir_all(target)?; }
     tx.commit().await?;
     Ok(())
+}
+
+#[cfg(test)]
+mod creation_tests {
+    use super::*;
+    #[test]
+    fn failed_creation_removes_only_its_own_files_and_preserves_foreign_files() {
+        let root = tempfile::tempdir().unwrap();
+        let path = root.path().join("server");
+        {
+            let mut created = NewServerDirectory::create(&path, "fixture").unwrap();
+            created.write("eula.txt", b"owned").unwrap();
+            std::fs::write(path.join("foreign.txt"), b"external").unwrap();
+            assert!(created.write("missing/file", b"fail").is_err());
+        }
+        assert!(!path.join("eula.txt").exists());
+        assert_eq!(std::fs::read(path.join("foreign.txt")).unwrap(), b"external");
+        assert_eq!(std::fs::read_dir(&path).unwrap().count(), 1);
+        let clean = root.path().join("clean");
+        {
+            let mut created = NewServerDirectory::create(&clean, "fixture").unwrap();
+            created.write("eula.txt", b"owned").unwrap();
+            assert!(created.write("missing/file", b"fail").is_err());
+        }
+        assert!(!clean.exists());
+    }
 }

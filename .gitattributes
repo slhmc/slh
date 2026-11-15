@@ -5,5 +5,3 @@ crates/slh-core/migrations/*.sql text eol=lf
 # Keep immutable checksums of migration 19 used by existing local profiles.
 crates/slh-core/migrations/0019_semantic_colors.sql -text
 src-tauri/migrations/0019_semantic_colors.sql -text
-
-/vendor/** linguist-vendored

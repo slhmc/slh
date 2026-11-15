@@ -30,7 +30,8 @@
 .console pre { min-height: 160px; height: min(50dvh, 460px); overflow: auto; overscroll-behavior: contain; margin: 0; padding: var(--space-3); border-radius: var(--radius-sm); color: var(--color-text); background: var(--color-surface-2); white-space: pre-wrap; overflow-wrap: anywhere; font-family: monospace; font-size: var(--text-caption); line-height: 1.5; }
 .console form { display: flex; min-width: 0; gap: var(--space-2); }
 .console input { flex: 1; min-width: 0; }
-.cleanup { display: grid; gap: var(--space-3); margin-top: var(--space-6); }
+.cleanup { display: grid; gap: var(--space-3); padding: var(--space-6); border-top: 1px solid var(--color-border); }
+.cleanup h3, .cleanup > p { margin: 0; }
 .cleanupCategory { border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-3); }
 .cleanupCategory > label { display: flex; align-items: start; gap: var(--space-3); cursor: pointer; }
 .cleanupCategory > label > span { display: grid; flex: 1; min-width: 0; gap: var(--space-1); }
@@ -168,3 +169,16 @@
 .rawHighlights { font: inherit; line-height: inherit; letter-spacing: inherit; tab-size: 8; }
 .rawEditorStack textarea { tab-size: 8; }
 .rawSearching::selection { color: transparent; background: var(--color-accent-soft); }
+
+.defaultPlayers { display: grid; gap: var(--space-4); padding: var(--space-4); min-width: 0; }
+.defaultPlayers .playerNavigation { padding: 0; border: 0; }
+.defaultPlayers .playerNavigation button[aria-pressed="true"] { color: var(--color-text); background: var(--color-surface-2); }
+.templatePlayers { display: grid; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
+.templatePlayers li { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-3); padding: var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius-sm); }
+.templatePlayers li strong { flex: 1; overflow-wrap: anywhere; }
+.templatePlayerForm { display: flex; align-items: end; flex-wrap: wrap; gap: var(--space-3); }
+.templatePlayerForm label { flex: 1 1 140px; }
+@container (max-width: 640px) { .serverForm { grid-template-columns: minmax(0, 1fr); } .serverForm > .formTabs { flex-direction: row; flex-wrap: wrap; border-right: 0; border-bottom: 1px solid var(--color-border); } }
+
+.eulaAcceptance { align-items: center; }
+.eulaAcceptance input { margin-top: 0; }

@@ -12,7 +12,9 @@ export interface ServerCollection {id:string;name:string;parentId:string|null;so
 export interface ServerLibraryView {view?:string;sort?:string;collection?:string;panelPosition?:string;selected?:string;tabsPosition?:string;tabOrder?:string[];visibleTabs?:string[];collapsedGroups?:string[];panel?:{showArtwork?:boolean;showMetadata?:boolean;hiddenActions?:string[];actionOrder?:string[]}}
 export interface LocalServer { propertiesRevision?: string; presentation?: ServerPresentation; id: string; name: string; path: string; groupId: string | null; config: ServerConfig; status: string; installed: boolean; createdAt: string }
 export interface ServerGroup { id: string; name: string; path: string; parentId: string | null }
-export interface ServerDefaults { portAllocation?: "shared" | "increment"; directory: string | null; config: ServerConfig }
+export interface ServerDefaultPlayer { name: string; uuid?: string | null; identityProvider?: "auto" | "offline" | "elyby" | null; level?: number | null; reason?: string | null }
+export interface ServerDefaultPlayers { whitelist: ServerDefaultPlayer[]; operators: ServerDefaultPlayer[]; bannedPlayers?: ServerDefaultPlayer[]; bannedIps?: { ip: string; reason?: string | null }[] }
+export interface ServerDefaults { players?: ServerDefaultPlayers; portAllocation?: "shared" | "increment"; directory: string | null; config: ServerConfig }
 export interface ServerOverview { collections?:ServerCollection[];view?:ServerLibraryView;issues?:string[]; servers: LocalServer[]; groups: ServerGroup[]; defaults: ServerDefaults; directory: string; defaultDirectory: string }
 export interface ServerCatalog { minecraftVersions: string[]; versions: { id: string; stable: boolean; javaMajor: number }[] }
 export interface ServerCoreCandidate { path: string; filename: string; minecraftVersion: string; core: string; requiredJava: number; fingerprint: string }
@@ -50,3 +52,16 @@ export function readServerProperties(text: string): Record<string,string> {
 }
 
 export const serverReady=(server:LocalServer)=>!server.presentation||server.presentation.readiness==="ready";
+
+/** Keep the raw editor synchronized without removing unknown properties or comments. */
+export function withServerProperty(config: ServerConfig, key: string, value: string): ServerConfig {
+  const escape = (text: string) => text.replace(/\\/g, "\\\\").replace(/\r/g, "\\r").replace(/\n/g, "\\n");
+  let found = false;
+  const lines = config.propertiesText.split(/\r?\n/).map(line => {
+    if (!(key in readServerProperties(line))) return line;
+    found = true;
+    return `${escape(key)}=${escape(value)}`;
+  });
+  if (!found) lines.push(`${escape(key)}=${escape(value)}`);
+  return { ...config, properties: { ...config.properties, [key]: value }, propertiesText: lines.join("\n") };
+}

@@ -37,6 +37,115 @@ pub struct PlayerEdit {
     pub expected_revision: String,
 }
 
+/// A creation template; identities are resolved for the new server's authentication mode.
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct DefaultPlayers {
+    pub whitelist: Vec<DefaultPlayer>,
+    pub operators: Vec<DefaultPlayer>,
+    pub banned_players: Vec<DefaultPlayer>,
+    pub banned_ips: Vec<DefaultBannedIp>,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DefaultPlayer {
+    pub name: String,
+    pub uuid: Option<String>,
+    pub identity_provider: Option<String>,
+    pub level: Option<u8>,
+    pub reason: Option<String>,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DefaultBannedIp {
+    pub ip: String,
+    pub reason: Option<String>,
+}
+
+/// JSON access lists were introduced in Java 1.7.6. Unknown version labels and
+/// custom runtimes cannot promise that these files will be read.
+pub fn supports_player_lists(config: &super::config::ServerConfig) -> bool {
+    if !["vanilla", "fabric", "forge", "quilt", "neoforge", "paper", "purpur", "leaf", "spigot", "bukkit"].contains(&config.core.as_str()) { return false; }
+    let parts: Vec<_> = config.minecraft_version.split('.').collect();
+    if !(2..=3).contains(&parts.len()) || parts.iter().any(|part| part.is_empty() || !part.bytes().all(|b| b.is_ascii_digit())) { return false; }
+    let Some(major) = parts[0].parse::<u32>().ok() else { return false; };
+    let Some(minor) = parts[1].parse::<u32>().ok() else { return false; };
+    let Some(patch) = parts.get(2).map_or(Some(0), |part| part.parse::<u32>().ok()) else { return false; };
+    (major, minor, patch) >= (1, 7, 6)
+}
+fn require_supported(config: &super::config::ServerConfig) -> AppResult<()> {
+    if !supports_player_lists(config) { return Err(AppError::InvalidInput("serverPlayers.unsupportedCompatibility".into())); }
+    Ok(())
+}
+fn validate_reason(reason: Option<&str>) -> AppResult<()> {
+    if reason.is_some_and(|reason| reason.len() > 512 || reason.chars().any(char::is_control)) {
+        return Err(AppError::InvalidInput("serverPlayers.invalidInput".into()));
+    }
+    Ok(())
+}
+
+pub fn validate_defaults(players: &DefaultPlayers) -> AppResult<()> {
+    if players.whitelist.len() + players.operators.len() + players.banned_players.len() + players.banned_ips.len() > 1000 {
+        return Err(AppError::InvalidInput("serverPlayers.invalidInput".into()));
+    }
+    for row in players.whitelist.iter().chain(&players.operators).chain(&players.banned_players) {
+        if !player_name(row.name.trim()) {
+            return Err(AppError::InvalidInput("serverPlayers.invalidName".into()));
+        }
+        if row.uuid.as_deref().is_some_and(|id| uuid::Uuid::parse_str(id.trim()).is_err()) {
+            return Err(AppError::InvalidInput("serverPlayers.invalidUuid".into()));
+        }
+        if row.identity_provider.as_deref().is_some_and(|p| !["auto", "offline", "elyby"].contains(&p))
+            || row.level.is_some_and(|level| !(1..=4).contains(&level)) {
+            return Err(AppError::InvalidInput("serverPlayers.invalidInput".into()));
+        }
+        validate_reason(row.reason.as_deref())?;
+    }
+    for row in &players.banned_ips {
+        row.ip.trim().parse::<std::net::IpAddr>().map_err(|_| AppError::InvalidInput("serverPlayers.invalidIp".into()))?;
+        validate_reason(row.reason.as_deref())?;
+    }
+    Ok(())
+}
+
+pub async fn resolve_defaults(state: &AppState, root: &Path, config: &super::config::ServerConfig, players: &DefaultPlayers) -> AppResult<Vec<(&'static str, Vec<Value>)>> {
+    validate_defaults(players)?;
+    let nonempty = !players.whitelist.is_empty() || !players.operators.is_empty() || !players.banned_players.is_empty() || !players.banned_ips.is_empty();
+    if nonempty || config.properties.get("white-list").is_some_and(|value| value == "true") { require_supported(config)?; }
+    let online = config.properties.get("online-mode").is_none_or(|s| s != "false");
+    let mut lists = Vec::new();
+    for (entries, filename) in [(&players.whitelist, "whitelist.json"), (&players.operators, "ops.json"), (&players.banned_players, "banned-players.json")] {
+        let mut rows: Vec<Value> = Vec::new();
+        for entry in entries {
+            let (name, id) = identity(state, &root.to_string_lossy(), entry.name.trim(), entry.uuid.as_deref(), online, entry.identity_provider.as_deref().unwrap_or("auto")).await?;
+            let mut row = json!({ "name": name, "uuid": id });
+            if filename == "ops.json" {
+                row["level"] = json!(entry.level.unwrap_or(4));
+                row["bypassesPlayerLimit"] = json!(false);
+            } else if filename == "banned-players.json" { add_ban_metadata(&mut row, entry.reason.as_deref()); }
+            rows.retain(|existing| existing["uuid"] != row["uuid"]);
+            rows.push(row);
+        }
+        lists.push((filename, rows));
+    }
+    let mut ips: Vec<Value> = Vec::new();
+    for entry in &players.banned_ips {
+        let ip = entry.ip.trim().parse::<std::net::IpAddr>().map_err(|_| AppError::InvalidInput("serverPlayers.invalidIp".into()))?.to_string();
+        let mut row = json!({ "ip": ip });
+        add_ban_metadata(&mut row, entry.reason.as_deref());
+        ips.retain(|existing| existing["ip"] != row["ip"]);
+        ips.push(row);
+    }
+    lists.push(("banned-ips.json", ips));
+    Ok(lists)
+}
+fn add_ban_metadata(row: &mut Value, reason: Option<&str>) {
+    row["created"] = json!(chrono::Utc::now().format("%Y-%m-%d %H:%M:%S %z").to_string());
+    row["source"] = json!("SLH");
+    row["expires"] = json!("forever");
+    row["reason"] = json!(reason.map(str::trim).filter(|s| !s.is_empty()).unwrap_or("Banned by an operator."));
+}
+
 fn file(root: &str, kind: &str) -> AppResult<PathBuf> {
     let filename = match kind {
         "whitelist" => "whitelist.json",
@@ -48,6 +157,20 @@ fn file(root: &str, kind: &str) -> AppResult<PathBuf> {
     let path = Path::new(root).join(filename);
     store::plain_path(&path)?;
     Ok(path)
+}
+
+/// Never migrate active JSON access restrictions to a runtime that will ignore them.
+pub(super) fn guard_core_change(root: &str, config: &super::config::ServerConfig) -> AppResult<()> {
+    if supports_player_lists(config) { return Ok(()); }
+    if config.properties.get("white-list").is_some_and(|value| value == "true") {
+        return Err(AppError::InvalidInput("serverPlayers.unsupportedCompatibility".into()));
+    }
+    for kind in KINDS {
+        if !read(&file(root, kind)?, kind == "bannedIps")?.0.is_empty() {
+            return Err(AppError::InvalidInput("serverPlayers.unsupportedCompatibility".into()));
+        }
+    }
+    Ok(())
 }
 
 fn read(path: &Path, ip: bool) -> AppResult<(Vec<Value>, String)> {
@@ -72,6 +195,7 @@ fn read(path: &Path, ip: bool) -> AppResult<(Vec<Value>, String)> {
 
 pub async fn list(state: &AppState, id: &str) -> AppResult<PlayerLists> {
     let server = store::get(state, id).await?;
+    require_supported(&server.config)?;
     store::plain_path(Path::new(&server.path))?;
     if !Path::new(&server.path).is_dir() { return Err(AppError::NotFound("serverLibrary.missingHint".into())); }
     let mut data = BTreeMap::new();
@@ -236,6 +360,7 @@ async fn identity(state: &AppState, root: &str, name: &str, supplied: Option<&st
 pub async fn edit(state: &AppState, id: &str, request: PlayerEdit) -> AppResult<PlayerLists> {
     let _edit = EDIT.lock().await;
     let current = store::get(state, id).await?;
+    require_supported(&current.config)?;
     let status = runtime::state_for(state, id, &current.status).await;
     if ["running", "starting"].contains(&status.as_str()) {
         return edit_running(state, id, &request).await;

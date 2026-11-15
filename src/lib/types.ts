@@ -109,6 +109,8 @@ export interface GeneralSettings {
   instanceOrder?: string[];
   rememberSection: boolean;
   lastSection: string;
+  rememberSettingsSection?: boolean;
+  lastSettingsSection?: string;
   closeBehavior: string;
   hideOnLaunch: boolean;
   restoreOnExit: boolean;
@@ -137,6 +139,7 @@ export interface GeneralSettings {
   /** Dock the instance-page tab strip around its content. */
   instanceTabsPosition?: "top" | "left" | "right" | "bottom";
   /** Dock the main launcher navigation around the workspace. */
+  ctrlPanelDrag?: boolean;
   navigationPosition?: "left" | "right" | "top" | "bottom";
   /** Dock the settings sub-navigation to either side of its content. */
   settingsNavigationPosition?: "left" | "right";
@@ -190,6 +193,10 @@ export interface AppearancePreset {
 }
 
 export interface AppearanceSettings extends AppearanceColors {
+  iconMorphing?: boolean;
+  animationSpeed?: number;
+  animationSettings?: Partial<Record<"icons" | "buttons" | "switches" | "dialogs", { enabled?: boolean; speed?: number }>>;
+  systemColorPicker?: boolean;
   systemControls?: boolean;
   windowControlsStyle?: "auto" | "windows" | "macos" | "linux";
   windowControlsSide?: "auto" | "left" | "right";
@@ -206,6 +213,8 @@ export interface AppearanceSettings extends AppearanceColors {
   presets: AppearancePreset[];
   minimalism?: boolean;
   fitProjectTitles?: boolean;
+  instanceActionsAsList?: boolean;
+  serverActionsAsList?: boolean;
   fontFamily?: "pixeloid" | "system" | "monospace" | "local";
   customFontPath?: string | null;
 }
@@ -574,13 +583,19 @@ export interface ProgressEvent {
   totalBytes: number | null;
 }
 
+export interface GameDiagnosis {
+  kind: "java" | "memory" | "dependencies" | "duplicateMods" | "graphics" | "mods" | "jvmArguments" | "unknown";
+  evidence: string[];
+}
+
 export interface LaunchStateEvent {
   launchId: string;
   instanceId: string;
-  state: "running" | "exited" | "crashed";
+  state: "running" | "exited" | "crashed" | "killed";
   exitCode?: number | null;
   durationSeconds?: number;
   reportPath?: string | null;
+  diagnosis?: GameDiagnosis | null;
 }
 
 export interface CreateInstanceRequest {

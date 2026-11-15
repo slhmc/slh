@@ -1,3 +1,6 @@
+import { MorphIcon } from "../../components/common/MorphIcon";
+import { readArtwork } from "../../lib/artwork";
+import { ArtworkEditor } from "../../components/instance/ArtworkEditor";
 import { useConfirmation } from "../../components/common/ConfirmationProvider";
 import { LogViewer } from "../../components/common/LogViewer";
 import { DetailFrame, DetailTabs } from "../../components/common/LibraryChrome";
@@ -19,7 +22,7 @@ import { InstanceArtwork, instanceArtworkColors, instanceIconChoices } from "../
 import styles from "./InstancePage.module.css";
 import { useI18n } from "../../i18n/I18nProvider";
 import { formatBytes, formatPlaytime } from "../../lib/formatters";
-import { bedrockToastAction } from "../../lib/bedrock";
+import { bedrockToastAction, bedrockPackageMatchesVersion } from "../../lib/bedrock";
 const DiscoverPage = lazy(() => import("../Discover/DiscoverPage").then((module) => ({ default: module.DiscoverPage })));
 import { Dialog } from "../../components/common/Dialog";
 import { BedrockCatalog } from "../../components/instance/BedrockCatalog";
@@ -130,6 +133,7 @@ export function InstancePage() {
   const tabPointerDragRef = useRef<{ id: InstanceTab; source: "bar" | "menu"; startX: number; startY: number; dragging: boolean } | null>(null);
   const suppressTabClickRef = useRef(false);
   const instance = bootstrap?.instances.find((item) => item.id === id);
+  const lastFailure = useAppStore(state => state.launchFailures.find(item => item.instanceId === id));
   const isBedrock = instance?.loaderType === "bedrock";
   const [instanceName, setInstanceName] = useState("");
   const [iconKey, setIconKey] = useState("cube");
@@ -147,7 +151,6 @@ export function InstancePage() {
   const [loaderLoading, setLoaderLoading] = useState(false);
   const [loaderError, setLoaderError] = useState<string | null>(null);
   const [loaderBusy, setLoaderBusy] = useState(false);
-  const [bedrockProfileMode, setBedrockProfileMode] = useState<"isolated" | "shared">("shared");
   const [bedrockRuntime, setBedrockRuntime] = useState<BedrockRuntimeStatus | null>(null);
   const [bedrockRuntimeBusy, setBedrockRuntimeBusy] = useState(false);
   const [bedrockRuntimeError, setBedrockRuntimeError] = useState<string | null>(null);
@@ -195,6 +198,9 @@ export function InstancePage() {
       .filter((id): id is InstanceTab => tabs.includes(id as InstanceTab)),
   );
   if (visibleTabIds.size === 0) tabs.forEach((item) => visibleTabIds.add(item));
+  // A diagnosis can lead to a tab hidden by the user's normal arrangement.
+  // Expose only that destination for this visit without saving new preferences.
+  if (location.state?.diagnosisTab === tab && supportedTabs.includes(tab as InstanceTab)) visibleTabIds.add(tab as InstanceTab);
   if (!supportedTabs.some((item) => visibleTabIds.has(item))) supportedTabs.forEach((item) => visibleTabIds.add(item));
   const orderedVisibleTabs = tabOrder.filter((item) => supportedTabs.includes(item) && visibleTabIds.has(item));
   const tabOrderKey = tabOrder.join("|");
@@ -304,17 +310,19 @@ export function InstancePage() {
   useEffect(() => {
     if (!instance) return;
     const colors = instanceArtworkColors(instance);
-    setInstanceName(instance.name);
     setIconKey(instance.iconKey || "cube");
     setIconBackground(colors.background);
     setIconForeground(colors.foreground);
+  }, [instance?.id,instance?.iconKey,instance?.iconBackground,instance?.iconForeground]);
+  useEffect(()=>{if(instance)setInstanceName(instance.name);},[instance?.id,instance?.name]);
+  useEffect(()=>{
+    if(!instance)return;
     setMemoryMinMb(instance.memoryMinMb);
     setMemoryMaxMb(instance.memoryMaxMb);
     setSettingsLoader(instance.loaderType);
     setSettingsMinecraftVersion(instance.minecraftVersion);
     setSettingsLoaderVersion(instance.loaderVersion ?? (instance.loaderType === "rust" ? "v0.2.96" : null));
-    setBedrockProfileMode(instance.bedrockProfileMode ?? "shared");
-  }, [instance?.id, instance?.name, instance?.iconKey, instance?.iconBackground, instance?.iconForeground, instance?.memoryMinMb, instance?.memoryMaxMb, instance?.minecraftVersion, instance?.loaderType, instance?.loaderVersion, instance?.bedrockProfileMode]);
+  }, [instance?.id, instance?.memoryMinMb, instance?.memoryMaxMb, instance?.minecraftVersion, instance?.loaderType, instance?.loaderVersion, instance?.bedrockProfileMode]);
   useEffect(() => {
     if (!instance || instance.loaderType !== "bedrock") {
       setBedrockRuntime(null);
@@ -768,7 +776,7 @@ export function InstancePage() {
   };
 
   const deleteInstance = async () => {
-    if (!await confirm({ title: uiText("installation.texts.deleteInstance"), description: uiText("audit.deleteInstanceWarning"), names: [instance.name] })) return;
+    if (!await confirm({ title: uiText("common.delete"), description: uiText("audit.deleteInstanceWarning"), names: [instance.name] })) return;
     setBusy(true);
     const pending = useAppStore.getState().deleteInstance(instance.id);
     navigate("/library", { replace: true });
@@ -894,10 +902,31 @@ export function InstancePage() {
         minecraftVersion: settingsMinecraftVersion,
         loaderType: settingsLoader,
         loaderVersion: settingsLoader === "vanilla" || settingsLoader === "bedrock" ? null : settingsLoaderVersion,
-        bedrockProfileMode: settingsLoader === "bedrock" ? bedrockProfileMode : "shared",
+        bedrockProfileMode: settingsLoader === "bedrock" ? instance.bedrockProfileMode : "shared",
       } satisfies UpdateInstanceRequest });
       await refresh();
       pushToast({ tone: "success", title: uiText("instance.texts.versionAndLoaderSaved", "Version and loader saved"), message: updated.status === "created" ? uiText("instance.texts.installTheInstanceAgainToApplyTheNewMinecraft", "Install the instance again to apply the new Minecraft version and loader.") : uiText("instance.texts.theVersionAndLoaderWereUpdated", "The version and loader were updated.") });
+    } catch (error) {
+      pushToast({ tone: "error", title: uiText("instance.texts.loaderWasNotSaved", "Loader was not saved"), message: String((error as { message?: string }).message ?? error) });
+    } finally {
+      setLoaderBusy(false);
+    }
+  };
+
+  const useSharedBedrockData = async () => {
+    setLoaderBusy(true);
+    try {
+      await command<Instance>("update_instance", { request: {
+        instanceId: instance.id,
+        name: instance.name,
+        iconKey: instance.iconKey,
+        iconBackground: instanceArtworkColors(instance).background,
+        iconForeground: instanceArtworkColors(instance).foreground,
+        memoryMinMb: instance.memoryMinMb,
+        memoryMaxMb: instance.memoryMaxMb,
+        bedrockProfileMode: "shared",
+      } satisfies UpdateInstanceRequest });
+      await refresh();
     } catch (error) {
       pushToast({ tone: "error", title: uiText("instance.texts.loaderWasNotSaved", "Loader was not saved"), message: String((error as { message?: string }).message ?? error) });
     } finally {
@@ -1113,7 +1142,7 @@ export function InstancePage() {
   const updateCandidates = updateChecks.filter((item) => item.status === "update");
   const currentContentCount = updateChecks.filter((item) => item.status === "current").length;
   const failedUpdateChecks = updateChecks.filter((item) => item.status === "error").length;
-  const hasStoreBedrockPackage = bedrockRuntime?.installedPackages.some((packageInfo) => packageInfo.signatureKind?.toLocaleLowerCase() === "store") ?? false;
+  const hasStoreBedrockPackage = bedrockRuntime?.installedPackages.some((packageInfo) => packageInfo.signatureKind?.toLocaleLowerCase() === "store" && bedrockPackageMatchesVersion(instance.minecraftVersion, packageInfo.version)) ?? false;
   const hasLinkedStoreAccount = bedrockRuntime?.microsoftAuthenticated === true && Boolean(bedrockRuntime.storeAccountXuid);
   const nativeInstallerReady = bedrockRuntime?.nativeInstallerAvailable === true || hasStoreBedrockPackage;
   const bedrockSetupChecks = bedrockRuntime ? [
@@ -1132,7 +1161,7 @@ export function InstancePage() {
         <div className={styles.identity}><h1>{instance.name}</h1><p>{uiText("settings.minecraft", "Minecraft")}{" "}{instance.minecraftVersion} · {instance.loaderType === "bedrock" ? uiText("installation.texts.bedrock", "Bedrock") : instance.loaderType}</p></div>
         <div className={styles.headerMeta}><span><Clock size={15} /> {formatPlaytime(instance.playtimeSeconds, locale, tr)}</span><span className={instance.status === "installed" ? common.successBadge : common.badge}>{tr(instance.status)}</span></div>
         <button className={common.secondaryButton} type="button" onClick={() => void revealInstancePath(instance.id, undefined, tab).catch((error) => pushToast({ tone: "error", title: uiText("installation.texts.folderCouldNotBeOpened", "Folder could not be opened"), message: String((error as { message?: string }).message ?? error) }))}><FolderActionIcon size={17} /> {tr(isBedrock ? uiText("instance.texts.gameData", "Game data") : uiText("common.folder", "Folder"))}</button>
-        <button className={instance.status === "running" ? `${launchStyles.playButton} ${launchStyles.killButton}` : common.button} type="button" disabled={busy || instanceOperationIds.includes(instance.id) || instance.status === "installing" || instance.status === "launching" || (isBedrock && bootstrap?.settings.bedrock.enabled === false && instance.status !== "running")} title={isBedrock && bootstrap?.settings.bedrock.enabled === false ? uiText("installation.texts.enableBedrockInSettingsFirst", "Enable Bedrock in Settings first") : undefined} onClick={() => void (instance.status === "running" ? kill() : launch())}>{busy || instanceOperationIds.includes(instance.id) || instance.status === "launching" ? <SpinnerGap className={styles.spin} size={17} /> : instance.status === "running" ? <X size={20} weight="bold" /> : <Play size={17} weight="fill" />} {instance.status === "running" ? uiText("installation.texts.kill", "Kill") : instance.status === "launching" ? uiText("installation.texts.launching", "Launching") : instance.status === "installed" ? uiText("common.play", "Play") : instance.status === "error" ? uiText("instance.texts.repair", "Repair") : uiText("installation.texts.install", "Install")}</button>
+        <button className={`${styles.launchButton} ${instance.status === "running" ? `${launchStyles.playButton} ${launchStyles.killButton}` : common.button}`} type="button" disabled={busy || instanceOperationIds.includes(instance.id) || instance.status === "installing" || instance.status === "launching" || (isBedrock && bootstrap?.settings.bedrock.enabled === false && instance.status !== "running")} title={isBedrock && bootstrap?.settings.bedrock.enabled === false ? uiText("installation.texts.enableBedrockInSettingsFirst", "Enable Bedrock in Settings first") : undefined} onClick={() => void (instance.status === "running" ? kill() : launch())}><MorphIcon size={20} icon={busy || instanceOperationIds.includes(instance.id) || instance.status === "launching" ? <SpinnerGap className={styles.spin} size={17} /> : instance.status === "running" ? <X size={20} weight="bold" /> : <Play size={17} weight="fill" />} /> {instance.status === "running" ? uiText("installation.texts.kill", "Kill") : instance.status === "launching" ? uiText("installation.texts.launching", "Launching") : instance.status === "installed" ? uiText("common.play", "Play") : instance.status === "error" ? uiText("instance.texts.repair", "Repair") : uiText("installation.texts.install", "Install")}</button>
       </header>
       <DetailTabs data-slh-context-menu="true" onContextMenu={openTabContextMenu}>
         {orderedVisibleTabs.map((item) => {
@@ -1162,10 +1191,10 @@ export function InstancePage() {
         {tab === "overview" ? (
           <div className={styles.overview}>
             <section><h2>{uiText("instance.texts.instance", "Instance")}</h2>{isBedrock ? <><dl><div><dt>{uiText("installation.texts.bedrockVersion", "Bedrock version")}</dt><dd>{instance.minecraftVersion}</dd></div><div><dt>{uiText("installation.texts.profile", "Profile")}</dt><dd>{tr(instance.bedrockProfileMode === "isolated" ? uiText("installation.texts.isolatedProfile", "Isolated profile") : uiText("installation.texts.sharedStoreData", "Shared Store data"))}</dd></div><div><dt>{uiText("settings.java", "Java")}</dt><dd>{uiText("instance.texts.notUsedByBedrock", "Not used by Bedrock")}</dd></div></dl><p>{uiText("instance.texts.worldsAddOnsAndResourcePacksAreManagedIn", "Worlds, add-ons, and resource packs are managed in Minecraft's Bedrock data folders.")}</p></> : <dl><div><dt>{uiText("library.version", "Version")}</dt><dd>{instance.minecraftVersion}</dd></div><div><dt>{uiText("library.loader", "Loader")}</dt><dd>{instance.loaderType.charAt(0).toUpperCase() + instance.loaderType.slice(1)}{instance.loaderVersion ? ` ${instance.loaderVersion}` : ""}</dd></div><div><dt>{uiText("installation.texts.memory", "Memory")}</dt><dd>{instance.memoryMinMb} {uiText("instance.texts.to", "to")} {instance.memoryMaxMb} {uiText("installation.texts.mb", "MB")}</dd></div><div><dt>{uiText("settings.java", "Java")}</dt><dd>{instance.javaPath ?? uiText("accounts.texts.automatic", "Automatic")}</dd></div><div><dt>{uiText("instance.texts.gameDirectory", "Game directory")}</dt><dd>{instance.gameDir}</dd></div></dl>}</section>
-            <section><h2>{uiText("instance.texts.healthAndPortability", "Health and portability")}</h2><div className={styles.health}><span className={instance.status === "installed" ? common.successBadge : common.warningBadge}>{instance.status === "installed" ? uiText("home.texts.ready", "Ready") : uiText("instance.texts.attention", "Attention")}</span><p>{instance.status === "installed" ? uiText("instance.texts.verifiedMetadataAndGameFilesAreInstalled", "Verified metadata and game files are installed.") : uiText("instance.texts.installOrRepairThisInstanceBeforeLaunching", "Install or repair this instance before launching.")}</p><div className={styles.healthActions}><button className={common.secondaryButton} type="button" disabled={busy || instance.status === "running"} onClick={() => void repair()}><ArrowClockwise size={16} /> {uiText("instance.texts.repair", "Repair")}</button><button className={common.secondaryButton} type="button" disabled={busy || instance.status === "running"} onClick={() => void openExportDialog()}><Export size={16} /> {uiText("installation.texts.export", "Export")}</button></div></div></section>
+            <section><h2>{uiText("instance.texts.healthAndPortability", "Health and portability")}</h2><div className={styles.health}><span className={instance.status === "installed" ? common.successBadge : common.warningBadge}>{instance.status === "installed" ? uiText("home.texts.ready", "Ready") : uiText("instance.texts.attention", "Attention")}</span><p>{instance.status === "installed" ? uiText("instance.texts.verifiedMetadataAndGameFilesAreInstalled", "Verified metadata and game files are installed.") : uiText("instance.texts.installOrRepairThisInstanceBeforeLaunching", "Install or repair this instance before launching.")}</p><div className={styles.healthActions}>{lastFailure ? <button className={common.secondaryButton} type="button" onClick={() => useAppStore.getState().showLaunchFailure(lastFailure)}><WarningCircle size={16} /> {uiText("launchDiagnosis.lastFailure", "Last launch error")}</button> : null}<button className={common.secondaryButton} type="button" disabled={busy || instance.status === "running"} onClick={() => void repair()}><ArrowClockwise size={16} /> {uiText("instance.texts.repair", "Repair")}</button><button className={common.secondaryButton} type="button" disabled={busy || instance.status === "running"} onClick={() => void openExportDialog()}><Export size={16} /> {uiText("installation.texts.export", "Export")}</button></div></div></section>
           </div>
         ) : (["mods", "resourcepacks", "shaders", "worlds", "screenshots"].includes(tab) || (isBedrock && tab === "logs")) ? (
-          contentBrowserOpen && isBedrock && ["mods", "resourcepacks", "worlds"].includes(tab) ? <div className={styles.embeddedBrowser}><BedrockCatalog category={tab === "mods" ? "addons" : tab === "resourcepacks" ? "resourcepacks" : "worlds"} minecraftVersion={instance.minecraftVersion} sharedProfile={instance.bedrockProfileMode !== "isolated"} onClose={() => setContentBrowserOpen(false)} onImported={() => setContentRevision((value) => value + 1)} onCategoryChange={(category) => { const nextTab = category === "addons" ? "mods" : category; if (nextTab === tab) return; preserveBedrockBrowserRef.current = true; navigate(`/instance/${instance.id}?tab=${nextTab}`); }} /></div>
+          contentBrowserOpen && isBedrock && ["mods", "resourcepacks", "worlds"].includes(tab) ? <div className={styles.embeddedBrowser}><BedrockCatalog category={tab === "mods" ? "addons" : tab === "resourcepacks" ? "resourcepacks" : "worlds"} minecraftVersion={instance.minecraftVersion} instanceId={instance.id} onClose={() => setContentBrowserOpen(false)} onImported={() => setContentRevision((value) => value + 1)} onCategoryChange={(category) => { const nextTab = category === "addons" ? "mods" : category; if (nextTab === tab) return; preserveBedrockBrowserRef.current = true; navigate(`/instance/${instance.id}?tab=${nextTab}`); }} /></div>
           : contentBrowserOpen && !isBedrock && tab !== "screenshots" ? <div className={styles.embeddedBrowser}><Suspense fallback={<div role="status">{uiText("common.texts.loading", "Loading")}</div>}><DiscoverPage embeddedInstanceId={instance.id} initialType={tab === "mods" ? "mod" : tab === "resourcepacks" ? "resourcepack" : tab === "shaders" ? "shader" : "world"} onClose={() => setContentBrowserOpen(false)} onInstalled={() => setContentRevision((value) => value + 1)} /></Suspense></div> : <div className={styles.fileIndex}>
             <header><div><h2>{tr(isBedrock && tab === "mods" ? uiText("installation.texts.addOns", "Add-ons") : isBedrock && tab === "logs" ? uiText("instance.texts.bedrockLogs", "Bedrock logs") : tabLabels[tab as InstanceTab])}</h2>{isBedrock && tab === "resourcepacks" ? <p>{uiText("instance.texts.bedrockVisualsUseResourcePacksAndVibrantVisualsJava", "Bedrock visuals use resource packs and Vibrant Visuals; Java shader packs are not compatible.")}</p> : null}{isBedrock && instance.bedrockProfileMode === "isolated" && ["mods", "resourcepacks", "worlds"].includes(tab) ? <p>{uiText("instance.texts.fileImportsOpenMinecraftSSharedAppProfileSwitch", "File imports open Minecraft's shared app profile. Switch to Shared Store data before importing to this instance.")}</p> : null}</div><div className={styles.fileActions}>
               {isBedrock ? <>
@@ -1174,7 +1203,7 @@ export function InstancePage() {
                 {tab === "worlds" ? <button className={common.secondaryButton} type="button" disabled={instance.bedrockProfileMode === "isolated"} onClick={() => void importBedrockFiles(["mcworld"], uiText("instance.texts.bedrockWorlds", "Bedrock worlds"))}><DownloadSimple size={16} /> {uiText("instance.texts.importWorld", "Import world")}</button> : null}
                 {tab === "logs" ? <button className={common.secondaryButton} type="button" onClick={() => void revealInstancePath(instance.id, instanceLogDirectory(instance.gameDir)).catch((error) => pushToast({ tone: "error", title: uiText("instance.texts.logFolderCouldNotBeOpened", "Log folder could not be opened"), message: String((error as { message?: string }).message ?? error) }))}><FolderOpen size={16} /> {uiText("instance.texts.logFolder", "Log folder")}</button> : null}
                 {tab !== "logs" ? <button className={common.secondaryButton} type="button" onClick={() => setContentRevision((value) => value + 1)}><ArrowClockwise size={16} /> {uiText("installation.texts.refresh", "Refresh")}</button> : null}
-              </> : contentProjectTypes[tab] ? <><button className={common.secondaryButton} type="button" disabled={contentActionBusy} onClick={() => setContentBrowserOpen(true)}><DownloadSimple size={16} /> {tr(contentDownloadLabels[tab])}</button><button className={common.secondaryButton} type="button" disabled={contentActionBusy} onClick={() => void updateContentNow()}>{contentActionBusy ? <SpinnerGap className={styles.spin} size={16} /> : <ArrowClockwise size={16} />} {uiText("discover.texts.update", "Update")}</button></> : null}
+              </> : contentProjectTypes[tab] ? <><button className={common.secondaryButton} type="button" disabled={contentActionBusy} onClick={() => setContentBrowserOpen(true)}><DownloadSimple size={16} /> {tr(contentDownloadLabels[tab])}</button><button className={common.secondaryButton} type="button" disabled={contentActionBusy} onClick={() => void updateContentNow()}><MorphIcon icon={contentActionBusy ? <SpinnerGap className={styles.spin} size={16} /> : <ArrowClockwise size={16} />} /> {uiText("discover.texts.update", "Update")}</button></> : null}
               {tab === "screenshots" ? <button className={common.secondaryButton} type="button" aria-pressed={screenshotsNewestFirst} onClick={() => setScreenshotsNewestFirst((current) => !current)}><Funnel size={16} /> {screenshotsNewestFirst ? uiText("instance.texts.newestFirst", "Newest first") : uiText("instance.texts.oldestFirst", "Oldest first")}</button> : null}<span className={common.badge}>{files.length} {tr(files.length === 1 ? uiText("instance.texts.item", "item") : uiText("instance.texts.items", "items"))}</span></div></header>
             {fileDropCategory(tab) ? <div className={styles.fileDropHint} role="status">
               <DownloadSimple size={18} />
@@ -1209,16 +1238,18 @@ export function InstancePage() {
                 <label className={common.field}><span className={common.label}>{uiText("installation.texts.instanceName", "Instance name")}</span><input className={common.input} maxLength={80} value={instanceName} onChange={(event) => setInstanceName(event.target.value)} /></label>
                 <div className={styles.artworkEditor}>
                   <InstanceArtwork instance={{ ...instance, iconKey, iconBackground, iconForeground }} size="small" />
-                  <div><strong>{uiText("installation.texts.instanceIcon", "Instance icon")}</strong><small>{uiText("instance.texts.chooseAPixelIconAndTwoCustomColors", "Choose a pixel icon and two custom colors.")}</small></div>
+                  <div><strong>{uiText("installation.texts.instanceIcon", "Instance icon")}</strong></div>
                 </div>
-                <div className={styles.iconPicker} role="radiogroup" aria-label={uiText("installation.texts.instanceIcon", "Instance icon")}>
-                  {instanceIconChoices.map(({ key, label, Icon }) => <button key={key} type="button" className={iconKey === key ? styles.iconSelected : ""} role="radio" aria-checked={iconKey === key} title={label} onClick={() => setIconKey(key)}><Icon size={20} /><span>{label}</span></button>)}
+                <div className={styles.appearanceTools}><div className={styles.instanceColors}>
+                  <label><span>{uiText("installation.texts.background", "Background")}</span><span><input type="color" value={iconBackground} onChange={event=>setIconBackground(event.target.value)} /><code>{iconBackground}</code></span></label>
+                  <label><span>{uiText("installation.texts.icon", "Icon")}</span><span><input type="color" disabled={!!readArtwork(iconKey).image} value={iconForeground} onChange={event=>setIconForeground(event.target.value)} /><code>{iconForeground}</code></span></label>
                 </div>
-                <div className={styles.instanceColors}>
-                  <label><span>{uiText("installation.texts.background", "Background")}</span><span><input type="color" value={iconBackground} onChange={(event) => setIconBackground(event.target.value)} /><code>{iconBackground}</code></span></label>
-                  <label><span>{uiText("installation.texts.icon", "Icon")}</span><span><input type="color" value={iconForeground} onChange={(event) => setIconForeground(event.target.value)} /><code>{iconForeground}</code></span></label>
-                </div>
-                <div className={styles.identityActions}><span>{uiText("common.folder", "Folder")}: <code>{instance.folderName}</code></span><button className={common.button} type="button" disabled={identityBusy || !instanceName.trim()} onClick={() => void saveIdentity()}>{identityBusy ? <SpinnerGap className={styles.spin} size={16} /> : <Check size={16} />} {uiText("instance.texts.saveChanges", "Save changes")}</button></div>
+                <div className={styles.basicIcons}>{instanceIconChoices.slice(0,8).map(({key,Icon})=><button type="button" className={common.secondaryButton} key={key} aria-label={uiText(`art.basic.${key}`)} aria-pressed={readArtwork(iconKey).icon===key&&!readArtwork(iconKey).image} onClick={()=>setIconKey(key)}><Icon size={24}/></button>)}</div>
+                <ArtworkEditor iconKey={iconKey} background={iconBackground} foreground={iconForeground} onChange={async(key,bg,fg)=>{
+                  await command<Instance>("update_instance",{request:{instanceId:instance.id,name:instance.name,iconKey:key,iconBackground:bg,iconForeground:fg,memoryMinMb:instance.memoryMinMb,memoryMaxMb:instance.memoryMaxMb}});
+                  await refresh();setIconKey(key);setIconBackground(bg);setIconForeground(fg);
+                }} /></div>
+                <div className={styles.identityActions}><span>{uiText("common.folder", "Folder")}: <code>{instance.folderName}</code></span><button className={common.button} type="button" disabled={identityBusy || !instanceName.trim()} onClick={() => void saveIdentity()}><MorphIcon icon={identityBusy ? <SpinnerGap className={styles.spin} size={16} /> : <Check size={16} />} /> {uiText("common.save", "Save")}</button></div>
               </div>
             </section>
             <section>
@@ -1233,13 +1264,13 @@ export function InstancePage() {
               </div> : isBedrock ? <div className={styles.loaderEditor}>
                 <label className={common.field}><span className={common.label}>{uiText("installation.texts.bedrockVersion", "Bedrock version")}</span><select className={common.select} value={settingsMinecraftVersion} onChange={(event) => setSettingsMinecraftVersion(event.target.value)}>{settingsMinecraftVersions.map((version) => <option value={version.id} key={version.id}>{version.id}</option>)}</select></label>
                 {loaderError ? <p className={styles.loaderError}><ErrorText message={loaderError} /></p> : null}
-                <div className={styles.memoryActions}><span>{uiText("instance.texts.chooseTheBedrockReleaseUsedByThisLauncherProfile", "Choose the Bedrock release used by this launcher profile.")}</span><button className={common.button} type="button" disabled={loaderBusy || loaderLoading || !settingsMinecraftVersion} onClick={() => void saveLoader()}>{loaderBusy ? <SpinnerGap className={styles.spin} size={16} /> : <Check size={16} />} {uiText("instance.texts.saveBedrockVersion", "Save Bedrock version")}</button></div>
+                <div className={styles.memoryActions}><span>{uiText("instance.texts.chooseTheBedrockReleaseUsedByThisLauncherProfile", "Choose the Bedrock release used by this launcher profile.")}</span><button className={common.button} type="button" disabled={loaderBusy || loaderLoading || !settingsMinecraftVersion} onClick={() => void saveLoader()}><MorphIcon icon={loaderBusy ? <SpinnerGap className={styles.spin} size={16} /> : <Check size={16} />} /> {uiText("common.save", "Save")}</button></div>
               </div> : <div className={styles.loaderEditor}>
                 <label className={common.field}><span className={common.label}>{uiText("discover.texts.minecraftVersion", "Minecraft version")}</span><select className={common.select} value={settingsMinecraftVersion} onChange={(event) => { setSettingsMinecraftVersion(event.target.value); setSettingsLoaderVersion(null); }}>{settingsMinecraftVersions.map((version) => <option value={version.id} key={version.id}>{version.id}</option>)}</select></label>
                 <label className={common.field}><span className={common.label}>{uiText("instance.texts.loaderType", "Loader type")}</span><select className={common.select} value={settingsLoader} onChange={(event) => { setSettingsLoader(event.target.value as Instance["loaderType"]); setSettingsLoaderVersion(null); }}><option value="vanilla">{uiText("instance.texts.vanilla", "Vanilla")}</option><option value="bedrock">{uiText("installation.texts.bedrock", "Bedrock")}</option><option value="fabric">{uiText("discover.texts.fabric", "Fabric")}</option><option value="forge">{uiText("discover.texts.forge", "Forge")}</option><option value="neoforge">{uiText("discover.texts.neoforge", "NeoForge")}</option><option value="quilt">{uiText("discover.texts.quilt", "Quilt")}</option></select></label>
                 {settingsLoader !== "vanilla" && settingsLoader !== "bedrock" ? <label className={common.field}><span className={common.label}>{tr(settingsLoader)} {uiText("installation.texts.version", "version")}</span><select className={common.select} value={settingsLoaderVersion ?? ""} disabled={loaderLoading || settingsLoaderVersions.length === 0} onChange={(event) => setSettingsLoaderVersion(event.target.value || null)}><option value="">{loaderLoading ? uiText("installation.texts.loadingCompatibleVersions", "Loading compatible versions") : uiText("instance.texts.selectACompatibleVersion", "Select a compatible version")}</option>{settingsLoaderVersions.map((item) => <option value={item.id} key={item.id}>{item.id}{item.recommended ? ` (${uiText("installation.texts.recommended", "recommended")})` : ""}</option>)}</select></label> : null}
                 {loaderError ? <p className={styles.loaderError}><ErrorText message={loaderError} /></p> : null}
-                <div className={styles.memoryActions}><span>{uiText("settings.minecraft", "Minecraft")}{" "}{instance.minecraftVersion} · {instance.loaderType}{instance.loaderVersion ? ` ${instance.loaderVersion}` : ""}</span><div className={styles.loaderActions}>{!isBedrock ? <button className={common.secondaryButton} type="button" disabled={loaderBusy || loaderLoading || instance.status === "running" || instance.status === "launching" || instance.status === "installing" || instanceOperationIds.includes(instance.id)} onClick={() => setVersionMigrationOpen(true)}><ArrowClockwise size={16} /> {uiText("installation.texts.adaptBuild", "Adapt build")}</button> : null}<button className={common.button} type="button" disabled={loaderBusy || loaderLoading || !settingsMinecraftVersion || (settingsLoader !== "vanilla" && settingsLoader !== "bedrock" && !settingsLoaderVersion)} onClick={() => void saveLoader()}>{loaderBusy ? <SpinnerGap className={styles.spin} size={16} /> : <Check size={16} />} {uiText("instance.texts.saveVersionAndLoader", "Save version and loader")}</button></div></div>
+                <div className={styles.memoryActions}><span>{uiText("settings.minecraft", "Minecraft")}{" "}{instance.minecraftVersion} · {instance.loaderType}{instance.loaderVersion ? ` ${instance.loaderVersion}` : ""}</span><div className={styles.loaderActions}>{!isBedrock ? <button className={common.secondaryButton} type="button" disabled={loaderBusy || loaderLoading || instance.status === "running" || instance.status === "launching" || instance.status === "installing" || instanceOperationIds.includes(instance.id)} onClick={() => setVersionMigrationOpen(true)}><ArrowClockwise size={16} /> {uiText("installation.texts.adaptBuild", "Adapt build")}</button> : null}<button className={common.button} type="button" disabled={loaderBusy || loaderLoading || !settingsMinecraftVersion || (settingsLoader !== "vanilla" && settingsLoader !== "bedrock" && !settingsLoaderVersion)} onClick={() => void saveLoader()}><MorphIcon icon={loaderBusy ? <SpinnerGap className={styles.spin} size={16} /> : <Check size={16} />} /> {uiText("common.save", "Save")}</button></div></div>
               </div>}
             </section>
             <section>
@@ -1247,15 +1278,7 @@ export function InstancePage() {
               {instance.loaderType !== "bedrock" ? <dl><div><dt>{uiText("settings.java", "Java")}</dt><dd>{instance.javaPath ?? uiText("accounts.texts.automatic", "Automatic")}</dd></div></dl> : null}
               {instance.loaderType === "bedrock" ? (
                 <div className={styles.memoryEditor}>
-                  {!hasStoreBedrockPackage ? (
-                    <label className={common.field}>
-                      <span className={common.label}>{uiText("instance.texts.bedrockProfile", "Bedrock profile")}</span>
-                      <select className={common.select} value={bedrockProfileMode} onChange={(event) => setBedrockProfileMode(event.target.value as "isolated" | "shared")}>
-                        <option value="isolated">{uiText("installation.texts.isolatedProfile", "Isolated profile")}</option>
-                        <option value="shared">{uiText("installation.texts.sharedStoreData", "Shared Store data")}</option>
-                      </select>
-                    </label>
-                  ) : null}
+                  <p>{uiText("bedrock.sharedDataNotice")}</p>
               <div className={styles.memoryActions}>
                     <span>{bedrockRuntimeBusy
                       ? uiText("instance.texts.checkingBedrockRuntime", "Checking Bedrock runtime")
@@ -1264,7 +1287,7 @@ export function InstancePage() {
                         : bedrockRuntime?.message ?? (bedrockRuntime?.launchReady ? uiText("instance.texts.bedrockReadyToLaunch", "Bedrock ready to launch") : uiText("instance.texts.bedrockNeedsMicrosoftStoreXboxSetup", "Bedrock needs Microsoft Store/Xbox setup"))}</span>
                     <div className={styles.bedrockRuntimeActions}>
                       {!hasStoreBedrockPackage ? <>
-                        <button className={common.button} type="button" disabled={bedrockSetupBusy} onClick={() => { setBedrockSetupError(bedrockRuntime?.message ?? null); setBedrockSetupDialogOpen(true); }}>{bedrockSetupBusy ? <SpinnerGap className={styles.spin} size={16} /> : <DownloadSimple size={16} />} {uiText("home.texts.prepareBedrock", "Prepare Bedrock")}</button>
+                        <button className={common.button} type="button" disabled={bedrockSetupBusy} onClick={() => { setBedrockSetupError(bedrockRuntime?.message ?? null); setBedrockSetupDialogOpen(true); }}><MorphIcon icon={bedrockSetupBusy ? <SpinnerGap className={styles.spin} size={16} /> : <DownloadSimple size={16} />} /> {uiText("home.texts.prepareBedrock", "Prepare Bedrock")}</button>
                         <button className={common.secondaryButton} type="button" onClick={() => { setBedrockRuntimeBusy(true); void command<BedrockRuntimeStatus>("bind_bedrock_store_account").then(setBedrockRuntime).catch((error) => setBedrockRuntimeError(String((error as { message?: string }).message ?? error))).finally(() => setBedrockRuntimeBusy(false)); }}>{uiText("instance.texts.bindStoreXboxAccount", "Bind Store/Xbox account")}</button>
                       </> : null}
                       <button className={common.secondaryButton} type="button" onClick={() => void command("open_bedrock_store").catch((error) => pushToast({ tone: "error", title: uiText("instance.texts.microsoftStoreCouldNotBeOpened", "Microsoft Store could not be opened"), message: String((error as { message?: string }).message ?? error) }))}>{uiText("instance.texts.microsoftStore", "Microsoft Store")}</button>
@@ -1281,17 +1304,17 @@ export function InstancePage() {
                   ) : (
                     <dl><div><dt>{uiText("instance.texts.boundXboxGamertag", "Bound Xbox gamertag")}</dt><dd>{bedrockRuntime?.storeAccountGamertag ?? (bedrockRuntime?.storeAccountXuid ? uiText("instance.texts.linked", "Linked") : uiText("instance.texts.required", "Required"))}</dd></div><div><dt>{uiText("instance.texts.nativeInstaller", "Native installer")}</dt><dd>{bedrockRuntime?.nativeInstallerAvailable ? uiText("instance.texts.available", "Available") : uiText("instance.texts.unavailable", "Unavailable")}</dd></div><div><dt>{uiText("instance.texts.license", "License")}</dt><dd>{bedrockRuntime?.minecraftLicense !== "unknown" ? bedrockRuntime?.minecraftLicense : bedrockRuntime?.storeAccountStatus === "ready" ? uiText("instance.texts.verified", "Verified") : uiText("instance.texts.checkedDuringInstallation", "Checked during installation")}</dd></div><div><dt>{uiText("instance.texts.gamingServices", "Gaming Services")}</dt><dd>{bedrockRuntime?.gamingServicesInstalled ? uiText("discover.texts.installedf8b32f", "Installed") : uiText("instance.texts.required", "Required")}</dd></div><div><dt>{uiText("instance.texts.gameinput", "GameInput")}</dt><dd>{bedrockRuntime?.gameInputInstalled ? uiText("discover.texts.installedf8b32f", "Installed") : uiText("instance.texts.required", "Required")}</dd></div>{bedrockRuntime?.developerMode ? <div><dt>{uiText("instance.texts.windowsDeveloperMode", "Windows Developer Mode")}</dt><dd>{uiText("instance.texts.availableForPackageRegistration", "Available for package registration")}</dd></div> : null}{bedrockRuntime?.wdappAvailable ? <div><dt>{uiText("instance.texts.wdapp", "wdapp")}</dt><dd>{uiText("instance.texts.developmentToolAvailable", "Development tool available")}</dd></div> : null}</dl>
                   )}
-                  {!hasStoreBedrockPackage ? <div className={styles.memoryActions}><span>{uiText("instance.texts.saveProfileModeBeforeLaunching", "Save profile mode before launching.")}</span><button className={common.button} type="button" disabled={loaderBusy || loaderLoading || !settingsMinecraftVersion} onClick={() => void saveLoader()}>{loaderBusy ? <SpinnerGap className={styles.spin} size={16} /> : <Check size={16} />} {uiText("instance.texts.saveBedrockSettings", "Save Bedrock settings")}</button></div> : null}
+                  {instance.bedrockProfileMode === "isolated" ? <div className={styles.memoryActions}><span>{uiText("bedrock.isolationUnavailable")}</span><button className={common.button} type="button" disabled={loaderBusy || instance.status === "running" || instance.status === "launching" || instance.status === "installing"} onClick={() => void useSharedBedrockData()}><MorphIcon icon={loaderBusy ? <SpinnerGap className={styles.spin} size={16} /> : <Check size={16} />} /> {uiText("bedrock.useSharedData")}</button></div> : null}
                 </div>
               ) : null}
               {instance.loaderType !== "bedrock" ? <div className={styles.memoryEditor}>
                 <label className={common.field}><span className={common.label}>{uiText("instance.texts.minimumMemoryMb", "Minimum memory (MB)")}</span><input className={common.input} type="number" min={256} step={256} value={memoryMinMb} onChange={(event) => setMemoryMinMb(Number(event.target.value) || 0)} /></label>
                 <label className={common.field}><span className={common.label}>{uiText("instance.texts.maximumMemoryMb", "Maximum memory (MB)")}</span><input className={common.input} type="number" min={256} step={256} value={memoryMaxMb} onChange={(event) => setMemoryMaxMb(Number(event.target.value) || 0)} /></label>
-          <div className={styles.memoryActions}><span>{(memoryMaxMb / 1024).toFixed(memoryMaxMb % 1024 === 0 ? 0 : 1)} {uiText("installation.texts.gb", "GB")} {uiText("installation.texts.maximum", "maximum")}</span><button className={common.button} type="button" disabled={memoryBusy} onClick={() => void saveMemory()}>{memoryBusy ? <SpinnerGap className={styles.spin} size={16} /> : <Check size={16} />} {uiText("instance.texts.saveMemory", "Save memory")}</button></div>
+          <div className={styles.memoryActions}><span>{(memoryMaxMb / 1024).toFixed(memoryMaxMb % 1024 === 0 ? 0 : 1)} {uiText("installation.texts.gb", "GB")} {uiText("installation.texts.maximum", "maximum")}</span><button className={common.button} type="button" disabled={memoryBusy} onClick={() => void saveMemory()}><MorphIcon icon={memoryBusy ? <SpinnerGap className={styles.spin} size={16} /> : <Check size={16} />} /> {uiText("common.save", "Save")}</button></div>
               </div> : null}
             </section>
             <section className={styles.dangerZone}>
-              <header><h2>{uiText("installation.texts.deleteInstance", "Delete instance")}</h2></header>
+              <header><h2>{uiText("common.delete", "Delete")}</h2></header>
               <div><span><strong>{instance.name}</strong><small>{isBedrock ? tr(instance.bedrockProfileMode === "isolated" ? uiText("instance.texts.deletingThisInstanceAlsoRemovesItsIsolatedBedrockWorlds", "Deleting this instance also removes its isolated Bedrock worlds and packs.") : uiText("instance.texts.sharedMinecraftWorldsAndPacksStayOnThisPc", "Shared Minecraft worlds and packs stay on this PC when deleting the launcher profile.")) : instance.gameDir}</small></span><button className={common.dangerButton} type="button" disabled={busy || instance.status === "running"} onClick={() => void deleteInstance()}><Trash size={16} /> {uiText("common.delete", "Delete")}</button></div>
             </section>
           </div>
@@ -1350,7 +1373,7 @@ export function InstancePage() {
             <header><span><h3>{uiText("instance.texts.filesAndFolders", "Files and folders")}</h3><small>{tr(isBedrock ? "Bedrock logs and account data are excluded." : uiText("instance.texts.logsCrashReportsAndAccountDataAreAlwaysExcluded", "Logs, crash reports, and account data are always excluded."))}</small></span><span className={styles.exportSelectionActions}><button type="button" onClick={() => setExportSelected([])}>{uiText("discover.texts.clearSelection", "Clear selection")}</button><button type="button" onClick={() => setExportSelected(exportEntries.map((entry) => entry.relativePath))}>{uiText("instance.texts.selectAll", "Select all")}</button></span></header>
             {exportLoading ? <div className={styles.exportState}><SpinnerGap className={styles.spin} size={18} /> {uiText("instance.texts.indexingFiles", "Indexing files")}</div> : <div className={styles.exportEntries}>{exportEntries.map((entry) => { const checked = exportSelected.includes(entry.relativePath); return <label key={entry.relativePath}><input type="checkbox" checked={checked} onChange={() => setExportSelected((current) => checked ? current.filter((item) => item !== entry.relativePath) : [...current, entry.relativePath])} /><span className={styles.exportEntryIcon}>{entry.isDirectory ? <FolderOpen size={17} /> : <File size={17} />}</span><span><strong>{entry.relativePath}</strong><small>{entry.files} {tr(entry.files === 1 ? uiText("installation.texts.file", "file") : uiText("installation.texts.files", "files"))}</small></span><b>{formatBytes(entry.sizeBytes)}</b></label>; })}</div>}
           </section>
-          <div className={styles.exportFooter}><span>{exportSelected.length} / {exportEntries.length} {uiText("instance.texts.selected", "selected")}</span><div><button className={common.secondaryButton} type="button" disabled={exportRunning} onClick={() => setExportDialogOpen(false)}>{uiText("common.cancel", "Cancel")}</button><button className={common.button} type="button" disabled={exportLoading || exportRunning || exportSelected.length === 0} onClick={() => void exportArchive()}>{exportRunning ? <SpinnerGap className={styles.spin} size={16} /> : <Export size={16} />} {uiText("installation.texts.export", "Export")}</button></div></div>
+          <div className={styles.exportFooter}><span>{exportSelected.length} / {exportEntries.length} {uiText("instance.texts.selected", "selected")}</span><div><button className={common.secondaryButton} type="button" disabled={exportRunning} onClick={() => setExportDialogOpen(false)}>{uiText("common.cancel", "Cancel")}</button><button className={common.button} type="button" disabled={exportLoading || exportRunning || exportSelected.length === 0} onClick={() => void exportArchive()}><MorphIcon icon={exportRunning ? <SpinnerGap className={styles.spin} size={16} /> : <Export size={16} />} /> {uiText("installation.texts.export", "Export")}</button></div></div>
         </div>
       </Dialog>
       <Dialog open={updateDialogOpen} title={uiText("instance.texts.updateInstalledContent", "Update installed content")} description={uiText("instance.texts.reviewCompatibleUpdatesBeforeChangingFilesInThisInstance", "Review compatible updates before changing files in this instance.")} onClose={() => { if (!updateRunning) setUpdateDialogOpen(false); }} width="medium">
@@ -1374,7 +1397,7 @@ export function InstancePage() {
           </div>
           <p className={styles.bedrockSetupHint}>{uiText("instance.texts.theXboxPlayerInsideBedrockCanDifferFromThe", "The Xbox player inside Bedrock can differ from the Store account. Check the Xbox app gamertag, then sign out and back in inside Minecraft if it shows the wrong player.")}</p>
           {bedrockSetupError ? <p className={styles.loaderError}>{bedrockSetupError}</p> : null}
-          <div className={styles.bedrockSetupActions}><button className={common.secondaryButton} type="button" disabled={bedrockSetupBusy} onClick={() => setBedrockSetupDialogOpen(false)}>{uiText("common.cancel", "Cancel")}</button><button className={common.secondaryButton} type="button" disabled={bedrockSetupBusy} onClick={() => void command("open_bedrock_store").catch((error) => setBedrockSetupError(String((error as { message?: string }).message ?? error)))}>{uiText("instance.texts.microsoftStore", "Microsoft Store")}</button><button className={common.secondaryButton} type="button" disabled={bedrockSetupBusy} onClick={() => void command("open_bedrock_xbox").catch((error) => setBedrockSetupError(String((error as { message?: string }).message ?? error)))}>{uiText("instance.texts.xboxApp", "Xbox app")}</button><button className={common.button} type="button" disabled={bedrockSetupBusy} onClick={() => void prepareBedrockRuntime()}>{bedrockSetupBusy ? <SpinnerGap className={styles.spin} size={16} /> : <DownloadSimple size={16} />} {bedrockSetupBusy ? uiText("instance.texts.preparingBedrock", "Preparing Bedrock") : uiText("instance.texts.downloadAndPrepare", "Download and prepare")}</button></div>
+          <div className={styles.bedrockSetupActions}><button className={common.secondaryButton} type="button" disabled={bedrockSetupBusy} onClick={() => setBedrockSetupDialogOpen(false)}>{uiText("common.cancel", "Cancel")}</button><button className={common.secondaryButton} type="button" disabled={bedrockSetupBusy} onClick={() => void command("open_bedrock_store").catch((error) => setBedrockSetupError(String((error as { message?: string }).message ?? error)))}>{uiText("instance.texts.microsoftStore", "Microsoft Store")}</button><button className={common.secondaryButton} type="button" disabled={bedrockSetupBusy} onClick={() => void command("open_bedrock_xbox").catch((error) => setBedrockSetupError(String((error as { message?: string }).message ?? error)))}>{uiText("instance.texts.xboxApp", "Xbox app")}</button><button className={common.button} type="button" disabled={bedrockSetupBusy} onClick={() => void prepareBedrockRuntime()}><MorphIcon icon={bedrockSetupBusy ? <SpinnerGap className={styles.spin} size={16} /> : <DownloadSimple size={16} />} /> {bedrockSetupBusy ? uiText("instance.texts.preparingBedrock", "Preparing Bedrock") : uiText("instance.texts.downloadAndPrepare", "Download and prepare")}</button></div>
         </div>
       </Dialog>
       <Dialog open={offlineNameDialogOpen} title={uiText("installation.texts.offlineLaunch", "Offline launch")} description={uiText("installation.texts.noInternetConnectionIsAvailableTheSelectedOnlineAccount", "No internet connection is available. The selected online account will remain selected; this launch uses a temporary offline identity only.")} onClose={() => setOfflineNameDialogOpen(false)} width="small">

@@ -1,5 +1,12 @@
 # Third-party visual assets
 
+## Animate UI and Motion
+
+- Animate UI: https://github.com/imskyleen/animate-ui, copyright (c) 2025 Elliot Sutton.
+- Used as part of SLH under MIT + Commons Clause; full license: `resources/licenses/Animate-UI.txt`.
+- Motion: https://motion.dev, MIT; full license: `resources/licenses/Motion-MIT.txt`.
+- Pixel icon contours remain from Pixelarticons; their normalized paths support Motion interpolation.
+
 ## Pixeloid Sans
 
 - Author: GGBotNet
@@ -12,7 +19,7 @@
 
 - Author: Gerrit Halfmann
 - Source: https://pixelarticons.com/
-- Package: `pixelarticons` 2.2.0
+- Package: `pixelarticons` 2.4.2
 - License: MIT
 
 Both assets are bundled locally so the portable launcher UI does not need a font or icon CDN.

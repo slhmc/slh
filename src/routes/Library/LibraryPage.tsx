@@ -37,7 +37,7 @@ import menuStyles from "../../components/shell/NavigationContextMenu.module.css"
 const panelActionLabels: Array<[string, string]> = [
   ["mods", "Mods"], ["resourcepacks", "Resource packs"], ["worlds", "Worlds"], ["screenshots", "Screenshots"],
   ["folder", "Folder"], ["logs", "Logs"], ["settings", "Settings"],
-  ["group", "Group"], ["export", "Export"], ["delete", "Delete instance"],
+  ["group", "Group"], ["export", "Export"], ["delete", "Delete"],
 ];
 
 function panelActionIcon(id: string) {
@@ -209,7 +209,7 @@ export function LibraryPage() {
 
   const deleteInstance = async (instance: Instance) => {
     if (deletingInstanceId || instance.status === "running" || instance.status === "installing" || instance.status === "launching") return;
-    if (!await confirm({ title: uiText("installation.texts.deleteInstance"), description: uiText("audit.deleteInstanceWarning"), names: [instance.name] })) return;
+    if (!await confirm({ title: uiText("common.delete"), description: uiText("audit.deleteInstanceWarning"), names: [instance.name] })) return;
     setDeletingInstanceId(instance.id);
     setContextMenu(null);
     try {

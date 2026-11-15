@@ -13,7 +13,7 @@ async fn setup() -> (tempfile::TempDir, AppState) {
     (root, state)
 }
 fn request(group: Option<String>) -> store::CreateServer {
-    store::CreateServer {
+    store::CreateServer { players: None,
         name: "Сервер & 100%!".into(),
         folder: "Сервер & 100% ! test".into(),
         group_id: group,
@@ -786,3 +786,225 @@ fn macos_system_temp_aliases_allow_real_files_but_reject_nested_symlinks() {
     assert!(super::store::plain_path(&linked.join("new-file.jar")).is_err());
 }
 
+
+#[tokio::test]
+async fn default_player_templates_apply_only_to_new_servers_and_use_actual_auth_mode() {
+    let (_root, state) = setup().await;
+    let original = store::create(&state, request(None)).await.unwrap();
+    let mut defaults = ServerDefaults::default();
+    defaults.players = serde_json::from_value(serde_json::json!({
+        "whitelist": [{"name":"Alex"}, {"name":"Alex"}],
+        "operators": [{"name":"Alex", "level":2}]
+    })).unwrap();
+    defaults.config.properties.insert("online-mode".into(), "true".into());
+    store::save_defaults(&state, serde_json::to_value(&defaults).unwrap()).await.unwrap();
+    assert_eq!(store::defaults(&state).await.unwrap().players.whitelist.len(), 2);
+    assert!(!Path::new(&original.path).join("whitelist.json").exists());
+    let mut create = request(None);
+    create.folder = "offline-template".into();
+    create.config.properties.insert("online-mode".into(), "false".into());
+    let server = store::create(&state, create).await.unwrap();
+    let lists = super::players::list(&state, &server.id).await.unwrap();
+    assert_eq!(lists.whitelist.len(), 1);
+    assert_eq!(lists.whitelist[0]["uuid"], crate::accounts::offline_uuid("Alex").to_string());
+    assert_eq!(lists.operators[0]["level"], 2);
+    assert_eq!(lists.operators[0]["bypassesPlayerLimit"], false);
+    let original_bytes = std::fs::read(Path::new(&server.path).join("ops.json")).unwrap();
+    defaults.players.operators.clear();
+    store::save_defaults(&state, serde_json::to_value(&defaults).unwrap()).await.unwrap();
+    store::update(&state, &server.id, &server.name, server.config.clone()).await.unwrap();
+    assert_eq!(std::fs::read(Path::new(&server.path).join("ops.json")).unwrap(), original_bytes);
+}
+
+#[tokio::test]
+async fn default_player_templates_validate_and_preserve_explicit_online_profiles() {
+    let (_root, state) = setup().await;
+    let mut defaults = ServerDefaults::default();
+    let id = "069a79f4-44e9-4726-a5be-fca90e38aaf5";
+    defaults.players = serde_json::from_value(serde_json::json!({"whitelist":[{"name":"Notch", "uuid":id}]})).unwrap();
+    store::save_defaults(&state, serde_json::to_value(&defaults).unwrap()).await.unwrap();
+    let server = store::create(&state, request(None)).await.unwrap();
+    assert_eq!(super::players::list(&state, &server.id).await.unwrap().whitelist[0]["uuid"], id);
+    for invalid in [serde_json::json!({"name":"Bad\nstop"}), serde_json::json!({"name":"Alex","uuid":"bad"}), serde_json::json!({"name":"Alex","level":5}), serde_json::json!({"name":"Alex","identityProvider":"unknown"})] {
+        defaults.players = serde_json::from_value(serde_json::json!({"operators":[invalid]})).unwrap();
+        assert!(store::save_defaults(&state, serde_json::to_value(&defaults).unwrap()).await.is_err());
+    }
+    let legacy: ServerDefaults = serde_json::from_value(serde_json::json!({})).unwrap();
+    assert!(legacy.players.whitelist.is_empty() && legacy.players.operators.is_empty());
+}
+
+#[tokio::test]
+async fn core_change_rejects_stale_properties_running_servers_and_runtime_switches() {
+    let (_root, state) = setup().await;
+    let server = store::create(&state, request(None)).await.unwrap();
+    let before = std::fs::read(Path::new(&server.path).join("server.properties")).unwrap();
+    let host = crate::host::Host::silent();
+    let error = super::providers::change_core(&host, &state, &server.id, server.config.clone(), Some("stale")).await.unwrap_err();
+    assert!(error.to_string().contains("changed on disk"));
+    let mut horizon = server.config.clone();
+    horizon.core = "horizon".into();
+    assert!(super::providers::change_core(&host, &state, &server.id, horizon, None).await.unwrap_err().to_string().contains("separate server"));
+    store::set_status(&state, &server.id, "running").await.unwrap();
+    assert!(super::providers::change_core(&host, &state, &server.id, server.config.clone(), None).await.is_err());
+    assert_eq!(std::fs::read(Path::new(&server.path).join("server.properties")).unwrap(), before);
+    assert_eq!(store::get(&state, &server.id).await.unwrap().config.core, server.config.core);
+}
+
+#[tokio::test]
+async fn creation_database_failure_rolls_back_profile_and_owned_files() {
+    let (_root, state) = setup().await;
+    sqlx::query("CREATE TRIGGER reject_server_creation BEFORE INSERT ON local_servers BEGIN SELECT RAISE(FAIL, 'fixture rejection'); END")
+        .execute(&state.database).await.unwrap();
+    let create = request(None);
+    let path = store::root(&state, &store::defaults(&state).await.unwrap()).join(&create.folder);
+    assert!(store::create(&state, create).await.is_err());
+    assert!(!path.exists());
+    let count: i64 = sqlx::query_scalar("SELECT count(*) FROM local_servers").fetch_one(&state.database).await.unwrap();
+    assert_eq!(count, 0);
+    std::fs::create_dir_all(&path).unwrap();
+    std::fs::write(path.join("world.dat"), b"existing").unwrap();
+    assert!(store::create(&state, request(None)).await.is_err());
+    assert_eq!(std::fs::read(path.join("world.dat")).unwrap(), b"existing");
+}
+
+#[tokio::test]
+async fn memory_changes_cannot_overwrite_core_installation_configuration() {
+    let (_root, state) = setup().await;
+    let server = store::create(&state, request(None)).await.unwrap();
+    store::set_status(&state, &server.id, "installing").await.unwrap();
+    assert!(store::update_memory(&state, &server.id, 512, 2048).await.is_err());
+    assert_eq!(store::get(&state, &server.id).await.unwrap().config.memory_max_mb, server.config.memory_max_mb);
+}
+
+#[tokio::test]
+async fn creation_player_override_replaces_defaults_and_applies_ban_metadata() {
+    let (_root, state) = setup().await;
+    let mut defaults = ServerDefaults::default();
+    defaults.players = serde_json::from_value(serde_json::json!({
+        "operators":[{"name":"DefaultAdmin", "identityProvider":"offline"}],
+        "bannedPlayers":[{"name":"DefaultBan", "identityProvider":"offline", "reason":"Default reason"}],
+        "bannedIps":[{"ip":"192.0.2.1", "reason":"Default IP reason"}]
+    })).unwrap();
+    store::save_defaults(&state, serde_json::to_value(&defaults).unwrap()).await.unwrap();
+    let mut inherited = request(None);
+    inherited.folder = "inherited-bans".into();
+    let inherited = store::create(&state, inherited).await.unwrap();
+    let lists = super::players::list(&state, &inherited.id).await.unwrap();
+    assert_eq!(lists.operators[0]["name"], "DefaultAdmin");
+    assert_eq!(lists.banned_players[0]["reason"], "Default reason");
+    assert_eq!(lists.banned_ips[0]["ip"], "192.0.2.1");
+    let mut create = request(None);
+    create.config.properties.insert("online-mode".into(), "false".into());
+    create.players = Some(serde_json::from_value(serde_json::json!({
+        "bannedPlayers":[{"name":"Alex", "reason":" Server reason "}],
+        "bannedIps":[{"ip":"2001:0db8::1", "reason":"First"},{"ip":"2001:db8::1", "reason":" Last "}]
+    })).unwrap());
+    let server = store::create(&state, create).await.unwrap();
+    let lists = super::players::list(&state, &server.id).await.unwrap();
+    assert!(lists.operators.is_empty() && lists.whitelist.is_empty());
+    assert_eq!(lists.banned_players[0]["uuid"], crate::accounts::offline_uuid("Alex").to_string());
+    assert_eq!(lists.banned_players[0]["reason"], "Server reason");
+    assert_eq!(lists.banned_players[0]["source"], "SLH");
+    assert_eq!(lists.banned_players[0]["expires"], "forever");
+    assert!(lists.banned_players[0]["created"].as_str().unwrap().len() > 10);
+    assert_eq!(lists.banned_ips.len(), 1);
+    assert_eq!(lists.banned_ips[0]["ip"], "2001:db8::1");
+    assert_eq!(lists.banned_ips[0]["reason"], "Last");
+    assert_eq!(store::defaults(&state).await.unwrap().players.banned_players[0].name, "DefaultBan");
+    let mut empty = request(None);
+    empty.folder = "explicit-empty-players".into();
+    empty.players = Some(Default::default());
+    let empty = store::create(&state, empty).await.unwrap();
+    for file in ["ops.json", "whitelist.json", "banned-players.json", "banned-ips.json"] { assert!(!Path::new(&empty.path).join(file).exists()); }
+}
+
+#[tokio::test]
+async fn incompatible_player_templates_fail_before_creation_and_legacy_edits_are_guarded() {
+    let (_root, state) = setup().await;
+    let mut create = request(None);
+    create.config.minecraft_version = "1.7.5".into();
+    create.config.core_version = "1.7.5".into();
+    create.players = Some(serde_json::from_value(serde_json::json!({"bannedIps":[{"ip":"192.0.2.1"}]})).unwrap());
+    let path = store::root(&state, &store::defaults(&state).await.unwrap()).join(&create.folder);
+    let error = store::create(&state, create).await.unwrap_err();
+    assert!(error.to_string().contains("serverPlayers.unsupportedCompatibility"));
+    assert!(!path.exists());
+    let mut create = request(None);
+    create.config.minecraft_version = "1.7.5".into();
+    create.config.core_version = "1.7.5".into();
+    create.config.properties.insert("white-list".into(), "true".into());
+    assert!(store::create(&state, create).await.is_err());
+    assert!(!path.exists());
+    let mut legacy = request(None);
+    legacy.config.minecraft_version = "1.7.5".into();
+    legacy.config.core_version = "1.7.5".into();
+    let legacy = store::create(&state, legacy).await.unwrap();
+    std::fs::write(Path::new(&legacy.path).join("white-list.txt"), b"Original\n").unwrap();
+    assert!(super::players::list(&state, &legacy.id).await.is_err());
+    let edit = super::players::PlayerEdit { kind:"whitelist".into(), action:"add".into(), name:"Alex".into(), uuid:None, identity_provider:Some("offline".into()), level:None, reason:None, expected_revision:"missing".into() };
+    assert!(super::players::edit(&state, &legacy.id, edit).await.err().unwrap().to_string().contains("serverPlayers.unsupportedCompatibility"));
+    assert!(!Path::new(&legacy.path).join("whitelist.json").exists());
+    assert_eq!(std::fs::read(Path::new(&legacy.path).join("white-list.txt")).unwrap(), b"Original\n");
+    for core in ["horizon", "custom"] {
+        let mut config = ServerConfig::default();
+        config.core = core.into(); config.minecraft_version = "26.3".into();
+        let rows = serde_json::from_value(serde_json::json!({"bannedIps":[{"ip":"192.0.2.1"}]})).unwrap();
+        assert!(super::players::resolve_defaults(&state, &path, &config, &rows).await.is_err());
+        assert!(super::players::resolve_defaults(&state, &path, &config, &Default::default()).await.is_ok());
+    }
+}
+
+#[test]
+fn player_list_capabilities_and_ban_validation_are_conservative() {
+    let mut config = ServerConfig::default();
+    for core in ["vanilla", "fabric", "forge", "quilt", "neoforge", "paper", "purpur", "leaf", "spigot", "bukkit"] {
+        config.core = core.into();
+        for version in ["1.7.6", "1.7.10", "1.8", "1.21.4", "26.1", "26.3"] {
+            config.minecraft_version = version.into(); assert!(super::players::supports_player_lists(&config), "{core} {version}");
+        }
+        for version in ["", "1.7.5", "1.6.4", "b1.7.3", "24w14a", "1.21-pre1", "26.1-snapshot-1", "1.21.4.5", "latest"] {
+            config.minecraft_version = version.into(); assert!(!super::players::supports_player_lists(&config), "{core} {version}");
+        }
+    }
+    for value in [serde_json::json!({"bannedIps":[{"ip":"bad"}]}), serde_json::json!({"bannedIps":[{"ip":"192.0.2.1", "reason":"Bad\nreason"}]}), serde_json::json!({"bannedPlayers":[{"name":"Alex", "reason":"Bad\nreason"}]})] {
+        let players = serde_json::from_value(value).unwrap();
+        assert!(super::players::validate_defaults(&players).is_err());
+    }
+}
+
+#[tokio::test]
+async fn unsupported_runtime_cannot_enable_whitelist_or_drop_existing_access_lists() {
+    let (_root, state) = setup().await;
+    let mut create = request(None);
+    create.config.minecraft_version = "1.7.5".into();
+    create.config.core_version = "1.7.5".into();
+    let legacy = store::create(&state, create).await.unwrap();
+    let mut config = legacy.config.clone();
+    config.properties.insert("white-list".into(), "true".into());
+    assert!(store::update(&state, &legacy.id, &legacy.name, config.clone()).await.unwrap_err().to_string().contains("serverPlayers.unsupportedCompatibility"));
+    // Respect an externally managed legacy .txt whitelist when saving unrelated settings.
+    store::write_properties(Path::new(&legacy.path), &config).unwrap();
+    config.memory_max_mb = 8192;
+    assert!(store::update(&state, &legacy.id, &legacy.name, config).await.is_ok());
+    let mut target = legacy.config.clone();
+    target.minecraft_version = "1.7.4".into();
+    target.core_version = "1.7.4".into();
+    target.properties.insert("white-list".into(), "false".into());
+    let root = Path::new(&legacy.path);
+    let host = crate::host::Host::silent();
+    for (filename, rows) in [
+        ("whitelist.json", serde_json::json!([{"name":"Alex","uuid":crate::accounts::offline_uuid("Alex").to_string()}])),
+        ("ops.json", serde_json::json!([{"name":"Alex","uuid":crate::accounts::offline_uuid("Alex").to_string(),"level":4}])),
+        ("banned-players.json", serde_json::json!([{"name":"Alex","uuid":crate::accounts::offline_uuid("Alex").to_string()}])),
+        ("banned-ips.json", serde_json::json!([{"ip":"192.0.2.1"}]))
+    ] {
+        let bytes = serde_json::to_vec(&rows).unwrap();
+        std::fs::write(root.join(filename), &bytes).unwrap();
+        assert!(super::providers::change_core(&host, &state, &legacy.id, target.clone(), None).await.unwrap_err().to_string().contains("serverPlayers.unsupportedCompatibility"));
+        assert!(store::update(&state, &legacy.id, &legacy.name, target.clone()).await.unwrap_err().to_string().contains("serverPlayers.unsupportedCompatibility"));
+        assert_eq!(std::fs::read(root.join(filename)).unwrap(), bytes);
+        std::fs::remove_file(root.join(filename)).unwrap();
+    }
+    target.properties.insert("white-list".into(), "true".into());
+    assert!(super::providers::change_core(&host, &state, &legacy.id, target, None).await.unwrap_err().to_string().contains("serverPlayers.unsupportedCompatibility"));
+}

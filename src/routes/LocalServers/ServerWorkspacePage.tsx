@@ -1,3 +1,7 @@
+import { defaultArtworkColors } from "../../components/instance/InstanceArtwork";
+import { ArtworkEditor } from "../../components/instance/ArtworkEditor";
+import identity from "../Instance/InstancePage.module.css";
+import { ColorInput } from "../../components/common/ColorInput";
 import { SettingLayout, SettingRow } from "../../components/settings/SettingControls";
 import { useServerStart } from "../../components/server/useServerStart";
 import { useServerLibraryStore } from "../../stores/serverLibraryStore";
@@ -71,6 +75,7 @@ export function ServerWorkspacePage() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [coreConfirm, setCoreConfirm] = useState(false);
   const dirty = useRef(false);
   const configEpoch = useRef(0);
   const [deleting, setDeleting] = useState(false);
@@ -155,20 +160,24 @@ export function ServerWorkspacePage() {
       setConfirm(null);
     }
   };
-  const save = async () => {
-    if (!draft) return;
+  const coreChanged = !!server && !!draft && ["core", "minecraftVersion", "coreVersion", "customJar"].some(key => server.config[key as keyof typeof server.config] !== draft.config[key as keyof typeof draft.config]);
+  const save = async (confirmedCore = false) => {
+    if (!draft || !server || !stoppedServer(server)) return;
+    if (coreChanged && !confirmedCore) { setCoreConfirm(true); return; }
+    setCoreConfirm(false);
     ++configEpoch.current;
     setBusy(true);
     setError("");
     try {
-      setDraft(
-        await command<LocalServer>("update_local_server", {
-          serverId,
-          name: draft.name,
-          config: draft.config,
-          expectedPropertiesRevision: draft.propertiesRevision ?? null,
-        }),
-      );
+      let updated = await command<LocalServer>(coreChanged ? "change_local_server_core" : "update_local_server", {
+        serverId, name: draft.name, config: draft.config,
+        expectedPropertiesRevision: draft.propertiesRevision ?? null,
+      });
+      if (coreChanged && updated.name !== draft.name) updated = await command<LocalServer>("update_local_server", {
+        serverId, name: draft.name, config: updated.config,
+        expectedPropertiesRevision: updated.propertiesRevision ?? null,
+      });
+      setDraft(updated);
       dirty.current = false;
       setSaved(true);
       await load();
@@ -395,7 +404,7 @@ export function ServerWorkspacePage() {
                 }}
                 mode="tabs"
                 value={draft.config}
-                pinned={server.installed}
+                pinned={server.installed && server.config.core === "horizon"}
                 onChange={(config) => {
                   ++configEpoch.current;
                   dirty.current = true;
@@ -433,10 +442,10 @@ export function ServerWorkspacePage() {
                 <Button
                   variant="primary"
                   busy={busy}
-                  disabled={!stoppedServer(server)}
+                  disabled={!stoppedServer(server) || coreChanged && (!draft.config.minecraftVersion || !draft.config.coreVersion || draft.config.core === "custom" && !draft.config.customJar)}
                   onClick={() => void save()}
                 >
-                  {t("common.save")}
+                  {t(coreChanged ? "serverTemplates.changeCore" : "common.save")}
                 </Button>
               </div>
             </fieldset>
@@ -453,41 +462,7 @@ export function ServerWorkspacePage() {
                     }
                   />
                 </SettingRow>
-                <div className={extra.identityPreview}><ServerArtwork id={server.id} size="icon" revision={iconRevision} presentation={{ collectionId: null, sortOrder: 0, origin: "managed", readiness: "ready", note: null, ...server.presentation, icon }} /><div className={extra.iconChoices}>
-                  {instanceIconChoices.map((choice) => (
-                    <Button
-                      key={choice.key}
-                      aria-pressed={icon.key === choice.key}
-                      onClick={() => setIcon({ ...icon, key: choice.key })}
-                    >
-                      <choice.Icon size={22} />
-                      {t(`serverLibrary.icons.${choice.key}`)}
-                    </Button>
-                  ))}
-                </div>
-                </div><div className={styles.grid}>
-                  {(["background", "foreground"] as const).map((key) => (
-                    <label className={styles.field} key={key}>
-                      <span>{t(`serverLibrary.${key}`)}</span>
-                      <input
-                        type="color"
-                        value={
-                          icon[key] ??
-                          getComputedStyle(document.documentElement)
-                            .getPropertyValue(
-                              key === "background"
-                                ? "--color-surface-2"
-                                : "--color-text",
-                            )
-                            .trim()
-                        }
-                        onChange={(e) =>
-                          setIcon({ ...icon, [key]: e.target.value })
-                        }
-                      />
-                    </label>
-                  ))}
-                </div>
+                <div className={identity.appearanceTools}><div className={identity.instanceColors}>{(["background","foreground"] as const).map(key=><label key={key}><span>{t(`serverLibrary.${key}`)}</span><ColorInput value={icon[key]??(key==="background"?defaultArtworkColors.background:defaultArtworkColors.foreground)} onChange={e=>setIcon({...icon,[key]:e.target.value})}/></label>)}</div><div className={identity.basicIcons}>{instanceIconChoices.slice(0,8).map(choice=><Button key={choice.key} aria-pressed={icon.key===choice.key} aria-label={t(`serverLibrary.icons.${choice.key}`)} onClick={()=>setIcon({...icon,key:choice.key})}><choice.Icon size={24}/></Button>)}</div><ArtworkEditor iconKey={icon.key??"server"} background={icon.background??defaultArtworkColors.background} foreground={icon.foreground??defaultArtworkColors.foreground} onChange={async(key,background,foreground)=>{const next={key,background,foreground};await command("save_server_artwork",{serverId,icon:next});setIcon(next);await load();}}/></div>
                 <div className={styles.actions}>
                   <Button
                     variant="primary"
@@ -544,6 +519,9 @@ export function ServerWorkspacePage() {
           <BusyIndicator />
         )}
       </section>
+      <Dialog open={coreConfirm} title={t("serverTemplates.changeCore")} description={t("serverTemplates.changeCoreHint")} onClose={() => setCoreConfirm(false)} footer={<><Button onClick={() => setCoreConfirm(false)}>{t("common.cancel")}</Button><Button variant="primary" disabled={busy || !stoppedServer(server)} onClick={() => void save(true)}>{t("serverTemplates.changeCore")}</Button></>}>
+        <p>{t(`localServers.cores.${server.config.core}`)} {server.config.minecraftVersion} → {t(`localServers.cores.${draft?.config.core ?? server.config.core}`)} {draft?.config.minecraftVersion}</p>
+      </Dialog>
       {deleting ? <DeleteServerDialog server={server} onClose={() => setDeleting(false)} onDeleted={() => navigate("/local-servers")} /> : null}
       <Dialog open={reloadConfirm} title={t("serverWorkspace.reloadSettings")} description={t("serverWorkspace.reloadWarning")} onClose={() => setReloadConfirm(false)} footer={<><Button onClick={() => setReloadConfirm(false)}>{t("common.cancel")}</Button><Button variant="primary" onClick={() => void reloadConfig()}>{t("serverWorkspace.reloadSettings")}</Button></>}>{null}</Dialog>
       {confirm ? (

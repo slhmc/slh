@@ -1,3 +1,6 @@
+import { defaultArtworkColors } from "../instance/InstanceArtwork";
+import { InstanceArtwork } from "../instance/InstanceArtwork";
+import type { Instance } from "../../lib/types";
 import { useEffect, useState } from "react";
 import { cachedServerIcon, refreshServerIcon } from "../../lib/serverIconCache";
 import type { ServerPresentation } from "../../lib/localServers";
@@ -38,6 +41,7 @@ export function ServerArtwork({
       (choice) => choice.key === (icon?.key ?? "server"),
     ) ?? instanceIconChoices[10]
   ).Icon;
+  if(icon?.key)return <InstanceArtwork size={size} instance={{loaderType:"vanilla",iconKey:icon.key,iconBackground:icon.background??defaultArtworkColors.background,iconForeground:icon.foreground??defaultArtworkColors.foreground} as Instance}/>;
   return (
     <LibraryArtwork
       size={size}

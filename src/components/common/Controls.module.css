@@ -10,7 +10,7 @@
 .busyIndicator { flex: none; }
 .progressLabel { display: inline-flex; align-items: center; gap: var(--space-2); }
 @media (prefers-reduced-motion: no-preference) {
-  .busyIndicator { animation: busyRotation 1s linear infinite; }
+  .busyIndicator { animation: busyRotation var(--motion-spinner-duration, 1s) linear infinite; }
 }
 @keyframes busyRotation { to { transform: rotate(360deg); } }
 

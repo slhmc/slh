@@ -9,5 +9,12 @@
 .search button[aria-pressed="true"] { border-color: var(--color-accent); background: var(--color-accent-soft); }
 .search .submit { width: auto; padding: 4px 8px; color: var(--color-accent); font: inherit; font-size: 0.8125rem; line-height: 1.4; }
 .providers img { width: 18px; height: 18px; }
+@media (max-width: 1500px) {
+  .search { flex-wrap: wrap; }
+  .search input { flex-basis: calc(100% - 88px); min-height: var(--control-height); }
+  .search .submit { flex: 1; min-width: 0; min-height: var(--control-height); white-space: normal; }
+}
 @media (hover: hover) { .search button:hover { background: var(--color-surface-2); } }
 @media (prefers-reduced-motion: no-preference) { .search button { transition: transform 150ms ease-out; } .search button:active { transform: scale(0.96); } }
+
+.random { width: 100%; margin-bottom: var(--space-3); }

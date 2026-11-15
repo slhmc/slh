@@ -513,15 +513,55 @@
     "orderNotSaved": "Die Reihenfolge der Instanzen wurde nicht gespeichert"
   },
   "settings": {
+    "animationSpeed": "Animationsgeschwindigkeit",
+    "animationOptions": "Animationseinstellungen",
+    "animationSpeedHint": "Höhere Werte sind schneller. Einzelne Geschwindigkeiten ersetzen die Gesamtgeschwindigkeit.",
+    "animationTypeSpeed": "{name}: Geschwindigkeit",
+    "animationReset": "Animationen zurücksetzen",
+    "animationKinds": {
+      "icons": "Symbole",
+      "buttons": "Schaltflächen",
+      "switches": "Schalter",
+      "dialogs": "Fenster"
+    },
+    "iconMorphing": "Sanfte Animationen",
+    "iconMorphingHint": "Symbole, Schaltflächen, Schalter und das Öffnen von Dialogen animieren.",
+    "ctrlPanelDrag": "Bereiche mit Strg verschieben",
+    "ctrlPanelDragHint": "Strg halten und Navigation, Tabs oder Seitenleiste an einen Fensterrand ziehen.",
     "character3d": "3D-Figureinstellungen",
     "syncRust": "Mit Rust-Instanzen synchronisieren",
     "syncRustDescription": "Rust-Instanzen in die Synchronisation von Optionen, Servern und anderen gewählten Dateien einbeziehen.",
     "rustMinecraft": "Minecraft in Rust",
     "rustMinecraftDescription": "Kompatible Horizon-Releases von GitHub. Erfordert Windows x64, Vulkan und ein Microsoft-Konto mit Minecraft. Java wird für die Vorbereitung passend zum Release gewählt.",
     "horizonFaq": "FAQ?",
+    "syncSetup": {
+      "chooseManual": "Instanz auswahlen",
+      "servers": "Serverliste",
+      "options": "Minecraft-Einstellungen",
+      "intro": "Teile ausgewählte Dateien zwischen deinen Instanzen auf diesem Computer.",
+      "create": "Synchronisierung erstellen",
+      "configured": "Eingerichtete Synchronisierungen",
+      "empty": "Noch keine Synchronisierungen",
+      "emptyHint": "Teile zum Beispiel deine Serverliste zwischen Instanzen. Beginne mit Synchronisierung erstellen.",
+      "content": "1. Was teilen",
+      "targets": "2. Welche Instanzen",
+      "source": "3. Quelle der ersten Kopie",
+      "sourceHint": "Wähle die Instanz, deren Dateien zuerst geteilt werden sollen. Vorhandene Dateien können ersetzt werden; SLH erstellt Sicherungen.",
+      "sharedHint": "Der gemeinsame Ordner verwendet bereits dort gespeicherte Dateien. Er kann leer sein.",
+      "auto": "Nach dem Erstellen werden Dateien vor dem Start, nach dem Beenden sowie beim Erstellen oder Importieren von Instanzen synchronisiert.",
+      "advanced": "Weitere Synchronisierungseinstellungen",
+      "worldRisk": "Weltensynchronisierung kann Spielstände ersetzen. Aktiviere sie in den weiteren Einstellungen; jede neue Synchronisierung erfordert eine Bestätigung.",
+      "selected": "{count} ausgewählte Instanzen",
+      "manual": "Quelle der manuellen Aktualisierung",
+      "remove": "Synchronisierung entfernen",
+      "enabled": "Synchronisierung aktiviert"
+    },
     "character": {
       "title": "Figur auf der Startseite",
       "description": "3D animiert die Figur. Bild zeigt deinen Skin in einer festen Pose. Aus blendet die Figur aus.",
+      "compactDescription": "3D, Bild oder aus.",
+      "offShort": "Aus",
+      "fpsLabel": "FPS",
       "followCursor": "Blick folgt dem Mauszeiger",
       "mode2": "2 · 3D",
       "mode1": "1 · Bild",
@@ -546,6 +586,8 @@
     "advanced": "Erweitert",
     "language": "Sprache",
     "languageDescription": "Lege Übersetzungen in data/languages ab. Änderungen werden automatisch übernommen.",
+    "rememberSettings": "Einstellungsbereich merken",
+    "rememberSettingsDescription": "Zuletzt besuchte Einstellungsseite öffnen.",
     "rememberLast": "Letzten Bereich merken",
     "rememberLastDescription": "Nach einem Neustart zur vorherigen Hauptansicht zurückkehren.",
     "hideOnLaunch": "Ausblenden, während Minecraft läuft",
@@ -558,6 +600,7 @@
     "interfaceScaleDescription": "Ändert die Größe der gesamten Launcher-Oberfläche, ohne die Minecraft-Auflösung zu verändern.",
     "interfaceFont": "Schriftart der Oberfläche",
     "interfaceFontDescription": "Die ausgewählte Schriftart wird sofort angewendet. Lokale Dateien werden nach data/fonts kopiert und ohne Neustart geladen.",
+    "instanceActionsAsList": "Aktionen als Liste anzeigen",
     "minimalism": "Minimalismus",
     "minimalismDescription": "Blendet sekundäre Beschriftungen und Beschreibungen aus und behält wichtige Steuerelemente und Symbole bei.",
     "navigationMenu": "Einstellungsnavigation",
@@ -874,7 +917,10 @@
     "servers": "Server",
     "errorReports": "Fehlerberichte",
     "errorReportsDescription": "Lokale Berichte zu Installationsfehlern, Downloads und Spielabstürzen werden im Ordner crash gespeichert.",
-    "openCrashFolder": "Ordner crash öffnen"
+    "openCrashFolder": "Ordner crash öffnen",
+    "animationButtonsHint": "Leichtes Verkleinern beim Drücken und sanfte Farbwechsel.",
+    "actionListOptions": "Darstellung der Aktionen",
+    "actionListHint": "Liste oder Raster getrennt wählen. Der Hauptschalter ändert beides."
   },
   "legacy": {
     "Sum of process working sets, including WebView2; shared pages may be counted more than once.": "Summe der Arbeitssätze von SLH und WebView2. Gemeinsam genutzte Speicherseiten können mehrfach gezählt werden.",
@@ -2136,6 +2182,7 @@
     }
   },
   "installation": {
+    "noMatchingVersions": "Keine passenden Versionen",
     "horizonVersionsHint": "Es werden nur Minecraft-Versionen mit geprüften Horizon-Releases angezeigt.",
     "horizonCompatibleRelease": "Kompatibles Horizon-Release verfügbar",
     "horizonClient": "Horizon-Client",
@@ -2919,7 +2966,7 @@
       "installing": "Installation läuft",
       "starting": "Wird gestartet",
       "running": "Läuft",
-      "stopping": "Speichern und stoppen",
+      "stopping": "Wird beendet",
       "stopped": "Gestoppt",
       "failed": "Fehler",
       "unmanaged": "Läuft · Steuerung unterbrochen"
@@ -3224,7 +3271,9 @@
     "applying": "Serverbefehl wird angewendet…",
     "liveIdentityHintV2": "Der laufende Server sucht Spieler anhand ihres Namens. Falls ein Spieler nicht gefunden wird, tritt zuerst dem Server bei und versuche es erneut. Die OP-Stufe legt der Server fest.",
     "liveUnavailable": "Starte den Server über SLH. Wenn die Steuerung verloren ging, starte ihn über SLH neu.",
-    "commandUnconfirmedV2": "Der Server hat die Änderung nicht bestätigt. Prüfe Konsole und Authentifizierung; tritt zuerst bei, falls der Spieler noch nie auf dem Server war."
+    "commandUnconfirmedV2": "Der Server hat die Änderung nicht bestätigt. Prüfe Konsole und Authentifizierung; tritt zuerst bei, falls der Spieler noch nie auf dem Server war.",
+    "liveLevelHint": "Minecraft weist neuen Operatoren im Betrieb die Berechtigungsstufe {level} zu. Andere Stufen lassen sich bei gestopptem Server wählen.",
+    "unsupportedCompatibility": "Standardlisten benötigen einen unterstützten Java-Kern und Release 1.7.6 oder neuer. Für diesen Kern oder diese Version die eigene Spielerverwaltung verwenden."
   },
   "serverMetrics": {
     "title": "Serverauslastung",
@@ -3320,7 +3369,9 @@
     "ruleExample": "minecraft:keep_inventory",
     "launchHint": "Java und Startargumente können nach dem Stoppen bearbeitet werden. RAM-Grenzen werden separat für den nächsten Start gespeichert.",
     "nativeMemory": "Automatisch (native Horizon-Engine)",
-    "fireHint": "Ausbreitungsradius: 0 deaktiviert die Ausbreitung, −1 hebt die Entfernungsgrenze auf."
+    "fireHint": "Ausbreitungsradius: 0 deaktiviert die Ausbreitung, −1 hebt die Entfernungsgrenze auf.",
+    "requestHint": "Neuen Wert wählen und Anwenden drücken. Diese Felder zeigen keine aktuellen Weltwerte; die Serverantwort erscheint unter der angewendeten Einstellung.",
+    "unsupportedCompatibility": "Integrierte Weltbefehle sind für diesen Kern oder diese Version nicht verfügbar. Die eigenen Konsolenbefehle verwenden."
   },
   "audit": {
     "deleteInstanceWarning": "Diese Instanz mit allen Dateien und Welten endgültig löschen?",
@@ -3367,5 +3418,224 @@
     "previous": "Zurück",
     "next": "Weiter",
     "close": "Schließen"
+  },
+  "launchDiagnosis": {
+    "title": "Minecraft wurde unerwartet beendet",
+    "details": "Diagnose anzeigen",
+    "lastFailure": "Fehler beim letzten Start",
+    "logs": "Protokoll öffnen",
+    "evidence": "Passende Protokollzeilen",
+    "exitCode": "Exit-Code: {code}",
+    "actions": {
+      "settings": "Instanzeinstellungen öffnen",
+      "mods": "Mods öffnen",
+      "logs": "Protokoll öffnen"
+    },
+    "causes": {
+      "java": {
+        "title": "Java-Version passt nicht",
+        "advice": "Laut Protokoll benötigt der Code eine neuere Java-Version. Prüfe die ausgewählte Java-Version und die Anforderungen der Mods in den Instanzeinstellungen."
+      },
+      "memory": {
+        "title": "Speicher konnte nicht reserviert werden",
+        "advice": "Prüfe das Speicherlimit der Instanz und den freien Arbeitsspeicher. Schließe andere Programme, bevor du das Limit erhöhst; auch nativer Speicher oder Grafikspeicher kann betroffen sein."
+      },
+      "dependencies": {
+        "title": "Eine passende Abhängigkeit fehlt",
+        "advice": "Der Loader meldet eine erforderliche Abhängigkeit. Prüfe den genannten Mod und die benötigte Version im Protokoll und installiere eine kompatible Abhängigkeit."
+      },
+      "duplicateMods": {
+        "title": "Doppelte Mods gefunden",
+        "advice": "Der Loader meldet doppelte Mod-IDs. Prüfe die Dateien unter Mods und deaktiviere die zusätzliche Kopie, nachdem du die benötigte Version geprüft hast."
+      },
+      "graphics": {
+        "title": "Grafik konnte nicht gestartet werden",
+        "advice": "Das Protokoll meldet einen Fenster- oder OpenGL-Fehler. Prüfe den Grafiktreiber und die Grafikanforderungen der Minecraft-Version."
+      },
+      "mods": {
+        "title": "Mods konnten nicht geladen werden",
+        "advice": "Das Protokoll meldet einen Mod-Kompatibilitäts- oder Mixin-Fehler. Prüfe die genannten Anforderungen und die letzten Änderungen. Ein Mod im Stacktrace ist nicht zwingend die Ursache."
+      },
+      "jvmArguments": {
+        "title": "Startparameter wurden abgelehnt",
+        "advice": "Das Protokoll meldet einen ungültigen oder doppelten Parameter. Prüfe eigene JVM-Argumente. Betrifft der Fehler eine Spieloption wie gameDir, aktualisiere SLH und füge bei erneutem Auftreten den Bericht bei."
+      },
+      "unknown": {
+        "title": "Ursache konnte nicht ermittelt werden",
+        "advice": "Im Startprotokoll wurde kein bekanntes Fehlermuster gefunden. Öffne das Protokoll und prüfe die letzten Fehler; der Exit-Code allein nennt keine Ursache."
+      }
+    }
+  },
+  "art": {
+    "changePhoto": "Foto ändern",
+    "help": "Hilfe",
+    "helpText": "Ziehen zum Verschieben, Griffe zum Skalieren. Umschalt erlaubt Strecken. Den oberen Griff oder eine Ecke zum Drehen ziehen. Strg + Mausrad ändert die Größe. Objekte rasten in der Mitte ein. Strg + Z macht rückgängig, Strg + Y oder Strg + Umschalt + Z stellt wieder her.",
+    "undo": "Rückgängig",
+    "redo": "Wiederholen",
+    "photo": "Foto wählen",
+    "saveError": "Grafik konnte nicht gespeichert werden. Erneut versuchen.",
+    "discardTitle": "Grafikänderungen verwerfen?",
+    "discard": "Änderungen verwerfen",
+    "discardDescription": "Die Änderungen im Editor wurden noch nicht gespeichert.",
+    "basic": {
+      "cube": "Block",
+      "package": "Paket",
+      "blocks": "Mods",
+      "sword": "Schwert",
+      "tree": "Baum",
+      "star": "Stern",
+      "gamepad": "Spiel",
+      "globe": "Welt"
+    },
+    "square": "Quadratisches Symbol",
+    "rectangle": "Rechteckiges Symbol",
+    "separate": "Quadratische und rechteckige Symbole getrennt bearbeiten",
+    "rotation": "Drehung (°)",
+    "resetPosition": "Position zurücksetzen",
+    "resetSize": "Größe zurücksetzen",
+    "resetRotation": "Drehung zurücksetzen",
+    "reset": "Zurücksetzen",
+    "resizeHint": "Ziehen zum Verschieben, Griffe zum Skalieren. Umschalt: Strecken. Außerhalb einer Ecke: Drehen. Strg + Mausrad: Größe.",
+    "content": "Symbol oder Foto",
+    "chooseIcon": "Symbol wählen",
+    "size": "Größe und Position",
+    "width": "Breite (%)",
+    "height": "Höhe (%)",
+    "center": "Zentrieren",
+    "screen": "Farbe vom Bildschirm aufnehmen",
+    "edit": "Symbol gestalten",
+    "apply": "Anwenden",
+    "color": "Farbe wählen",
+    "saturation": "Sättigung und Helligkeit",
+    "hue": "Farbton",
+    "picker": "Farbauswahl",
+    "launcher": "SLH",
+    "system": "System",
+    "drop": "PNG, JPEG oder WebP hier ablegen oder Datei wählen (bis 8 MB)",
+    "fileError": "Bild konnte nicht gelesen werden. Wähle PNG, JPEG oder WebP bis 8 MB.",
+    "remove": "Foto entfernen",
+    "fit": "Bildanpassung",
+    "cover": "Füllen und zuschneiden",
+    "contain": "Ganzes Bild einpassen",
+    "fill": "Strecken",
+    "blur": "Unscharfer Fotohintergrund",
+    "zoom": "Zoom",
+    "x": "Horizontale Position",
+    "y": "Vertikale Position",
+    "search": "Symbole nach Namen suchen",
+    "more": "Weitere Symbole",
+    "second": "Zweite Farbe",
+    "gradient": "Farbverlauf",
+    "angle": "Verlaufswinkel",
+    "dither": "Dithering"
+  },
+  "bedrock": {
+    "useSharedData": "Gemeinsame Daten verwenden",
+    "worldProfileUnavailable": "Importiere diese Welt in Minecraft. SLH konnte keinen eindeutigen Spielerordner ermitteln.",
+    "packageConflict": "Eine andere Version dieses Bedrock-Pakets ist in Windows installiert. Wähle die installierte Version in SLH. Eine parallele Installation wird noch nicht unterstützt.",
+    "versionChanged": "Windows hat dieses Bedrock-Paket aktualisiert oder ersetzt. Wähle vor dem Start die aktuell installierte Version in SLH.",
+    "isolationUnavailable": "Isolierte Profile werden für offizielle Bedrock-Pakete noch nicht unterstützt. Wähle gemeinsame Store-Daten, um fortzufahren.",
+    "closeBeforeImport": "Schließe Minecraft, bevor du Bedrock-Inhalte importierst.",
+    "packVersionIncompatible": "Dieses Paket benötigt eine neuere Minecraft-Version. Wähle eine kompatible Datei.",
+    "invalidWorld": "Diese Datei enthält keine gültige Bedrock-Welt.",
+    "importFailed": "Die Bedrock-Inhalte konnten nicht importiert werden.",
+    "contentInstalled": "Inhalt installiert",
+    "enableInWorld": "Aktiviere die Pakete in den Welteinstellungen in Minecraft.",
+    "sharedDataNotice": "Bedrock verwendet gemeinsame Spieldaten. Welten und Pakete werden von Profilen desselben Kanals gemeinsam genutzt."
+  },
+  "packFinder": {
+    "title": "Modpack finden",
+    "random": "Zufall",
+    "optional": "Minecraft-Java-Modpacks. Alle Fragen sind optional — ein Genre genügt.",
+    "find": "Modpack vorschlagen",
+    "genre": "Worauf hast du Lust?",
+    "any": "Keine Präferenz",
+    "technical": "Version, Modloader und Katalog",
+    "topic": "Name oder Thema",
+    "both": "Beide Kataloge",
+    "searching": "Wir suchen deine nächste Welt…",
+    "winner": "Dein bester Treffer",
+    "randomResult": "Ein Zufallsfund",
+    "similar": "Ähnliche Modpacks",
+    "another": "Anderer Vorschlag",
+    "edit": "Antworten ändern",
+    "why": "Warum dieses Modpack",
+    "randomHint": "Ein zufälliges Modpack aus verfügbaren Katalogen. Alle Antworten werden ignoriert.",
+    "partial": "Einige Anfragen waren nicht verfügbar: {providers}. Ergebnisse stammen aus den erreichbaren Katalogen.",
+    "noResults": "Kein passendes Modpack gefunden",
+    "noResultsHint": "Entferne eine Präferenz, ändere das Thema oder versuche Zufall.",
+    "noMore": "Keine weiteren ähnlichen Modpacks in dieser Auswahl. Ändere deine Antworten oder versuche Zufall.",
+    "catalogPick": "Ein beliebtes Modpack aus dem gewählten Katalog. Präferenzen verbessern den Vorschlag.",
+    "sizeHint": "Mod-Zahlen stammen, sofern vorhanden, aus der Beschreibung des Autors. Fehlende Angaben gelten nicht als Treffer.",
+    "modCount": "Der Autor beschreibt {count} Mods; die gewählte Version kann davon abweichen.",
+    "sizeUnknown": "Der Katalog nennt keine Mod-Zahl. Die gewünschte Größe konnte nicht geprüft werden.",
+    "lightweight": "Als leichtgewichtig markiert",
+    "offline": "Die Kataloge sind nicht erreichbar. Prüfe deine Verbindung oder wähle einen anderen Katalog.",
+    "questions": {
+      "size": "Wie viele Mods?",
+      "difficulty": "Wie anspruchsvoll soll es sein?",
+      "activity": "Was macht dir Spaß?",
+      "progression": "Welche Art von Fortschritt?",
+      "company": "Mit wem spielst du?"
+    },
+    "genres": {
+      "adventure": "Abenteuer",
+      "technology": "Technik",
+      "magic": "Magie",
+      "rpg": "RPG",
+      "survival": "Überleben",
+      "skyblock": "Skyblock",
+      "horror": "Horror",
+      "cozy": "Gemütlich & Landwirtschaft",
+      "pokemon": "Pokémon",
+      "vanilla": "Vanilla & Optimierung"
+    },
+    "options": {
+      "small": "Bis zu 100 Mods",
+      "medium": "101–250 Mods",
+      "large": "Mehr als 250 Mods",
+      "relaxed": "Entspannt",
+      "challenging": "Experten / anspruchsvoll",
+      "exploration": "Die Welt erkunden",
+      "building": "Bauen & dekorieren",
+      "automation": "Fabriken & Automatisierung",
+      "combat": "Kämpfe & Bosse",
+      "quests": "Quests & ein klares Ziel",
+      "sandbox": "Freie Sandbox",
+      "solo": "Alleine",
+      "friends": "Mit Freunden"
+    }
+  },
+  "serverTemplates": {
+    "location": "Ordner und Ports",
+    "playersHint": "Diese Spieler werden nur neuen Servern hinzugefügt. Profile werden anhand des Online-/Offline-Modus ermittelt. Vorlage nach Änderungen speichern.",
+    "whitelistHint": "Neue Server lassen bei aktivierter Liste nur diese Spieler zu. Bestehende Server behalten ihre Einstellungen.",
+    "worldHint": "Seed, Welttyp und Strukturen betreffen neu erzeugte Welten. Bestehende Welten werden dadurch nicht neu erstellt. Der Weltordner bestimmt die Welt beim nächsten Start.",
+    "coreHint": "Server zum Wechsel von Kern oder Version stoppen. Speichern installiert die Auswahl und behält Welten und Plugins. Ältere Minecraft-Versionen können bestehende Welten möglicherweise nicht öffnen.",
+    "changeCore": "Ausgewählten Kern installieren",
+    "changeCoreHint": "Kern und Minecraft-Version werden installiert; Welten bleiben erhalten. Vor einem Versionswechsel die Welt sichern: Ältere Versionen können sie eventuell nicht öffnen.",
+    "nextStart": "Einstellungen für den nächsten Start",
+    "worldCommands": "Weltbefehle",
+    "horizonPinned": "Für eine andere Horizon-Version einen separaten Server erstellen. Diese experimentelle Laufzeit kann noch nicht direkt ersetzt werden.",
+    "creationPlayersHint": "Diese Listen gelten nur für diesen neuen Server.",
+    "unsupportedField": "Diese Einstellung ist für den gewählten Kern oder die Version nicht verfügbar.",
+    "clearUnsupported": "Geerbte Einträge entfernen und die Whitelist ausschalten oder einen unterstützten Kern und eine Version wählen.",
+    "creationWhitelistHint": "Bei aktivierter Whitelist können nur Spieler aus der Liste beitreten."
+  },
+  "packRandom": {
+    "hint": "Genres und Downloadzahl wählen. Eines der gewählten Genres genügt; ohne Auswahl gelten alle.",
+    "downloads": "Downloadzahl",
+    "target": "Anzahl der Downloads",
+    "modes": {
+      "any": "Beliebige Anzahl",
+      "more": "Mehr als X",
+      "less": "Weniger als X",
+      "closest": "Möglichst nahe an X"
+    },
+    "pick": "Modpack auswählen",
+    "scope": "Verwendet verfügbare Kataloge. Die nächste Downloadzahl wird unter den gefundenen passenden Projekten gewählt.",
+    "invalidDownloads": "Eine ganze Downloadzahl ab null eingeben.",
+    "empty": "Kein passendes Modpack gefunden. Genres oder Downloadzahl ändern und erneut versuchen.",
+    "missingProject": "Dieses Projekt ist in dieser Sitzung nicht mehr verfügbar. Über Zufall ein anderes Modpack wählen."
   }
 }

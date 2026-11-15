@@ -30,7 +30,7 @@ export function ToastCenter() {
   useEffect(() => {
     if (destination !== "windows") return;
     for (const toast of toasts) {
-      if (toast.brief || toast.reportPath || engine.diagnosticReportPath(toast.message) || attempted.current.has(toast.id)) continue;
+      if (toast.brief || toast.reportPath || toast.action?.launchFailure || engine.diagnosticReportPath(toast.message) || attempted.current.has(toast.id)) continue;
       attempted.current.add(toast.id);
       const message = toast.message.trim();
       const body = toast.tone === "success"
@@ -45,7 +45,7 @@ export function ToastCenter() {
   }, [destination, dismiss, isLocalized, toasts, tr]);
 
   const visibleToasts = destination === "windows"
-    ? toasts.filter((toast) => toast.brief || toast.reportPath || engine.diagnosticReportPath(toast.message) || fallbackIds.has(toast.id))
+    ? toasts.filter((toast) => toast.brief || toast.reportPath || toast.action?.launchFailure || engine.diagnosticReportPath(toast.message) || fallbackIds.has(toast.id))
     : toasts;
   if (visibleToasts.length === 0) return null;
   return (
@@ -65,7 +65,9 @@ export function ToastCenter() {
               <strong>{tr(toast.title, toast.params)}</strong>
               {toast.tone === "error" && message ? <ErrorText message={message} reportPath={toast.reportPath} /> : visibleMessage ? <p>{visibleMessage}</p> : null}
               {toast.action ? <button className={styles.action} type="button" onClick={() => {
-                if (toast.action?.message) {
+                if (toast.action?.launchFailure) {
+                  useAppStore.getState().showLaunchFailure(toast.action.launchFailure);
+                } else if (toast.action?.message) {
                   pushToast({
                     tone: "info",
                     title: toast.action.title ?? "Why?",
@@ -74,7 +76,7 @@ export function ToastCenter() {
                 } else if (toast.action?.url) {
                   void openUrl(toast.action.url).catch(() => window.open(toast.action!.url, "_blank", "noopener,noreferrer"));
                 }
-                dismiss(toast.id);
+                if (!toast.action?.launchFailure) dismiss(toast.id);
               }}>{tr(toast.action.label)}</button> : null}
             </div>
             <button className={common.iconButton} type="button" onClick={() => dismiss(toast.id)} aria-label={uiText("common.texts.dismissNotification", "Dismiss notification")}>

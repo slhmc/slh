@@ -559,6 +559,9 @@ async fn prepare_and_spawn(
         };
         let was_killed = state.kill_requested.write().await.remove(&instance_id);
         let result = if was_killed { "killed" } else { result };
+        let diagnosis = if result == "crashed" && instance.loader_type != "rust" {
+            Some(crate::diagnostics::diagnose_game_log_file(&log_path).await)
+        } else { None };
         let crash_report = if result == "crashed" {
             let error = AppError::Process(format!("Minecraft exited with code {exit_code:?}"));
             crate::diagnostics::record(&state, error, "launch", "game-process", Some(&instance_id), Some(&log_path))
@@ -613,6 +616,7 @@ async fn prepare_and_spawn(
                 "instanceId": instance_id,
                 "state": result,
                 "reportPath": crash_report,
+                "diagnosis": diagnosis,
                 "exitCode": exit_code,
                 "durationSeconds": duration
             }),

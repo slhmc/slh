@@ -1,6 +1,5 @@
 import { useUiText } from "../../i18n/UiText";
 import { BeautifulHomePage } from "./BeautifulHomePage";
-import { HomeDiscoverSearch } from "./HomeDiscoverSearch";
 import { ArrowRight, Clock, CloudArrowDown, Coffee, Plus, UserCircle } from "../../components/icons";
 import { useNavigate } from "react-router-dom";
 import { useAppStore } from "../../stores/appStore";
@@ -39,7 +38,6 @@ function ClassicHomePage() {
       <div className={styles.dashboard}>
         <section className={styles.continuePanel}>
           <div className={styles.panelHeading}><h2>{uiText("home.texts.continuePlaying", "Continue playing")}</h2><span>{recent.length} {uiText("home.texts.recent", "recent")}</span></div>
-          <HomeDiscoverSearch />
           <div className={styles.recentList}>
             {recent.length === 0 ? <p className={styles.empty}>{uiText("home.texts.yourRecentlyPlayedInstancesWillAppearHere", "Your recently played instances will appear here.")}</p> : recent.map((instance) => (
               <button

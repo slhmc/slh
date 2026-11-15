@@ -1,5 +1,16 @@
 # Языки SLH
 
+Настройки отдельных анимаций используют `settings.animationKinds`,
+`animationOptions`, `animationSpeed`, `animationSpeedHint`, `animationReset`
+и `animationTypeSpeed` (параметр `{name}`). Статус сервера `stopping`
+использует короткую подпись «Останавливается».
+
+Настройка анимации использует `settings.iconMorphing` и `settings.iconMorphingHint`.
+Оба ключа есть в EN/RU/DE и шаблоне, без параметров; пользовательские каталоги
+при обновлении не перезаписываются.
+
+Диагностика вылетов использует секцию `launchDiagnosis`: заголовок, действия, категории причин и рекомендации. `exitCode` сохраняет параметр `{code}`. Строки журнала остаются техническими данными и не переводятся.
+
 Подпись вкладки кастомной сборки — `installation.customSource`. Последний пункт выбора группы — `installation.createGroup`; он открывает ввод имени и создаёт выбранную группу после подтверждения.
 
 Настройки подгонки названий, окна Minecraft и Java находятся в секции `settings`. Категории каталога используют `discover.categories`, `discover.allCategories` и `discover.categoriesUnavailable`; их названия приходят от провайдера и считаются содержимым. Короткие уведомления используют секцию `notifications`, сообщение масштаба — `notifications.scaleChanged` с параметром `percent`. Ошибка несовместимой Java — `errors.javaCompatibility` с параметрами `required` и `actual`.
@@ -54,3 +65,11 @@ SLH не переводит названия сборок игрока, имен
 Для разработчиков: добавляйте ключи одновременно в EN/RU/DE, сохраняйте параметры, запускайте `npm run check:ui` и следуйте `style/UI_STYLE_GUIDE.md`. Адаптер `legacy` поддерживает старые файлы без замены текста в DOM.
 
 Строки утверждённого UX-аудита и системного оформления используют секцию audit. Новые ключи встроены в EN/RU/DE и шаблон; пользовательские языковые файлы не перезаписываются. Известные сообщения провайдеров локализуются в UI, неизвестные сохраняются. Названия OS и поставщиков не переводятся.
+
+Настройки вида действий: `settings.actionListOptions`, `actionListHint`; пояснение отклика кнопок — `settings.animationButtonsHint`. Общий список применяется к сборкам и серверам, отдельный выбор открывается через «…».
+
+Раздел `serverTemplates` содержит подписи шаблона игроков, генерации мира и смены ядра. `serverLive.requestHint` отделяет команду от текущего значения мира, `serverPlayers.liveLevelHint` сохраняет параметр `{level}`.
+
+Совместимость серверов: `serverPlayers.unsupportedCompatibility`, `serverLive.unsupportedCompatibility`, `serverTemplates.unsupportedField`, `clearUnsupported`; подсказки создания — `creationPlayersHint`, `creationWhitelistHint`.
+
+«Рандом» использует секцию `packRandom` и существующие жанры `packFinder.genres`. Старые строки опроса сохраняются для совместимости языковых файлов, но не показываются.

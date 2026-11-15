@@ -71,6 +71,7 @@ function pixelIcon(Source: PixelSource) {
         width={size}
         height={size}
         shapeRendering="crispEdges"
+        data-loading-icon={Source === Loader ? true : undefined}
         aria-hidden={props["aria-label"] ? undefined : true}
       />
     );

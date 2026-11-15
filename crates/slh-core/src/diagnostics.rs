@@ -2,6 +2,8 @@
 //! variables or launch arguments; game log excerpts are bounded and redacted.
 use std::{io::{Read, Seek, SeekFrom}, path::Path};
 use crate::{error::AppError, state::AppState};
+mod game;
+pub use game::{GameDiagnosis, diagnose_game_log, diagnose_game_log_file};
 
 pub fn validate_report_path(paths: &crate::portable::PortablePaths, path: &Path) -> crate::error::AppResult<std::path::PathBuf> {
     let directory = paths.root.join("crash").canonicalize()?;
@@ -98,6 +100,7 @@ pub async fn record(state: &AppState, error: AppError, operation: &str, stage: &
         advice(&error), serde_json::to_string_pretty(&report).unwrap_or_default());
     let directory = state.paths.root.join("crash");
     let log = log.map(Path::to_path_buf);
+    let game_launch = operation == "launch";
     let written = tokio::task::spawn_blocking(move || -> std::io::Result<String> {
         let mut body = body;
         if let Some(log) = log {
@@ -110,6 +113,10 @@ pub async fn record(state: &AppState, error: AppError, operation: &str, stage: &
                 // Drop a partial first line instead of exposing a cut-off credential.
                 let excerpt = if start > 0 { bytes.iter().position(|b| *b == b'\n').map_or(&[][..], |p| &bytes[p+1..]) } else { &bytes };
                 let excerpt = String::from_utf8_lossy(excerpt);
+                if game_launch {
+                    body.push_str("\nDiagnosis:\n");
+                    body.push_str(&serde_json::to_string_pretty(&diagnose_game_log(&excerpt)).unwrap_or_default());
+                }
                 if let Some(hint) = game_log_hint(&excerpt) {
                     body.push_str("\nПодсказка по журналу / Log hint:\n");
                     body.push_str(hint);

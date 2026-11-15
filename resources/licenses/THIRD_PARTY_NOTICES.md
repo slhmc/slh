@@ -12,7 +12,7 @@
 
 - Author: Gerrit Halfmann
 - Source: https://pixelarticons.com/
-- Package: `pixelarticons` 2.2.0
+- Package: `pixelarticons` 2.4.2
 - License: MIT
 
 Both assets are bundled locally so the portable launcher UI does not need a font or icon CDN.

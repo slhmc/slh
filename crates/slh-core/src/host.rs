@@ -27,6 +27,8 @@ pub struct LaunchState {
     pub duration_seconds: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub report_path: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub diagnosis: Option<crate::diagnostics::GameDiagnosis>,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -163,7 +165,7 @@ mod tests {
     }
     #[test]
     fn crash_report_survives_typed_event_conversion() {
-        let payload = serde_json::json!({"instanceId":"pack","state":"crashed","exitCode":1,"reportPath":"E:/SLH/crash/slh-test.txt"});
+        let payload = serde_json::json!({"instanceId":"pack","state":"crashed","exitCode":1,"reportPath":"E:/SLH/crash/slh-test.txt","diagnosis":{"kind":"java","evidence":["UnsupportedClassVersionError"]}});
         let event = payload.clone().into_event(EventKind::LaunchState).unwrap();
         assert_eq!(event.wire().unwrap().unwrap().1, payload);
     }

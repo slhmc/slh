@@ -80,7 +80,7 @@ mod tests {
         let state = AppState::initialize_isolated_at(paths).await.unwrap();
         let config = super::super::config::ServerConfig { core: "horizon".into(), minecraft_version: "26.3".into(), core_version: "v0.2.97".into(),
             eula_accepted: true, java_path: Some(std::env::current_exe().unwrap().to_string_lossy().into_owned()), ..Default::default() };
-        let request = || super::super::store::CreateServer { name: "Rust server".into(), folder: "rust-server".into(), group_id: None, config: config.clone() };
+        let request = || super::super::store::CreateServer { players: None, name: "Rust server".into(), folder: "rust-server".into(), group_id: None, config: config.clone() };
         assert!(super::super::store::create(&state, request()).await.is_err());
         let mut general = crate::database::setting(&state.database, "general").await.unwrap();
         general["rustMinecraft"] = true.into();

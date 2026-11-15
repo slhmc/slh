@@ -1,3 +1,4 @@
+import { MorphIcon } from "../common/MorphIcon";
 import { ErrorText } from "../common/ErrorText";
 import { formatBytes } from "../../lib/formatters";
 import { useUiText } from "../../i18n/UiText";
@@ -185,7 +186,7 @@ export function InstanceVersionMigrationDialog({ instance, onClose, onCreated }:
       {relevantLookupWarnings.length > 0 ? <div className={styles.error}>{uiText("installation.texts.sourceLookupFailedForSomeFiles", "Source lookup failed for some files")}: {relevantLookupWarnings.join(" · ")}</div> : null}
       {[loaderError, error].filter(Boolean).map((message) => <div className={styles.error} key={message}><WarningCircle size={16} /> <ErrorText message={message!} /></div>)}
       </aside>
-      <div className={styles.footer}><span>{targetVersion ? `${updates.length} ${uiText("installation.texts.compatibleUpdatesSelected", "compatible updates selected")}` : uiText("installation.texts.chooseAReleaseToCheckInstalledContent", "Choose a release to check installed content.")}</span><div><button className={common.secondaryButton} type="button" disabled={creating} onClick={onClose}>{uiText("common.cancel", "Cancel")}</button><button className={common.button} type="button" disabled={!targetVersion || initialLoading || checking || creating || Boolean(loaderError)} onClick={() => void createCopy()}>{creating ? <SpinnerGap className={styles.spin} size={16} /> : <Check size={16} />}{creating ? uiText("installation.texts.creatingCopy", "Creating copy") : uiText("installation.texts.createVersionCopy", "Create version copy")}</button></div></div>
+      <div className={styles.footer}><span>{targetVersion ? `${updates.length} ${uiText("installation.texts.compatibleUpdatesSelected", "compatible updates selected")}` : uiText("installation.texts.chooseAReleaseToCheckInstalledContent", "Choose a release to check installed content.")}</span><div><button className={common.secondaryButton} type="button" disabled={creating} onClick={onClose}>{uiText("common.cancel", "Cancel")}</button><button className={common.button} type="button" disabled={!targetVersion || initialLoading || checking || creating || Boolean(loaderError)} onClick={() => void createCopy()}><MorphIcon icon={creating ? <SpinnerGap className={styles.spin} size={16} /> : <Check size={16} />} />{creating ? uiText("installation.texts.creatingCopy", "Creating copy") : uiText("installation.texts.createVersionCopy", "Create version copy")}</button></div></div>
     </div>
   </Dialog>;
 }

@@ -35,7 +35,7 @@
 .buildInfo > div:nth-child(2) { display: grid; gap: 5px; min-width: 0; flex: 1; }
 .buildInfo strong { font-size: 1.1875rem; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .buildInfo small { font-size: 0.75rem; color: var(--color-text-muted); }
-.buildInfo span { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; color: var(--color-text-muted); font-size: 0.75rem; }
+.buildInfo > div:nth-child(2) > span { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; color: var(--color-text-muted); font-size: 0.75rem; }
 .buildMenu { position: relative; }
 .buildMenu summary { list-style: none; cursor: pointer; display: grid; place-items: center; }
 .buildMenu summary::-webkit-details-marker { display: none; }
@@ -73,3 +73,4 @@
 
 .stopRow { border-radius: var(--radius-md); background: var(--color-danger); box-shadow: var(--shadow-panel); }
 .stopRow > button { background: var(--color-danger); color: var(--color-text); border: 1px solid var(--color-error); border-radius: var(--radius-md); }
+

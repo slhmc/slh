@@ -12,7 +12,7 @@ use serde_json::Value;
 use std::path::{Path, PathBuf};
 use tokio::io::AsyncWriteExt;
 
-const USER_AGENT: &str = "SLH/0.2.3 (https://github.com/slhmc/slh)";
+const USER_AGENT: &str = "SLH/0.3.0 (https://github.com/slhmc/slh)";
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CoreVersion {
@@ -595,12 +595,74 @@ pub async fn install(
         }
     }
 }
-async fn install_inner(
+async fn install_inner(app: &Host, state: &AppState, server: &store::LocalServer) -> AppResult<LaunchPlan> {
+    let (plan, changes) = install_core(app, state, server, false).await?;
+    if let Some(mut changes) = changes { changes.committed = true; }
+    Ok(plan)
+}
+
+/// Explicit replacement: ordinary settings edits never change an installed core.
+pub async fn change_core(app: &Host, state: &AppState, id: &str, config: ServerConfig, expected_revision: Option<&str>) -> AppResult<store::LocalServer> {
+    let current = store::idle(state, id).await?;
+    let properties = Path::new(&current.path).join("server.properties");
+    let revision = store::properties_revision(&properties)?;
+    if expected_revision.is_some_and(|expected| expected != revision) {
+        return Err(AppError::Conflict("Server properties changed on disk. Reload the server settings before saving.".into()));
+    }
+    validate(&config)?;
+    super::players::guard_core_change(&current.path, &config)?;
+    if current.config.core == "horizon" || config.core == "horizon" {
+        return Err(AppError::InvalidInput("Create a separate server to change the Horizon runtime".into()));
+    }
+    if !config.eula_accepted {
+        return Err(AppError::InvalidInput("Accept Minecraft EULA before changing this server core".into()));
+    }
+    let claimed = sqlx::query("UPDATE local_servers SET status='installing' WHERE id=? AND status IN ('created','stopped','failed')")
+        .bind(id).execute(&state.database).await?.rows_affected();
+    if claimed != 1 { return Err(AppError::Conflict("Server installation is already running".into())); }
+    let mut candidate = current.clone();
+    candidate.config = config;
+    let result = async {
+        let (plan, mut changes) = install_core(app, state, &candidate, true).await?;
+        super::players::guard_core_change(&current.path, &candidate.config)?;
+        if store::properties_revision(&properties)? != revision {
+            return Err(AppError::Conflict("Server properties changed on disk. Reload the server settings before saving.".into()));
+        }
+        let changes = changes.as_mut().unwrap();
+        let backup = Path::new(&current.path).join(".slh-core-backups").join(uuid::Uuid::new_v4().to_string()).join("server.properties");
+        store::plain_path(&backup)?;
+        if properties.exists() {
+            std::fs::create_dir_all(backup.parent().unwrap())?;
+            std::fs::copy(&properties, &backup)?;
+            changes.backups.push((backup, properties.clone()));
+        }
+        changes.published.push(properties.clone());
+        store::write_properties(Path::new(&current.path), &candidate.config)?;
+        let saved = &candidate.config;
+        let mut tx = state.database.begin().await?;
+        sqlx::query("UPDATE local_servers SET config_json=?,plan_json=?,status='stopped' WHERE id=?")
+            .bind(serde_json::to_string(&saved)?).bind(serde_json::to_string(&plan)?).bind(id).execute(&mut *tx).await?;
+        sqlx::query("UPDATE server_library_entries SET readiness='ready',note=NULL WHERE server_id=?")
+            .bind(id).execute(&mut *tx).await?;
+        candidate.properties_revision = Some(store::properties_revision(&properties)?);
+        candidate.status = "stopped".into();
+        candidate.installed = true;
+        if candidate.presentation.is_object() { candidate.presentation["readiness"] = serde_json::json!("ready"); }
+        tx.commit().await?;
+        changes.committed = true;
+        Ok(candidate)
+    }.await;
+    if result.is_err() { let _ = store::set_status(state, id, &current.status).await; }
+    result
+}
+
+async fn install_core(
     app: &Host,
     state: &AppState,
     server: &store::LocalServer,
-) -> AppResult<LaunchPlan> {
-    if server.config.core == "horizon" { return super::horizon::install(app, state, server).await; }
+    replace: bool,
+) -> AppResult<(LaunchPlan, Option<InstallChanges>)> {
+    if server.config.core == "horizon" { return Ok((super::horizon::install(app, state, server).await?, None)); }
     let c = &server.config;
     version_path(&c.minecraft_version)?;
     version_path(&c.core_version)?;
@@ -625,6 +687,7 @@ async fn install_inner(
     std::fs::create_dir(&staging)?;
     let log = destination.join("slh-install.log");
     let mut entry = vec!["-jar".into(), "server.jar".into()];
+    let mut changes = None;
     let operation:AppResult<()>=async {
         match c.core.as_str() {
             "vanilla"=>{let data=vanilla_details(state,mc).await?;let d=&data["downloads"]["server"];artifact(state,d["url"].as_str().ok_or_else(||AppError::Unavailable("No official server JAR for this version".into()))?,&staging.join("server.jar"),Some("sha1"),d["sha1"].as_str(),&server.id).await?;},
@@ -657,19 +720,20 @@ async fn install_inner(
             "custom"=>{let source=c.custom_jar.as_ref().ok_or_else(||AppError::InvalidInput("Choose a server JAR".into()))?;store::plain_path(Path::new(source))?;let file=std::fs::File::open(source)?;let mut zip=zip::ZipArchive::new(file).map_err(|_|AppError::InvalidInput("The selected file is not a JAR".into()))?;let manifest=zip.by_name("META-INF/MANIFEST.MF").map_err(|_|AppError::InvalidInput("Server JAR has no manifest".into()))?;drop(manifest);std::fs::copy(source,staging.join("server.jar"))?;},_=>return Err(AppError::InvalidInput("Unknown server core".into()))
         }
         let expected=entry.last().unwrap();if !expected.starts_with('@') && !staging.join(expected).is_file(){return Err(AppError::Unavailable("Server entry point was not generated".into()));}
-        merge_staging(&staging,destination)?;
+        if replace { changes = Some(replace_staging(&staging, destination)?); }
+        else { merge_staging(&staging,destination)?; }
         Ok(())
     }.await;
     if staging.parent() == Some(destination) && store::plain_path(&staging).is_ok() {
         let _ = std::fs::remove_dir_all(&staging);
     }
     operation?;
-    Ok(LaunchPlan {
+    Ok((LaunchPlan {
         java,
         args: entry,
         directory: server.path.clone(),
         required_java: major,
-    })
+    }, changes))
 }
 pub fn find_tool(name: &str) -> Option<PathBuf> {
     std::env::var_os("PATH")
@@ -678,6 +742,57 @@ pub fn find_tool(name: &str) -> Option<PathBuf> {
         .map(|p| p.join(name))
         .find(|p| p.is_file())
 }
+// Rolls back published artifacts on a failed merge or database commit. Successful
+// replacements retain their previous bytes in the backup directory for recovery.
+struct InstallChanges {
+    published: Vec<PathBuf>,
+    backups: Vec<(PathBuf, PathBuf)>,
+    committed: bool,
+}
+impl Drop for InstallChanges {
+    fn drop(&mut self) {
+        if self.committed { return; }
+        for path in self.published.iter().rev() { let _ = std::fs::remove_file(path); }
+        for (backup, original) in self.backups.iter().rev() { let _ = std::fs::rename(backup, original); }
+    }
+}
+fn replace_staging(source: &Path, target: &Path) -> AppResult<InstallChanges> {
+    let mut files = Vec::new();
+    // Preflight the entire tree before moving anything. Only installer artifacts
+    // may replace files; never overwrite properties, worlds, plugins or user scripts.
+    for entry in walkdir::WalkDir::new(source).follow_links(false).min_depth(1) {
+        let entry = entry.map_err(|e| AppError::Process(e.to_string()))?;
+        if entry.file_type().is_symlink() { return Err(AppError::Security("Installer produced a symbolic link".into())); }
+        let rel = entry.path().strip_prefix(source).unwrap();
+        let dest = target.join(rel);
+        store::plain_path(&dest)?;
+        if entry.file_type().is_dir() { continue; }
+        let root_jar = rel.components().count() == 1 && rel.extension().is_some_and(|ext| ext == "jar");
+        let library = rel.starts_with("libraries");
+        let launcher_config = ["quilt-server-launcher.properties", "fabric-server-launcher.properties"].iter().any(|name| rel == Path::new(name));
+        // Generated launch scripts / user_jvm_args are unnecessary: SLH launches directly.
+        if !root_jar && !library && !launcher_config { continue; }
+        if dest.exists() && !dest.is_file() { return Err(AppError::Conflict(format!("Installer target is not a file: {}", dest.display()))); }
+        if dest.exists() && hash_file(&dest, None, None)? == hash_file(entry.path(), None, None)? { continue; }
+        files.push((entry.path().to_path_buf(), dest, rel.to_path_buf()));
+    }
+    let backup_root = target.join(".slh-core-backups").join(uuid::Uuid::new_v4().to_string());
+    store::plain_path(&backup_root)?;
+    let mut changes = InstallChanges { published: vec![], backups: vec![], committed: false };
+    for (source, dest, rel) in files {
+        if dest.exists() {
+            let backup = backup_root.join(rel);
+            std::fs::create_dir_all(backup.parent().unwrap())?;
+            std::fs::rename(&dest, &backup)?;
+            changes.backups.push((backup, dest.clone()));
+        }
+        std::fs::create_dir_all(dest.parent().unwrap())?;
+        std::fs::rename(source, &dest)?;
+        changes.published.push(dest);
+    }
+    Ok(changes)
+}
+
 fn merge_staging(source: &Path, target: &Path) -> AppResult<()> {
     for entry in walkdir::WalkDir::new(source)
         .follow_links(false)
@@ -713,6 +828,43 @@ fn merge_staging(source: &Path, target: &Path) -> AppResult<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn core_replacement_backs_up_artifacts_preserves_data_and_rolls_back_uncommitted_changes() {
+        let root = tempfile::tempdir().unwrap();
+        let target = root.path().join("server");
+        let staging = root.path().join("staging");
+        for dir in [&target, &staging] {
+            std::fs::create_dir_all(dir.join("libraries/test")).unwrap();
+            std::fs::create_dir_all(dir.join("world")).unwrap();
+            std::fs::create_dir_all(dir.join("plugins")).unwrap();
+        }
+        for path in ["server.jar", "libraries/test/args.txt", "world/level.dat", "plugins/example.jar", "server.properties", "user_jvm_args.txt", "run.bat"] {
+            std::fs::write(target.join(path), b"original").unwrap();
+            std::fs::write(staging.join(path), b"replacement").unwrap();
+        }
+        std::fs::write(staging.join("new.jar"), b"new").unwrap();
+        {
+            let changes = replace_staging(&staging, &target).unwrap();
+            assert_eq!(std::fs::read(target.join("server.jar")).unwrap(), b"replacement");
+            assert_eq!(changes.backups.len(), 2);
+            for (backup, _) in &changes.backups { assert_eq!(std::fs::read(backup).unwrap(), b"original"); }
+            for path in ["world/level.dat", "plugins/example.jar", "server.properties", "user_jvm_args.txt", "run.bat"] {
+                assert_eq!(std::fs::read(target.join(path)).unwrap(), b"original");
+            }
+            // Simulates failure after publishing but before the profile transaction commits.
+        }
+        assert_eq!(std::fs::read(target.join("server.jar")).unwrap(), b"original");
+        assert_eq!(std::fs::read(target.join("libraries/test/args.txt")).unwrap(), b"original");
+        assert!(!target.join("new.jar").exists());
+        std::fs::write(staging.join("server.jar"), b"committed").unwrap();
+        let mut changes = replace_staging(&staging, &target).unwrap();
+        let backup = changes.backups[0].0.clone();
+        changes.committed = true;
+        drop(changes);
+        assert_eq!(std::fs::read(target.join("server.jar")).unwrap(), b"committed");
+        assert_eq!(std::fs::read(backup).unwrap(), b"original");
+    }
+
     #[test]
     fn checksums_reject_modified_artifacts() {
         let dir = tempfile::tempdir().unwrap();

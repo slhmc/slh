@@ -730,14 +730,13 @@ export function LocalServersPage() {
             </select>
             <Button
               busy={busy}
+              icon={<ArrowsClockwise size={18} />}
               aria-label={t("serverWorkspace.refresh")}
               onClick={() => {
                 setBusy(true);
                 void load(true).finally(() => setBusy(false));
               }}
-            >
-              <ArrowsClockwise size={18} />
-            </Button>
+            />
           </div>
           <div className={extra.breadcrumb}>
             <Button variant="ghost" onClick={() => persist({ collection: "" })}>

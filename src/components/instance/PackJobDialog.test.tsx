@@ -6,7 +6,7 @@ import { PackJobDialog } from './PackJobDialog';
 import { usePackJobs } from '../../stores/packJobs';
 const mocks = vi.hoisted(() => ({ command: vi.fn(), select: vi.fn(), toast: vi.fn(), refresh: vi.fn().mockResolvedValue(undefined) }));
 vi.mock('../../lib/tauri', () => ({ command: mocks.command }));
-vi.mock('../../stores/appStore', () => ({ useAppStore: { getState: () => ({ refresh: mocks.refresh, selectInstance: mocks.select, pushToast: mocks.toast }) } }));
+vi.mock('../../stores/appStore', () => ({ useAppStore: Object.assign((select: (state: unknown) => unknown) => select({ bootstrap: null }), { getState: () => ({ refresh: mocks.refresh, selectInstance: mocks.select, pushToast: mocks.toast }) }) }));
 vi.mock('../../i18n/I18nProvider', () => ({ useI18n: () => ({ tr: (s: string) => s }) }));
 vi.mock('../common/Dialog', () => ({ Dialog: ({ open, children, footer }: { open: boolean; children: ReactNode; footer?: ReactNode }) => open ? <div role="dialog">{children}{footer}</div> : null }));
 vi.mock('@tauri-apps/plugin-dialog', () => ({ open: vi.fn() }));

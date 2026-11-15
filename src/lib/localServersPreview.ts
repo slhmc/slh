@@ -3,6 +3,7 @@ import {
   readServerProperties,
   type LocalServer,
   type ServerDefaults,
+  type ServerDefaultPlayers,
   type ServerGroup,
   type ServerCollection,
   type ServerLibraryView,
@@ -319,6 +320,7 @@ function handlePreview(
       folder: string;
       groupId: string | null;
       config: LocalServer["config"];
+      players?: ServerDefaultPlayers;
     };
     if (!request.config.eulaAccepted) throw Error("Accept Minecraft EULA");
     const value: LocalServer = {
@@ -332,6 +334,12 @@ function handlePreview(
       createdAt: new Date().toISOString(),
     };
     servers.push(value);
+    const template = request.players ?? defaults.players;
+    if (template) {
+      const allLists = JSON.parse(localStorage.getItem("slh.previewPlayerLists") ?? "{}");
+      allLists[value.id] = { ...structuredClone(template), bannedPlayers: structuredClone(template.bannedPlayers ?? []), bannedIps: structuredClone(template.bannedIps ?? []), revisions: { whitelist: "created", operators: "created", bannedPlayers: "created", bannedIps: "created" } };
+      localStorage.setItem("slh.previewPlayerLists", JSON.stringify(allLists));
+    }
     return structuredClone(value);
   }
   if (name === "create_server_group") {
@@ -457,7 +465,7 @@ function handlePreview(
   }
   if (name === "get_local_server_config") return { ...structuredClone(server), propertiesRevision: diskText, config: { ...structuredClone(server.config), propertiesText: diskText, properties: { ...server.config.properties, ...readServerProperties(diskText) } } };
 
-  if (name === "update_local_server") {
+  if (name === "update_local_server" || name === "change_local_server_core") {
     if (args.expectedPropertiesRevision != null && args.expectedPropertiesRevision !== diskText) throw Error("Server properties changed on disk. Reload the server settings before saving.");
     server.name = String(args.name);
     server.config = structuredClone(args.config as LocalServer["config"]);

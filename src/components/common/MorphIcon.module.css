@@ -1,0 +1,6 @@
+.icon { position: relative; display: inline-flex; flex: none; align-items: center; justify-content: center; vertical-align: middle; }
+.source { display: inline-flex; }
+@media (prefers-reduced-motion: no-preference) {
+  .spinning { animation: iconRotation var(--motion-spinner-duration, 1s) linear infinite; }
+}
+@keyframes iconRotation { to { transform: rotate(360deg); } }

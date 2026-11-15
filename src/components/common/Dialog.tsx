@@ -3,6 +3,9 @@ import { useUiText } from "../../i18n/UiText";
 import { X } from "../icons";
 import common from "./Common.module.css";
 import styles from "./Dialog.module.css";
+import { animate } from "motion";
+import { spring, transition, scale } from "@animate-ui/react/utils/motion";
+import { useAnimationTransition, useSmoothAnimations } from "../../lib/motion";
 
 interface DialogProps {
   open: boolean;
@@ -21,18 +24,30 @@ export function Dialog({ open, title, description, children, footer, onClose, wi
   const titleId = useId();
   const descriptionId = useId();
   const ref = useRef<HTMLDialogElement>(null);
+  const smooth = useSmoothAnimations("dialogs");
+  const enter = useAnimationTransition("dialogs", spring.dialog);
+  const fade = useAnimationTransition("dialogs", transition.dialogFade);
 
   useEffect(() => {
     const dialog = ref.current;
     if (!dialog) return;
-    if (open && !dialog.open) dialog.showModal();
+    if (open) {
+      if (!dialog.open) dialog.showModal();
+      if (smooth) {
+        dialog.dataset.motion = "entering";
+        const animation = animate(dialog, { opacity: [0, 1], scale: [scale.dialog, 1] }, { ...enter, opacity: fade });
+        void animation.then(() => { delete dialog.dataset.motion; });
+        return () => { animation.stop(); dialog.style.opacity = "1"; dialog.style.transform = "none"; delete dialog.dataset.motion; };
+      }
+    }
     if (!open && dialog.open) dialog.close();
-  }, [open]);
+  }, [open, smooth, enter, fade]);
 
   return (
     <dialog
       ref={ref}
-      aria-labelledby={titleId}
+      aria-labelledby={typeof title === "string" ? undefined : titleId}
+      aria-label={typeof title === "string" ? title : undefined}
       aria-describedby={description ? descriptionId : undefined}
       className={`${styles.dialog} ${styles[width]} ${footer ? styles.withFooter : ""} ${className}`}
       onCancel={(event) => {

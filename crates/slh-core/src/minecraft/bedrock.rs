@@ -277,6 +277,9 @@ pub async fn install_instance(
     let version_root = instance_root
         .join("bedrock")
         .join(&instance.minecraft_version);
+    if instance.bedrock_profile_mode == "isolated" {
+        return Err(AppError::Unavailable("bedrock.isolationUnavailable".into()));
+    }
     if let Some(metadata) =
         bedrock_runtime::adopt_registered_store_package(instance, &version_root).await?
     {
@@ -324,6 +327,11 @@ pub async fn install_instance(
     } else {
         "release"
     };
+    bedrock_runtime::ensure_package_preflight(
+        &instance.minecraft_version,
+        expected_family_name.unwrap_or("Microsoft.MinecraftUWP_8wekyb3d8bbwe"),
+        &instance.bedrock_profile_mode,
+    ).await?;
 
     let store_binding = match &version.source {
         PackageSource::NativeMsixvc { .. } => {

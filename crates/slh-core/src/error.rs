@@ -109,7 +109,7 @@ impl From<AppError> for CommandError {
     fn from(value: AppError) -> Self {
         let (message_key, params, mut details) = match value.root() {
             AppError::InvalidInput(message) | AppError::Conflict(message) | AppError::Unavailable(message)
-                if message.starts_with("serverLive.") || message.starts_with("serverPlayers.") => (Some(message.clone()), None, None),
+                if message.starts_with("serverLive.") || message.starts_with("serverPlayers.") || message.starts_with("bedrock.") => (Some(message.clone()), None, None),
             AppError::PackFileUnavailable { provider, project, file_name, file_id } => (Some("errors.packFileUnavailable".into()),
                 Some(serde_json::json!({"provider":provider,"project":project,"fileName":file_name})), Some(serde_json::json!({"fileId":file_id}))),
             AppError::Unavailable(message) if message.starts_with("Unsupported Horizon ") => (Some("errors.horizonUnsupported".into()), None, None),

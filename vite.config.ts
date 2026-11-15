@@ -32,6 +32,7 @@ export default defineConfig(async () => ({
   // 1. prevent Vite from obscuring rust errors
   clearScreen: false,
   test: {
+    setupFiles: ["./src/testSetup.ts"],
     include: ["src/**/*.{test,spec}.{ts,tsx}"],
   },
   // 2. tauri expects a fixed port, fail if that port is not available

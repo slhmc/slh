@@ -7,6 +7,14 @@ const mocks = vi.hoisted(() => ({ command: vi.fn() }));
 vi.mock("../../lib/tauri", () => ({ command: mocks.command }));
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 
+it("explains a Bedrock import failure while keeping the file diagnostic", () => {
+  const message = "bundle.mcaddon: Invalid input: bedrock.packVersionIncompatible";
+  render(<ErrorText message={message} />);
+  expect(screen.getByText("This pack requires a newer Minecraft version. Choose a compatible file.")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Technical details" }));
+  expect(screen.getByText(message)).toBeTruthy();
+});
+
 it("keeps the file diagnostic and opens its associated report", async () => {
   const message = "Download failed for needed.jar: HTTP 404";
   engine.rememberDiagnostic(message, "errors.downloadMissing", undefined, "E:/SLH/crash/slh-test.txt");

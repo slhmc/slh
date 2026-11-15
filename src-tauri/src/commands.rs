@@ -1669,3 +1669,8 @@ pub async fn list_content_categories(state: State<'_, AppState>, provider: Strin
  let result = match provider.as_str() { "modrinth" => crate::content::modrinth::categories(&state, &project_type).await, "curseforge" => crate::content::curseforge::categories(&state, &project_type).await, _ => Err(crate::error::AppError::InvalidInput("Unknown provider".into())) };
  result.map_err(Into::into)
 }
+
+#[tauri::command]
+pub async fn read_artwork_image(path: String) -> CommandResult<String> {
+    tokio::task::spawn_blocking(move || slh_core::instances::read_artwork_image(&path)).await.map_err(|e| crate::error::AppError::Process(e.to_string()))?.map_err(Into::into)
+}

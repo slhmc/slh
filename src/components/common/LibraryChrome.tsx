@@ -89,6 +89,7 @@ export function LibraryArtwork({
   ...props
 }: HTMLAttributes<HTMLDivElement> & {
   size?: "small" | "card" | "large" | "icon";
+    ref?: Ref<HTMLDivElement>;
 }) {
   return (
     <div
@@ -127,13 +128,13 @@ export function DetailFrame({
 }
 export function DetailTabs(props: HTMLAttributes<HTMLElement>) {
   return (
-    <nav {...props} className={`${detail.tabs} ${props.className ?? ""}`} />
+    <nav data-slh-dock="instanceTabsPosition" {...props} className={`${detail.tabs} ${props.className ?? ""}`} />
   );
 }
 
 export function LibrarySidePanelSurface(props: HTMLAttributes<HTMLElement>) {
   return (
-    <aside {...props} className={`${panel.panel} ${props.className ?? ""}`} />
+    <aside data-slh-dock="instancePanelPosition" {...props} className={`${panel.panel} ${props.className ?? ""}`} />
   );
 }
 

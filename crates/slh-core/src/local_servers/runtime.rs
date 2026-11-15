@@ -167,6 +167,11 @@ pub async fn start(
                 log_file,
             })?,
         )?;
+        let overrides_binding = s.config.server_args.iter().any(|arg| {
+            matches!(arg.split('=').next(), Some("--port" | "--server-port" | "--host" | "--server-ip" | "-p" | "-h"))
+        });
+        let endpoint = (!overrides_binding).then_some((ip, port));
+        store::atomic_write(&descriptor.with_extension("tcp.json"), &serde_json::to_vec(&endpoint)?)?;
         let errors = std::fs::File::create(Path::new(&s.path).join("slh-host.log"))?;
         let mut cmd = std::process::Command::new(exe);
         cmd.arg("run")
@@ -251,6 +256,7 @@ pub async fn control(
         return Err(AppError::InvalidInput("Enter one server command".into()));
     }
     let info = read_run(&run_file(state, id))?;
+    let command = if action == "command" { normalized_console_command(command)? } else { command };
     let response = match request(&info, action, command, u64::MAX).await {
         Ok(response) => response,
         Err(error)
@@ -283,6 +289,9 @@ pub async fn control(
         }
         Err(error) => return Err(error),
     };
+    if let Some(error) = &response.error {
+        return Err(AppError::Process(error.clone()));
+    }
     store::set_status(state, id, &response.state).await?;
     Ok(response)
 }

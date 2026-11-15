@@ -210,6 +210,18 @@ pub async fn update_local_server(
         .map_err(Into::into)
 }
 #[tauri::command]
+pub async fn change_local_server_core(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    server_id: String,
+    config: ServerConfig,
+    expected_properties_revision: Option<String>,
+) -> CommandResult<store::LocalServer> {
+    let _gate = storage_cleanup::gate().read().await;
+    providers::change_core(&crate::core_host::host(&app), &state, &server_id, config, expected_properties_revision.as_deref())
+        .boxed().await.map_err(Into::into)
+}
+#[tauri::command]
 pub async fn install_local_server(
     app: AppHandle,
     state: State<'_, AppState>,

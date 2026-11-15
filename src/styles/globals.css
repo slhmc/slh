@@ -1,5 +1,12 @@
 @import "./tokens.css";
 
+html[data-smooth-animations="false"] button { transition: none !important; }
+html[data-smooth-animations="false"] button:active { transform: none !important; }
+html[data-button-animations="false"] button { transition: none !important; }
+html[data-button-animations="false"] button:active { transform: none !important; }
+html[data-icon-animations="false"] [data-morph-icon],
+html[data-icon-animations="false"] [data-loading-icon] { animation: none !important; }
+
 html[data-slh-window-active="false"] *,
 html[data-slh-window-active="false"] *::before,
 html[data-slh-window-active="false"] *::after {

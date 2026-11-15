@@ -214,6 +214,7 @@ pub fn run() {
             local_servers::create_local_server,
             local_servers::update_local_server,
             local_servers::install_local_server,
+            local_servers::change_local_server_core,
             local_servers::start_local_server,
             local_servers::control_local_server,
             local_servers::get_local_server_console,
@@ -244,6 +245,7 @@ pub fn run() {
             commands::export_language_template,
             commands::update_setting,
             commands::remember_section,
+            commands::read_artwork_image,
             commands::prepare_windows_notifications,
             commands::send_windows_notification,
             commands::open_bedrock_content_file,
@@ -348,8 +350,9 @@ pub fn run() {
             commands::create_instance_desktop_shortcut,
             commands::repair_instance,
         ])
-        .run(context)
-        .expect("SLH failed to start");
+        .build(context)
+        .expect("SLH failed to start")
+        .run(|_, _| {});
 }
 
 /// Diagnostic mode verifies the actual Windows toast payload without opening UI.

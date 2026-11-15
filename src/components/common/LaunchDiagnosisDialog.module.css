@@ -1,0 +1,13 @@
+.content { display: grid; gap: var(--space-4); min-width: 0; }
+.content p { margin: 0; line-height: 1.5; }
+.content h3 { display: flex; align-items: center; gap: var(--space-2); }
+.content h3 svg { flex-shrink: 0; }
+.details { min-width: 0; padding: var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius-sm); }
+.details summary { cursor: pointer; overflow-wrap: anywhere; }
+.details summary:focus-visible { outline: 2px solid var(--color-focus); outline-offset: var(--space-1); border-radius: var(--radius-sm); }
+.details summary:active { color: var(--color-accent-hover); }
+@media (hover: hover) { .details summary:hover:not(:active) { color: var(--color-link); } }
+@media (prefers-reduced-motion: no-preference) { .details summary { transition: color 150ms ease-out; } }
+.technical { display: grid; gap: var(--space-3); padding-top: var(--space-3); min-width: 0; }
+.evidence { margin: 0; padding: var(--space-3); max-height: min(12rem, 30vh); overflow: auto; overscroll-behavior: contain; white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--font-mono); font-size: var(--text-caption); line-height: 1.5; color: var(--color-text-muted); background: var(--color-bg); border-radius: var(--radius-sm); }
+@media (prefers-reduced-motion: reduce) { .dialog button:active:not(:disabled) { outline: 1px solid var(--color-focus); outline-offset: -1px; } }

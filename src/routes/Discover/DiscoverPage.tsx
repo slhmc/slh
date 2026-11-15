@@ -1,5 +1,7 @@
+import { MorphIcon } from "../../components/common/MorphIcon";
 import { ContentProjectCard, ContentProjectSummary, ContentProviders, ContentSearch, ContentLoading, ContentPagination, ContentEmpty } from "../../components/common/ContentCatalog";
 import { ErrorText } from "../../components/common/ErrorText";
+import { type PackCandidate } from "../../lib/modpackFinder";
 import { formatBytes } from "../../lib/formatters";
 import { useUiText } from "../../i18n/UiText";
 import { MarkdownRenderer } from "../../components/common/ProjectDescription";
@@ -182,6 +184,8 @@ export function DiscoverPage({ embeddedInstanceId, initialType, initialSource, o
   const { tr } = useI18n();
   const location = useLocation();
   const parameters = new URLSearchParams(location.search);
+  const projectPage = !embeddedInstanceId && parameters.has("project");
+  const previousProjectPage = useRef(false);
   const requestedType = initialType ?? parameters.get("type");
   const requestedInstance = embeddedInstanceId ?? parameters.get("instance");
   const filterKey = `${requestedInstance ?? "global"}:${requestedType ?? "modpack"}:${initialSource ?? "any"}`;
@@ -450,7 +454,7 @@ export function DiscoverPage({ embeddedInstanceId, initialType, initialSource, o
     if (!detailsProject) return;
     const project = detailsProject;
     const provider = detailsProvider;
-    setDetailsProject(null);
+    if (!projectPage) setDetailsProject(null);
     if (provider !== source) setSource(provider);
     selectTarget(project, provider);
   };
@@ -459,6 +463,25 @@ export function DiscoverPage({ embeddedInstanceId, initialType, initialSource, o
     selectedProjectRef.current = null;
     setSelectedProject(null);
   };
+
+  useEffect(() => {
+    if (!projectPage) {
+      if (previousProjectPage.current) setDetailsProject(null);
+      previousProjectPage.current = false;
+      return;
+    }
+    previousProjectPage.current = true;
+    let candidate = (location.state as { finderSelection?: PackCandidate } | null)?.finderSelection;
+    if (!candidate) {
+      try { candidate = JSON.parse(sessionStorage.getItem(`slh.randomProject:${requestedSource}:${parameters.get("project")}`) ?? "null"); } catch { /* Show a return action below. */ }
+    }
+    if (!candidate || scoped || candidate.project?.projectType !== "modpack" || candidate.project.projectId !== parameters.get("project") || candidate.provider !== requestedSource) { setDetailsProject(null); return; }
+    setSource(candidate.provider);
+    setDetailsProvider(candidate.provider);
+    setDetailsProject(candidate.project);
+    setSelectedProject(null);
+    setDetails(null);
+  }, [location.key]);
 
   const showMediaPreview = (images: ProjectGalleryImage[], index: number) => {
     if (images[index] && safeExternalUrl(images[index].url)) setMediaPreview({ images, index });
@@ -622,8 +645,26 @@ export function DiscoverPage({ embeddedInstanceId, initialType, initialSource, o
     setModpackGameVersion(compatibleGameVersion);
   };
 
+  const projectDetailsContent = detailsProject ? <div className={styles.detailsDialog}>
+          <div className={styles.detailsHero}>
+            <div className={styles.detailsArtwork}><ProjectArtwork iconUrl={detailsProject.iconUrl} /></div>
+            <div>{!projectPage ? <h2>{detailsProject.title}</h2> : null}<span>{uiText("installation.texts.by", "by")} {detailsProject.author}</span><div className={styles.detailsStats}><span><DownloadSimple size={16} /> {compact(detailsProject.downloads)} {uiText("discover.texts.downloads", "downloads")}</span><span><Star size={16} /> {compact(detailsProject.follows)} {uiText("discover.texts.followers", "followers")}</span></div><div className={styles.detailTags}>{detailsProject.categories.slice(0, 8).map((category) => <span key={category}>{category}</span>)}</div></div>
+          </div>
+          <section><h3>{uiText("discover.texts.description", "Description")}</h3>{detailsLoading ? <div className={styles.detailsLoading}><SpinnerGap className={styles.spin} size={18} /> {uiText("common.texts.loading", "Loading")}</div> : <MarkdownRenderer markdown={details?.body || detailsProject.description} onImage={(image) => showMediaPreview([image], 0)} />}</section>
+          {details?.gallery.length ? <section><h3>{uiText("discover.texts.gallery", "Gallery")}</h3><div className={styles.gallery}>{details.gallery.map((image, index) => <button type="button" className={styles.galleryItem} onClick={() => showMediaPreview(details.gallery, index)} title={image.title ?? uiText("discover.texts.openImage", "Open image")} key={image.url}><img src={image.thumbnailUrl ?? image.url} alt={image.title ?? ""} loading="lazy" /></button>)}</div></section> : null}
+          <section><h3>{uiText("discover.texts.versions", "Versions")}</h3><div className={styles.detailTags}>{[...detailsProject.versions].sort(compareMinecraftVersions).slice(0, 12).map((version) => <span key={version}>{version}</span>)}</div></section>
+          <div className={styles.detailsActions}>{!projectPage ? <button className={common.secondaryButton} type="button" onClick={() => setDetailsProject(null)}>{uiText("common.close", "Close")}</button> : null}<button className={common.button} type="button" onClick={installFromDetails}><DownloadSimple size={17} /> {uiText("installation.texts.install", "Install")}</button></div>
+        </div> : null;
+
   return (
     <div className={`${page.page} ${embeddedInstanceId ? styles.embedded : ""}`}>
+      {projectPage ? <section className={styles.projectPage} data-discover-project-page>
+        <header className={page.header}><div><h1>{detailsProject?.title ?? uiText("discover.texts.project")}</h1></div><div className={styles.headerActions}>
+          <button className={common.secondaryButton} type="button" onClick={() => { setDetailsProject(null); navigate(`/discover?source=${source}&type=modpack`); }}><ArrowLeft size={17} />{uiText("navigation.discover")}</button>
+        </div></header>
+        {projectDetailsContent ?? <p>{uiText("packRandom.missingProject")}</p>}
+      </section> : null}
+      <div hidden={projectPage}>
       <header className={page.header}>
         <div>
           <h1>{scopedInstance ? `${uiText("installation.texts.contentFor", "Content for")} ${scopedInstance.name}` : uiText("discover.texts.discoverSomethingWorthPlaying", "Discover something worth playing")}</h1>
@@ -664,7 +705,7 @@ export function DiscoverPage({ embeddedInstanceId, initialType, initialSource, o
           <div className={styles.resultSummary}>{result.totalHits.toLocaleString()} {uiText("installation.texts.matchingProjects", "matching projects")}</div>
           {scoped && queuedItems.length ? <div className={styles.batchInstallBar}>
             <span><strong>{batchInstalling ? `${batchProgress.current} / ${batchProgress.total}` : queuedItems.length}</strong><small>{batchInstalling ? uiText("discover.texts.installingSelectedContent", "Installing selected content") : uiText("discover.texts.contentItemsSelected", "content items selected")}</small></span>
-            <div><button className={common.secondaryButton} type="button" disabled={batchInstalling} onClick={() => setQueuedInstalls({})}>{uiText("discover.texts.clearSelection", "Clear selection")}</button><button className={common.button} type="button" disabled={batchInstalling} onClick={() => void installQueued()}>{batchInstalling ? <SpinnerGap className={styles.spin} size={16} /> : <DownloadSimple size={16} />} {uiText("discover.texts.installSelected", "Install selected")}</button></div>
+            <div><button className={common.secondaryButton} type="button" disabled={batchInstalling} onClick={() => setQueuedInstalls({})}>{uiText("discover.texts.clearSelection", "Clear selection")}</button><button className={common.button} type="button" disabled={batchInstalling} onClick={() => void installQueued()}><MorphIcon icon={batchInstalling ? <SpinnerGap className={styles.spin} size={16} /> : <DownloadSimple size={16} />} /> {uiText("discover.texts.installSelected", "Install selected")}</button></div>
           </div> : null}
           {!result.hits.length ? <ContentEmpty /> : null}
           <div className={styles.projectGrid}>
@@ -704,6 +745,7 @@ export function DiscoverPage({ embeddedInstanceId, initialType, initialSource, o
           ) : null}
         </>
       ) : null}
+      </div>
       <Dialog open={Boolean(selectedProject)} title={selectedProject ? uiText("installation.installNamed", "Install {name}", { name: selectedProject.title }) : `${uiText("discover.texts.installFrom", "Install from")} ${selectedProvider === "modrinth" ? "Modrinth" : "CurseForge"}`} description={selectedProject?.projectType === "modpack" ? `${selectedProvider === "modrinth" ? "Modrinth" : "CurseForge"}: ${uiText("discover.texts.theArchiveDefinesMinecraftItsLoaderFilesAndOverrides", "the archive defines Minecraft, its loader, files, and overrides for a new isolated instance.")}` : uiText("discover.texts.slhResolvesACompatibleVersionRequiredDependenciesDistributionPermission", "SLH resolves a compatible version, required dependencies, distribution permission, and conflicts before downloading.")} onClose={closeInstallDialog}>
         {selectedProject ? <div className={styles.installDialog} data-install-dialog>
           {selectedProject.projectType === "modpack" ? <>
@@ -732,17 +774,8 @@ export function DiscoverPage({ embeddedInstanceId, initialType, initialSource, o
           <div className={styles.installActions}><button className={common.secondaryButton} type="button" onClick={closeInstallDialog}>{installing ? uiText("common.close", "Close") : uiText("common.cancel", "Cancel")}</button><button className={`${common.button} ${styles.installPrimary}`} type="button" disabled={installing || (selectedProject.projectType === "modpack" ? !modpackName.trim() || (!modpackGameVersion || !modpackVersionId) : !plan || plan.conflicts.length > 0)} onClick={() => void install()}>{installing ? <><SpinnerGap className={styles.spin} size={16} /> {uiText("installation.texts.installing", "Installing")}</> : selectedProject.projectType === "modpack" ? uiText("discover.texts.downloadAndInstall", "Download and install") : uiText("discover.texts.installVerifiedFiles", "Install verified files")}</button></div>
         </div> : null}
       </Dialog>
-      <Dialog open={Boolean(detailsProject)} title={detailsProject ? <button className={styles.dialogProjectTitle} type="button" onClick={() => void openUrl(projectPageUrl(detailsProvider, detailsProject))}>{detailsProject.title}</button> : uiText("discover.texts.project", "Project")} description={detailsProject ? `${detailsProvider === "modrinth" ? "Modrinth" : "CurseForge"} · ${detailsProject.projectType}` : ""} onClose={() => setDetailsProject(null)} width="large">
-        {detailsProject ? <div className={styles.detailsDialog}>
-          <div className={styles.detailsHero}>
-            <div className={styles.detailsArtwork}><ProjectArtwork iconUrl={detailsProject.iconUrl} /></div>
-            <div><h2>{detailsProject.title}</h2><span>{uiText("installation.texts.by", "by")} {detailsProject.author}</span><div className={styles.detailsStats}><span><DownloadSimple size={16} /> {compact(detailsProject.downloads)} {uiText("discover.texts.downloads", "downloads")}</span><span><Star size={16} /> {compact(detailsProject.follows)} {uiText("discover.texts.followers", "followers")}</span></div><div className={styles.detailTags}>{detailsProject.categories.slice(0, 8).map((category) => <span key={category}>{category}</span>)}</div></div>
-          </div>
-          <section><h3>{uiText("discover.texts.description", "Description")}</h3>{detailsLoading ? <div className={styles.detailsLoading}><SpinnerGap className={styles.spin} size={18} /> {uiText("common.texts.loading", "Loading")}</div> : <MarkdownRenderer markdown={details?.body || detailsProject.description} onImage={(image) => showMediaPreview([image], 0)} />}</section>
-          {details?.gallery.length ? <section><h3>{uiText("discover.texts.gallery", "Gallery")}</h3><div className={styles.gallery}>{details.gallery.map((image, index) => <button type="button" className={styles.galleryItem} onClick={() => showMediaPreview(details.gallery, index)} title={image.title ?? uiText("discover.texts.openImage", "Open image")} key={image.url}><img src={image.thumbnailUrl ?? image.url} alt={image.title ?? ""} loading="lazy" /></button>)}</div></section> : null}
-          <section><h3>{uiText("discover.texts.versions", "Versions")}</h3><div className={styles.detailTags}>{[...detailsProject.versions].sort(compareMinecraftVersions).slice(0, 12).map((version) => <span key={version}>{version}</span>)}</div></section>
-          <div className={styles.detailsActions}><button className={common.secondaryButton} type="button" onClick={() => setDetailsProject(null)}>{uiText("common.close", "Close")}</button><button className={common.button} type="button" onClick={installFromDetails}><DownloadSimple size={17} /> {uiText("installation.texts.install", "Install")}</button></div>
-        </div> : null}
+      <Dialog open={Boolean(detailsProject) && !projectPage} title={detailsProject ? <button className={styles.dialogProjectTitle} type="button" onClick={() => void openUrl(projectPageUrl(detailsProvider, detailsProject))}>{detailsProject.title}</button> : uiText("discover.texts.project", "Project")} description={detailsProject ? `${detailsProvider === "modrinth" ? "Modrinth" : "CurseForge"} · ${detailsProject.projectType}` : ""} onClose={() => setDetailsProject(null)} width="large">
+        {projectDetailsContent}
       </Dialog>
       <Dialog open={Boolean(mediaPreview)} title={mediaPreview?.images[mediaPreview.index]?.title ?? uiText("discover.texts.imagePreview", "Image preview")} onClose={() => setMediaPreview(null)} width="xlarge">
         {mediaPreview ? <div className={styles.lightbox}>

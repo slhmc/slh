@@ -136,7 +136,7 @@ test("logical group drag, manual order, collapse and appearance survive reload",
  await expect(target.getByRole("button",{name:"Weekend",exact:true})).toBeVisible();await expect(page.getByRole("combobox",{name:"Sort servers",exact:true})).toHaveValue("manual");
  await page.reload();const group=page.locator("section[data-server-group]").filter({has:page.getByRole("heading",{name:"My servers",exact:true})});await expect(group.getByRole("button",{name:"Weekend",exact:true})).toBeVisible();
  await group.getByRole("button",{name:"Expand or collapse My servers",exact:true}).click();await expect(group.getByRole("button",{name:"Weekend",exact:true})).toHaveCount(0);await page.reload();await expect(group.getByRole("button",{name:"Weekend",exact:true})).toHaveCount(0);await group.getByRole("button",{name:"Expand or collapse My servers",exact:true}).click();
- await group.getByRole("button",{name:"Weekend",exact:true}).dblclick();await page.getByRole("navigation",{name:"Server sections"}).getByRole("button",{name:"Settings",exact:true}).click();await page.getByRole("button",{name:"Java",exact:true}).click();await page.getByRole("button",{name:"Save appearance",exact:true}).click();await page.reload();await expect(page.getByRole("button",{name:"Java",exact:true})).toHaveAttribute("aria-pressed","true");
+ await group.getByRole("button",{name:"Weekend",exact:true}).dblclick();await page.getByRole("navigation",{name:"Server sections"}).getByRole("button",{name:"Settings",exact:true}).click();await page.getByRole("button",{name:"Star",exact:true}).click();await page.getByRole("button",{name:"Save",exact:true}).last().click();await page.reload();await expect(page.getByRole("button",{name:"Star",exact:true})).toHaveAttribute("aria-pressed","true");
 });
 
 

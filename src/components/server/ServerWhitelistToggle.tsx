@@ -18,16 +18,13 @@ export function ServerWhitelistToggle({ server, enabled, visible = true }: { ser
   const revision = useRef(0);
   const runtimeState = data?.runtimeState ?? server.status;
   useEffect(() => {
-    setData(previous => previous ? { ...previous, whitelistEnabled: enabled } : previous);
-  }, [enabled]);
-  useEffect(() => {
     let alive = true;
     const requestRevision = revision.current;
     void command<PlayerLists>("get_server_players", { serverId: server.id })
       .then(value => { if (alive && requestRevision === revision.current) setData(value); })
       .catch(reason => { if (alive) setError(String(reason.message ?? reason)); });
     return () => { alive = false; };
-  }, [server.id, server.status]);
+  }, [server.id, server.status, enabled]);
   useEffect(() => {
     if (!active || busy) return;
     let alive = true;
@@ -49,7 +46,7 @@ export function ServerWhitelistToggle({ server, enabled, visible = true }: { ser
   };
   return <>
     <SettingRow wide title={t("localServers.properties.white-list")} description={t("serverPlayers.liveWhitelistHint")}>
-      <Toggle role="checkbox" checked={pendingChecked ?? data?.whitelistEnabled ?? false} disabled={!data || busy || !["starting", "running"].includes(runtimeState)} onChange={checked => void apply(checked)} />
+      <Toggle role="checkbox" checked={pendingChecked ?? data?.whitelistEnabled ?? enabled} disabled={!data || busy || !["starting", "running"].includes(runtimeState)} onChange={checked => void apply(checked)} />
     </SettingRow>
     {busy ? <p className={styles.note} role="status">{t(runtimeState === "starting" ? "serverLive.waiting" : "serverPlayers.applying")}</p> : null}
     {error ? <p role="alert" className={styles.error}><ErrorText message={error} /></p> : null}

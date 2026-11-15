@@ -1,3 +1,4 @@
+import { MorphIcon } from "../common/MorphIcon";
 import { LibrarySidePanelSurface } from "../common/LibraryChrome";
 import { useUiText } from "../../i18n/UiText";
 import { useState, type ReactNode } from "react";
@@ -194,7 +195,7 @@ export function InstanceSidePanel({ instance, onDelete, onContextMenu }: Instanc
     settings: <button type="button" data-minimal-compact aria-label={uiText("navigation.settings", "Settings")} onClick={() => navigate(`/instance/${instance.id}?tab=settings`)}><Wrench size={19} /><span data-minimal-text>{uiText("navigation.settings", "Settings")}</span></button>,
     group: <button type="button" data-minimal-compact aria-label={uiText("library.group", "Group")} onClick={() => setGroupDialogOpen(true)}><Stack size={19} /><span data-minimal-text>{uiText("library.group", "Group")}</span></button>,
     export: <button type="button" data-minimal-compact aria-label={uiText("installation.texts.export", "Export")} onClick={() => navigate(`/instance/${instance.id}?tab=settings&export=1`)}><Export size={19} /><span data-minimal-text>{uiText("installation.texts.export", "Export")}</span></button>,
-    delete: <button className={styles.deleteAction} type="button" data-minimal-compact aria-label={uiText("installation.texts.deleteInstance", "Delete instance")} disabled={!onDelete || operationActive || busy || instance.status === "running" || instance.status === "installing" || instance.status === "launching"} onClick={() => onDelete?.()}><Trash size={19} /><span data-minimal-text>{uiText("installation.texts.deleteInstance", "Delete instance")}</span></button>,
+    delete: <button className={styles.deleteAction} type="button" data-minimal-compact aria-label={uiText("common.delete", "Delete")} disabled={!onDelete || operationActive || busy || instance.status === "running" || instance.status === "installing" || instance.status === "launching"} onClick={() => onDelete?.()}><Trash size={19} /><span data-minimal-text>{uiText("common.delete", "Delete")}</span></button>,
   };
   const actionOrder = panelOptions.actionOrder?.length ? panelOptions.actionOrder : Object.keys(actionButtons);
 
@@ -206,7 +207,7 @@ export function InstanceSidePanel({ instance, onDelete, onContextMenu }: Instanc
         if (event.button === 2) { event.preventDefault(); onContextMenu?.(event); }
       }}
     >
-      <div className={styles.scroll}>
+      <div className={styles.scroll} data-instance-panel-scroll>
         {panelOptions.showArtwork ? <InstanceArtwork instance={instance} size="large" /> : null}
         <div className={styles.identity}>
           <h2>{instance.name}</h2>
@@ -219,11 +220,11 @@ export function InstanceSidePanel({ instance, onDelete, onContextMenu }: Instanc
           title={instance.loaderType === "bedrock" && bootstrap?.settings.bedrock.enabled === false ? uiText("installation.texts.enableBedrockInSettingsFirst", "Enable Bedrock in Settings first") : undefined}
           onClick={() => void (instance.status === "running" ? kill() : play())}
         >
-          {busy || storeLookupBusy || operationActive || instance.status === "installing" || instance.status === "launching" ? <SpinnerGap className={styles.spin} size={20} weight="bold" /> : instance.status === "running" ? <X size={20} weight="bold" /> : <Play size={20} weight="fill" />}
+          <MorphIcon size={20} icon={busy || storeLookupBusy || operationActive || instance.status === "installing" || instance.status === "launching" ? <SpinnerGap className={styles.spin} size={20} weight="bold" /> : instance.status === "running" ? <X size={20} weight="bold" /> : <Play size={20} weight="fill" />} />
           {instance.status === "running" ? uiText("installation.texts.kill", "Kill") : instance.status === "launching" ? uiText("installation.texts.launching", "Launching") : instance.status === "installing" ? uiText("installation.texts.installing", "Installing") : storeLookupBusy ? uiText("installation.texts.checkingMicrosoftStore", "Checking Microsoft Store") : installable ? tr(instance.status === "error" ? "Retry installation" : uiText("installation.texts.install", "Install")) : uiText("common.play", "Play")}
         </button>
         {instance.loaderType === "bedrock" && installable ? <button className={common.secondaryButton} type="button" disabled={busy || storeLookupBusy || operationActive} onClick={() => void openBedrockStorePicker()}>{uiText("installation.texts.useStoreVersion", "Use Store version")}</button> : null}
-        <div className={styles.quickGrid}>
+        <div className={styles.quickGrid} data-list={bootstrap?.settings.appearance.instanceActionsAsList === true}>
           {actionOrder.filter((id) => !panelOptions.hiddenActions.includes(id) && actionButtons[id]).map((id) => <span key={id}>{actionButtons[id]}</span>)}
         </div>
         {panelOptions.showMetadata ? <div className={styles.metadata}>

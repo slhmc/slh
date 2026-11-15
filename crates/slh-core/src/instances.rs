@@ -757,7 +757,36 @@ async fn rename_directory_case_safe(source: &Path, destination: &Path) -> AppRes
     Ok(())
 }
 
-fn validate_icon(value: &str) -> AppResult<()> {
+pub(crate) fn validate_icon(value: &str) -> AppResult<()> {
+    let icons: Vec<String> = serde_json::from_str(include_str!("../../../resources/instance-icons.json"))?;
+    if let Some(name) = value.strip_prefix("pixel:") { if icons.iter().any(|k| k == name) { return Ok(()); } }
+    if let Some(json) = value.strip_prefix("slh-artwork:v1:") {
+        if json.len() > 1_600_000 { return Err(AppError::InvalidInput("Artwork is too large".into())); }
+        let art: serde_json::Value = serde_json::from_str(json)?;
+        if art["v"] != 1 { return Err(AppError::InvalidInput("Unknown artwork format".into())); }
+        validate_icon(art["icon"].as_str().filter(|s| !s.starts_with("slh-artwork:")).unwrap_or("invalid"))?;
+        validate_hex_color(art["second"].as_str().unwrap_or(""))?;
+        if !matches!(art["fit"].as_str(),Some("cover" | "contain" | "fill")) { return Err(AppError::InvalidInput("Invalid image fit".into())); }
+        for (key,min,max) in [("zoom",1.0,3.0),("x",0.0,100.0),("y",0.0,100.0),("angle",0.0,360.0)] {
+            if !art[key].as_f64().is_some_and(|n| n >= min && n <= max) { return Err(AppError::InvalidInput("Invalid artwork position".into())); }
+        }
+        for key in ["width", "height"] { if art.get(key).is_some_and(|v| !v.as_f64().is_some_and(|n| n >= 5.0 && n <= 1000.0)) { return Err(AppError::InvalidInput("Invalid artwork size".into())); } }
+        for transform in std::iter::once(&art).chain(art.get("square")) {
+            for (key,min,max) in [("width",5.0,1000.0),("height",5.0,1000.0),("rotation",-360.0,360.0),("x",0.0,100.0),("y",0.0,100.0)] {
+                if transform.get(key).is_some_and(|v| !v.as_f64().is_some_and(|n| n>=min && n<=max)) { return Err(AppError::InvalidInput("Invalid artwork transform".into())); }
+            }
+        }
+        if let Some(image) = art.get("image") {
+            use base64::Engine;
+            let encoded = image.as_str().and_then(|s| s.strip_prefix("data:image/png;base64,")).ok_or_else(|| AppError::InvalidInput("Invalid artwork image".into()))?;
+            let bytes = base64::engine::general_purpose::STANDARD.decode(encoded).map_err(|_| AppError::InvalidInput("Invalid artwork image".into()))?;
+            let reader = image::ImageReader::with_format(std::io::Cursor::new(bytes),image::ImageFormat::Png);
+            let (w,h)=reader.into_dimensions().map_err(|_| AppError::InvalidInput("Invalid artwork PNG".into()))?;
+            if w > 512 || h > 512 { return Err(AppError::InvalidInput("Artwork exceeds 512 pixels".into())); }
+        }
+        return Ok(());
+    }
+
     if INSTANCE_ICONS.contains(&value) {
         Ok(())
     } else {
@@ -986,4 +1015,38 @@ mod tests {
         assert!(external_game.join("original.txt").exists());
         assert!(!current_legacy.exists());
     }
+}
+
+pub fn read_artwork_image(path: &str) -> AppResult<String> {
+    use base64::Engine;
+    let path = Path::new(path);
+    if !path.is_file() || std::fs::metadata(path)?.len() > 8 * 1024 * 1024 { return Err(AppError::InvalidInput("Image exceeds 8 MB".into())); }
+    let reader = image::ImageReader::open(path)?.with_guessed_format()?;
+    if !matches!(reader.format(), Some(image::ImageFormat::Png | image::ImageFormat::Jpeg | image::ImageFormat::WebP)) { return Err(AppError::InvalidInput("Unsupported artwork image".into())); }
+    let (w,h)=reader.into_dimensions().map_err(|_|AppError::InvalidInput("Invalid image".into()))?;
+    if w>16384 || h>16384 { return Err(AppError::InvalidInput("Image dimensions too large".into())); }
+    let image=image::ImageReader::open(path)?.with_guessed_format()?.decode().map_err(|_|AppError::InvalidInput("Invalid image".into()))?.thumbnail(512,512);
+    let mut out=std::io::Cursor::new(Vec::new());
+    image.write_to(&mut out,image::ImageFormat::Png).map_err(|_|AppError::InvalidInput("Could not encode image".into()))?;
+    Ok(format!("data:image/png;base64,{}",base64::engine::general_purpose::STANDARD.encode(out.into_inner())))
+}
+
+#[cfg(test)]
+mod artwork_format_tests {
+ use super::*;
+ #[test]
+ fn validates_artwork_and_rejects_external_images_and_invalid_positions() {
+  let mut art=serde_json::json!({"v":1,"icon":"pixel:Heart","fit":"contain","blur":true,"gradient":true,"second":"#123456","dither":true,"angle":135,"zoom":1.0,"x":50,"y":50});
+  assert!(validate_icon(&format!("slh-artwork:v1:{art}")).is_ok());
+  art["image"]=serde_json::json!("https://example.com/picture.png");assert!(validate_icon(&format!("slh-artwork:v1:{art}")).is_err());
+  art.as_object_mut().unwrap().remove("image");art["zoom"]=serde_json::json!(99);assert!(validate_icon(&format!("slh-artwork:v1:{art}")).is_err());
+  assert!(validate_icon("pixel:DoesNotExist").is_err());
+ }
+ #[test]
+ fn imported_image_is_bounded_and_embedded() {
+  let root=tempfile::tempdir().unwrap();let path=root.path().join("photo.png");
+  image::RgbaImage::new(800,400).save(&path).unwrap();let data=read_artwork_image(path.to_str().unwrap()).unwrap();
+  assert!(data.starts_with("data:image/png;base64,"));
+  std::fs::write(&path,b"not an image").unwrap();assert!(read_artwork_image(path.to_str().unwrap()).is_err());
+ }
 }

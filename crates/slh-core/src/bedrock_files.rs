@@ -77,13 +77,7 @@ pub fn roots(instance: &Instance, instance_root: &Path) -> BedrockRoots {
         .join(&instance.minecraft_version)
         .join("com.mojang");
 
-    let use_gdk = gdk_shared.as_ref().is_some_and(|path| path.exists())
-        || metadata
-            .as_ref()
-            .and_then(|value| value.get("packageType"))
-            .and_then(serde_json::Value::as_str)
-            == Some("gdk")
-        || is_gdk_version(&instance.minecraft_version);
+    let use_gdk = uses_gdk_data(metadata.as_ref(), &instance.minecraft_version);
 
     let game_data = if isolated_profile {
         private_game_data
@@ -91,7 +85,7 @@ pub fn roots(instance: &Instance, instance_root: &Path) -> BedrockRoots {
         gdk_shared
             .clone()
             .unwrap_or_else(|| PathBuf::from("Minecraft Bedrock/users/shared/games/com.mojang"))
-    } else if legacy_game_data.as_ref().is_some_and(|path| path.exists()) {
+    } else if legacy_game_data.is_some() {
         legacy_game_data.clone().unwrap_or_default()
     } else if let Some(path) = gdk_shared.clone() {
         path
@@ -103,12 +97,12 @@ pub fn roots(instance: &Instance, instance_root: &Path) -> BedrockRoots {
         vec![game_data.clone()]
     } else {
         let mut roots = Vec::new();
-        if let Some(path) = &gdk_shared {
+        if use_gdk && let Some(path) = &gdk_shared {
             if path.is_dir() {
                 roots.push(path.clone());
             }
         }
-        if let Some(path) = &legacy_game_data {
+        if !use_gdk && let Some(path) = &legacy_game_data {
             if path.is_dir() {
                 roots.push(path.clone());
             }
@@ -124,7 +118,7 @@ pub fn roots(instance: &Instance, instance_root: &Path) -> BedrockRoots {
     if isolated_profile {
         worlds.push(game_data.join("minecraftWorlds"));
     } else {
-        if let Some(base) = &gdk_base {
+        if use_gdk && let Some(base) = &gdk_base {
             let users = base.join("users");
             if let Ok(entries) = std::fs::read_dir(users) {
                 for entry in entries.flatten() {
@@ -209,6 +203,35 @@ fn is_gdk_version(value: &str) -> bool {
         .filter_map(|part| part.parse::<u32>().ok())
         .collect::<Vec<_>>();
     parts.len() >= 3 && (parts[0], parts[1], parts[2]) >= (1, 21, 120)
+}
+
+fn uses_gdk_data(metadata: Option<&serde_json::Value>, version: &str) -> bool {
+    let package_type = metadata.and_then(|value| value.get("packageType")).and_then(serde_json::Value::as_str);
+    // Store retained the MinecraftUWP identity after moving to GDK. Older SLH
+    // metadata inferred "uwp" from that name, so it is not authoritative for
+    // adopted Store packages. Explicit downloaded UWP packages remain legacy.
+    let store = metadata.and_then(|value| value.get("installMethod")).and_then(serde_json::Value::as_str) == Some("registered_store");
+    match package_type {
+        Some("gdk") => true,
+        Some("uwp") if !store => false,
+        _ => is_gdk_version(version),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn bedrock_data_roots_distinguish_legacy_packages_and_store_gdk_with_uwp_identity() {
+        let mut metadata = serde_json::json!({"packageType":"uwp", "installMethod":"registered_store"});
+        assert!(uses_gdk_data(Some(&metadata), "1.26.63.1"));
+        assert!(!uses_gdk_data(Some(&metadata), "1.20.31.1"));
+        metadata["installMethod"] = "windows_update".into();
+        assert!(!uses_gdk_data(Some(&metadata), "1.26.63.1"));
+        metadata["packageType"] = "gdk".into();
+        assert!(uses_gdk_data(Some(&metadata), "1.20.31.1"));
+    }
 }
 
 pub fn directories_for_category(roots: &BedrockRoots, category: &str) -> Vec<PathBuf> {

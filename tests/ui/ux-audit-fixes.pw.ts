@@ -16,8 +16,8 @@ test("instance deletion asks once, cancels safely and honors the warning prefere
   await page.goto("/#/library");
   const card = page.getByRole("button", { name: "Latest release", exact: true });
   await card.click();
-  await page.getByRole("button", { name: "Delete instance", exact: true }).click();
-  const dialog = page.getByRole("dialog", { name: "Delete instance", exact: true });
+  await page.getByRole("button", { name: "Delete", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Delete", exact: true });
   await expect(dialog).toBeVisible();
   await expect(dialog.getByText("Latest release", { exact: true })).toBeVisible();
   await expect(card).toHaveCount(1);
@@ -30,7 +30,7 @@ test("instance deletion asks once, cancels safely and honors the warning prefere
   await expect(warnings).toHaveAttribute("aria-checked", "false");
   await route(page, "/library");
   await card.click();
-  await page.getByRole("button", { name: "Delete instance", exact: true }).click();
+  await page.getByRole("button", { name: "Delete", exact: true }).click();
   await expect(card).toHaveCount(0);
   await expect(page.locator("dialog[open]")).toHaveCount(0);
 });
@@ -116,7 +116,7 @@ test("Store version selection does not call a hook from the event handler", asyn
     await request.fulfill({ response, body });
   });
   await page.goto("/#/library");
-  await expect(page.getByRole("button", { name: "Latest release", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Latest release \d/ })).toBeVisible();
   await page.evaluate(async () => {
     const { useAppStore } = await import("/src/stores/appStore.ts");
     const bootstrap = structuredClone(useAppStore.getState().bootstrap);
@@ -160,7 +160,7 @@ for (const locale of ["en-US", "ru-RU", "de-DE"]) {
   test(`${locale}: small wizard, settings and home keep actions and palette`, async ({ page }) => {
     const errors: string[] = []; page.on("pageerror", error => errors.push(error.message));
     await page.goto("/#/library");
-    await expect(page.getByRole("button", { name: "Latest release", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: /^Latest release \d/ })).toBeVisible();
     await settings(page, "general", { language: locale, platformCustomization: true, navigationPosition: "top", settingsNavigationPosition: "right" });
     await settings(page, "appearance", { windowControlsStyle: "macos", windowControlsSide: "left", homeCharacterMode: 1 });
     await page.emulateMedia({ reducedMotion: "reduce" });
@@ -187,3 +187,33 @@ for (const locale of ["en-US", "ru-RU", "de-DE"]) {
     expect(theme.error).not.toContain("color-mix("); expect(theme.shadow).not.toContain("color-mix(");
   });
 }
+
+test("appearance switches the selected instance actions between tiles and rows", async ({ page }) => {
+  for (const [width, height] of [[800, 560], [1440, 900]]) {
+    await page.setViewportSize({ width, height });
+    await page.goto("/#/settings/appearance");
+    const list = page.getByRole("switch", { name: "Show instance actions as a list" });
+    await expect(list).toHaveAttribute("aria-checked", "false");
+    await list.focus();
+    await page.keyboard.press("Space");
+    await expect(list).toHaveAttribute("aria-checked", "true");
+    await route(page, "/library");
+    await expect(page.getByRole("button", { name: "Grid view" })).toHaveAttribute("aria-pressed", "true");
+    const mods = page.getByRole("button", { name: "Mods", exact: true });
+    const worlds = page.getByRole("button", { name: "Worlds", exact: true });
+    await expect.poll(async () => {
+      const first = await mods.boundingBox();
+      const second = await worlds.boundingBox();
+      return !!first && !!second && first.x === second.x && first.width === second.width && first.y < second.y;
+    }).toBe(true);
+    await route(page, "/settings/appearance");
+    await expect(list).toHaveAttribute("aria-checked", "true");
+    await list.click();
+    await route(page, "/library");
+    await expect.poll(async () => {
+      const first = await mods.boundingBox();
+      const second = await worlds.boundingBox();
+      return !!first && !!second && first.x < second.x && first.y === second.y;
+    }).toBe(true);
+  }
+});

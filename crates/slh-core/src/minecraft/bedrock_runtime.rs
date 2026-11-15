@@ -1279,6 +1279,16 @@ async fn prepare_launch(
             || "Bedrock is downloaded but not registered for this Windows user.".into(),
         )));
     }
+    #[cfg(windows)]
+    {
+        let packages = discover_registered_packages().await?.unwrap_or_default();
+        validate_launch_package(&metadata, &packages)?;
+    }
+    if instance.bedrock_profile_mode == "isolated"
+        && metadata.package_family_name.as_deref().is_some_and(is_official_family)
+    {
+        return Err(AppError::Unavailable("bedrock.isolationUnavailable".into()));
+    }
     if metadata.package_type == "uwp" && metadata.registered_by_slh {
         #[cfg(windows)]
         if !developer_mode_enabled().await? {
@@ -1614,7 +1624,7 @@ async fn prepare_profile_session(
             package_family_name,
             "Using the shared Bedrock LocalState because Windows protects official package data"
         );
-        return Ok(None);
+        return Err(AppError::Unavailable("bedrock.isolationUnavailable".into()));
     }
     let backup_profile = instance_root
         .join("bedrock")
@@ -3204,57 +3214,45 @@ async fn install_uwp_package_with_conflict_resolution(
     package_name: &str,
     package_version: &str,
 ) -> AppResult<()> {
-    match install_uwp_package(package_path).await {
-        Ok(()) => Ok(()),
-        Err(first_error) => {
-            let existing = discover_package_by_name(package_name).await?;
-            if existing
-                .as_ref()
-                .is_some_and(|package| versions_match(package_version, &package.version))
-            {
-                return Ok(());
-            }
-            if !is_uwp_package_conflict(&first_error) {
-                return Err(first_error);
-            }
-            let Some(existing) = existing else {
-                return Err(first_error);
-            };
-            remove_uwp_package(&existing.package_full_name).await?;
-            install_uwp_package(package_path).await.map_err(|retry_error| {
-                AppError::Process(format!(
-                    "The existing Minecraft Windows package was removed, but the requested Bedrock version could not be installed: {retry_error}"
-                ))
-            })
+    if let Some(existing) = discover_package_by_name(package_name).await? {
+        if versions_match(package_version, &existing.version) {
+            return Ok(());
+        }
+        return Err(AppError::Conflict("bedrock.packageConflict".into()));
+    }
+    install_uwp_package(package_path).await
+}
+
+fn is_official_family(family: &str) -> bool {
+    family.to_ascii_lowercase().ends_with("_8wekyb3d8bbwe")
+}
+
+fn validate_launch_package(metadata: &BedrockPackageMetadata, packages: &[BedrockInstalledPackage]) -> AppResult<()> {
+    let found = packages.iter().find(|package| {
+        metadata.package_family_name.as_deref().is_some_and(|family| family.eq_ignore_ascii_case(&package.package_family_name))
+            && package.app_user_model_id == metadata.app_user_model_id
+    });
+    if !found.is_some_and(|package| versions_match(&metadata.version, &package.version)) {
+        return Err(AppError::Conflict("bedrock.versionChanged".into()));
+    }
+    Ok(())
+}
+
+/// Reject replacement before downloading. Package registration is global to the
+/// Windows user, even when SLH stores the downloaded files in separate folders.
+pub(crate) async fn ensure_package_preflight(version: &str, family: &str, profile_mode: &str) -> AppResult<()> {
+    if profile_mode == "isolated" && is_official_family(family) {
+        return Err(AppError::Unavailable("bedrock.isolationUnavailable".into()));
+    }
+    #[cfg(windows)]
+    for package in discover_registered_packages().await?.unwrap_or_default() {
+        if package.package_family_name.eq_ignore_ascii_case(family) && !versions_match(version, &package.version) {
+            return Err(AppError::Conflict("bedrock.packageConflict".into()));
         }
     }
-}
-
-#[cfg(windows)]
-fn is_uwp_package_conflict(error: &AppError) -> bool {
-    let message = error.to_string().to_ascii_lowercase();
-    message.contains("0x80073cfb")
-        || message.contains("0x80073cf3")
-        || message.contains("already installed")
-        || message.contains("higher version")
-        || message.contains("packaged version")
-        || message.contains("unpackaged version")
-}
-
-#[cfg(windows)]
-async fn remove_uwp_package(package_full_name: &str) -> AppResult<()> {
-    let script = format!(
-        "Remove-AppxPackage -Package {} -PreserveApplicationData -ErrorAction Stop",
-        ps_literal(package_full_name)
-    );
-    let output = powershell(&script).await?;
-    if output.status.success() {
-        return Ok(());
-    }
-    Err(AppError::Process(format!(
-        "The installed Minecraft Windows package could not be replaced: {}",
-        redact_process_output(&output)
-    )))
+    #[cfg(not(windows))]
+    let _ = version;
+    Ok(())
 }
 
 #[cfg(windows)]
@@ -3422,6 +3420,34 @@ fn process_is_alive(pid: u32) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn refuses_missing_replaced_or_wrong_channel_packages_before_activation() {
+        let metadata: BedrockPackageMetadata = serde_json::from_value(serde_json::json!({
+            "version":"1.20.31.1", "packageType":"uwp", "channel":"release", "architecture":"x64",
+            "installMethod":"registered_store", "packageFamilyName":"Microsoft.MinecraftUWP_8wekyb3d8bbwe",
+            "appUserModelId":"Microsoft.MinecraftUWP_8wekyb3d8bbwe!Game", "launchReady":true,
+            "status":"launchable", "profileMode":"shared", "registeredBySlh":false
+        })).unwrap();
+        let mut package = BedrockInstalledPackage {
+            name: "Microsoft.MinecraftUWP".into(), version: "1.20.3101.0".into(),
+            package_family_name: metadata.package_family_name.clone().unwrap(), package_full_name: "test".into(),
+            install_location: "test".into(), app_user_model_id: metadata.app_user_model_id.clone(),
+            channel: "release".into(), signature_kind: Some("Store".into()),
+        };
+        assert!(validate_launch_package(&metadata, &[package.clone()]).is_ok());
+        assert!(validate_launch_package(&metadata, &[]).is_err());
+        package.version = "1.26.6301.0".into();
+        assert!(validate_launch_package(&metadata, &[package.clone()]).is_err());
+        package.version = "1.20.3101.0".into();
+        package.package_family_name = "Microsoft.MinecraftWindowsBeta_8wekyb3d8bbwe".into();
+        assert!(validate_launch_package(&metadata, &[package]).is_err());
+    }
+
+    #[tokio::test]
+    async fn rejects_official_isolation_without_touching_windows_packages() {
+        assert!(ensure_package_preflight("1.20.31.1", "Microsoft.MinecraftUWP_8wekyb3d8bbwe", "isolated").await.is_err());
+    }
     #[test]
     fn native_installer_is_found_in_packaged_resources() {
         let directory = tempfile::tempdir().unwrap();

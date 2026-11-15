@@ -35,6 +35,34 @@ pub fn command(edit: &LiveEdit) -> AppResult<String> {
     })
 }
 
+/// Helpers target known Java command dialects; custom engines require the console.
+pub fn command_for_config(config: &super::config::ServerConfig, edit: &LiveEdit) -> AppResult<String> {
+    let unsupported = || AppError::Unavailable("serverLive.unsupportedCompatibility".into());
+    if !["vanilla", "paper", "purpur", "leaf", "spigot", "bukkit", "fabric", "quilt", "forge", "neoforge"].contains(&config.core.as_str()) {
+        return Err(unsupported());
+    }
+    let parts = config.minecraft_version.split('.').map(str::parse::<u32>).collect::<Result<Vec<_>, _>>().map_err(|_| unsupported())?;
+    if !(2..=3).contains(&parts.len()) || !(parts[0] == 1 || parts[0] == 26) { return Err(unsupported()); }
+    let version = (parts[0], parts[1], parts.get(2).copied().unwrap_or(0));
+    let minimum = match edit.kind.as_str() {
+        "worldBorder" => (1, 8, 0),
+        "idleTimeout" => (1, 7, 2),
+        "difficulty" | "gamemode" | "weather" | "gamerule" => (1, 4, 2),
+        "time" | "save" => (1, 0, 0),
+        _ => return command(edit),
+    };
+    if version < minimum || edit.kind == "gamemode" && edit.value.trim() == "spectator" && version < (1, 8, 0) { return Err(unsupported()); }
+    // Validate before substituting legacy syntax, retaining command-injection checks.
+    let mut result = command(edit)?;
+    if edit.kind == "time" && version < (1, 13, 0) {
+        result = match edit.value.trim() { "noon" => "time set 6000".into(), "midnight" => "time set 18000".into(), _ => result };
+    }
+    // Bare save-all works on old servers; use the modern synchronous variant only
+    // on the command dialect whose support is established here.
+    if edit.kind == "save" && version < (1, 13, 0) { result = "save-all".into(); }
+    Ok(result)
+}
+
 pub async fn wait_ready(state: &AppState, id: &str) -> AppResult<()> {
     store::get(state, id).await?;
     let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(180);
@@ -51,7 +79,8 @@ pub async fn wait_ready(state: &AppState, id: &str) -> AppResult<()> {
 }
 
 pub async fn apply(state: &AppState, id: &str, edit: LiveEdit) -> AppResult<LiveResult> {
-    let command = command(&edit)?;
+    let server = store::get(state, id).await?;
+    let command = command_for_config(&server.config, &edit)?;
     wait_ready(state, id).await?;
     let before = runtime::poll(state, id, u64::MAX).await?;
     runtime::control(state, id, "command", &command).await?;
@@ -73,6 +102,32 @@ pub async fn apply(state: &AppState, id: &str, edit: LiveEdit) -> AppResult<Live
 mod tests {
     use super::*;
     fn edit(kind: &str, value: &str, rule: Option<&str>) -> LiveEdit { LiveEdit { kind: kind.into(), value: value.into(), rule: rule.map(str::to_owned) } }
+    #[test]
+    fn respects_released_java_command_boundaries() {
+        let config = |version: &str| super::super::config::ServerConfig { minecraft_version: version.into(), ..Default::default() };
+        for (kind, value, before, after) in [("worldBorder", "100", "1.7.10", "1.8"), ("idleTimeout", "5", "1.7.1", "1.7.2"), ("weather", "rain", "1.4.1", "1.4.2"), ("difficulty", "hard", "1.4.1", "1.4.2"), ("gamemode", "spectator", "1.7.10", "1.8")] {
+            assert!(command_for_config(&config(before), &edit(kind, value, None)).is_err());
+            assert!(command_for_config(&config(after), &edit(kind, value, None)).is_ok());
+        }
+        assert_eq!(command_for_config(&config("1.12.2"), &edit("time", "noon", None)).unwrap(), "time set 6000");
+        assert_eq!(command_for_config(&config("1.12.2"), &edit("time", "midnight", None)).unwrap(), "time set 18000");
+        assert_eq!(command_for_config(&config("1.12.2"), &edit("save", "", None)).unwrap(), "save-all");
+        assert_eq!(command_for_config(&config("1.13"), &edit("save", "", None)).unwrap(), "save-all flush");
+        for version in ["25w44a", "1.21-pre1", "unknown", "b1.8.1"] { assert!(command_for_config(&config(version), &edit("save", "", None)).is_err()); }
+        for core in ["custom", "horizon"] { let mut value = config("26.3"); value.core = core.into(); assert!(command_for_config(&value, &edit("save", "", None)).is_err()); }
+    }
+    #[tokio::test]
+    async fn unsupported_helper_fails_before_contacting_runtime() {
+        let root = tempfile::tempdir().unwrap();
+        let paths = crate::portable::PortablePaths::from_executable(&root.path().join("SLH.exe"), Some(root.path().to_path_buf())).unwrap();
+        let state = AppState::initialize_isolated_at(paths).await.unwrap();
+        let server = store::create(&state, store::CreateServer { players: None, name: "Legacy".into(), folder: "legacy".into(), group_id: None,
+            config: super::super::config::ServerConfig { minecraft_version: "1.7.10".into(), core_version: "1.7.10".into(), eula_accepted: true, ..Default::default() } }).await.unwrap();
+        // No run file exists: reaching wait_ready would return a different error.
+        let error: crate::error::CommandError = apply(&state, &server.id, edit("worldBorder", "100", None)).await.err().unwrap().into();
+        assert_eq!(error.message_key.as_deref(), Some("serverLive.unsupportedCompatibility"));
+        state.database.close().await;
+    }
     #[test]
     fn allows_runtime_settings_without_shell_or_command_injection() {
         for (kind, value, expected) in [("difficulty","hard","difficulty hard"),("gamemode","creative","defaultgamemode creative"),("idleTimeout","0","setidletimeout 0"),("time","noon","time set noon"),("weather","rain","weather rain"),("worldBorder","1000","worldborder set 1000"),("save","","save-all flush")] {

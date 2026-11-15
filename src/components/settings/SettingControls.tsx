@@ -2,6 +2,9 @@ import { Children, Fragment, cloneElement, createContext, isValidElement, useCon
 import { useI18n } from "../../i18n/I18nProvider";
 import { useAppStore } from "../../stores/appStore";
 import styles from "../../routes/Settings/SettingsPage.module.css";
+import { motion } from "motion/react";
+import { spring } from "@animate-ui/react/utils/motion";
+import { useAnimationTransition, useSmoothAnimations } from "../../lib/motion";
 
 export function SettingLayout({ children }: { children: ReactNode }) {
   const compact = useAppStore(state => state.bootstrap?.settings.general.compactSettings === true);
@@ -55,6 +58,8 @@ export function Toggle({ checked, onChange, disabled, label, role = "switch" }: 
   checked: boolean; onChange: (checked: boolean) => void; disabled?: boolean; label?: string; role?: "switch" | "checkbox";
 }) {
   const settingLabel = useContext(SettingLabel);
+  const smooth = useSmoothAnimations("switches");
+  const selection = useAnimationTransition("switches", spring.selection);
   if (role === "checkbox") return <input type="checkbox" className={styles.toggleInput} aria-label={label ?? settingLabel} checked={checked} disabled={disabled} onChange={event => onChange(event.target.checked)} />;
-  return <button type="button" role="switch" aria-label={label ?? settingLabel} aria-checked={checked} disabled={disabled} className={`${styles.toggle} ${checked ? styles.checked : ""}`} onClick={() => onChange(!checked)}><span /></button>;
+  return <button type="button" role="switch" aria-label={label ?? settingLabel} aria-checked={checked} disabled={disabled} className={`${styles.toggle} ${checked ? styles.checked : ""}`} onClick={() => onChange(!checked)}><motion.span initial={false} animate={{ x: checked ? 17 : 0 }} transition={smooth ? selection : { duration: 0 }} /></button>;
 }

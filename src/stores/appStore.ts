@@ -22,10 +22,13 @@ interface ToastMessage {
   title: string;
   message: string;
   params?: ToastParams;
-  action?: { label: string; url?: string; title?: string; message?: string };
+  action?: { label: string; url?: string; title?: string; message?: string; launchFailure?: LaunchStateEvent };
 }
 
 interface AppStore {
+  launchFailures: LaunchStateEvent[];
+  activeLaunchFailure: LaunchStateEvent | null;
+  showLaunchFailure: (failure: LaunchStateEvent | null) => void;
   bootstrap: BootstrapData | null;
   loading: boolean;
   error: CommandFailure | null;
@@ -68,6 +71,9 @@ let startupRequest: Promise<void> | null = null;
 let progressRefreshTimer: number | null = null;
 
 export const useAppStore = create<AppStore>((set, get) => ({
+  launchFailures: [],
+  activeLaunchFailure: null,
+  showLaunchFailure: (activeLaunchFailure) => set({ activeLaunchFailure }),
   bootstrap: null,
   loading: true,
   error: null,
@@ -255,12 +261,20 @@ export const useAppStore = create<AppStore>((set, get) => ({
   },
   receiveLaunchState: (event, silent = false) => {
     void get().refresh();
+    if (event.state === "exited") set({ launchFailures: get().launchFailures.filter(item => item.instanceId !== event.instanceId) });
+    if (event.state === "crashed" && event.diagnosis) {
+      set({
+        launchFailures: [...get().launchFailures.filter(item => item.instanceId !== event.instanceId), event].slice(-20),
+        ...(!silent ? { activeLaunchFailure: event } : {}),
+      });
+    }
     if (!silent && event.state === "crashed") {
       get().pushToast({
         tone: "error",
         title: "Minecraft crashed",
         message: "errors.gameCrashed",
         reportPath: event.reportPath ?? undefined,
+        action: event.diagnosis ? { label: "launchDiagnosis.details", launchFailure: event } : undefined,
       });
     }
   },
@@ -276,6 +290,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
       && item.title === toast.title
       && item.message === toast.message
       && item.action?.label === toast.action?.label
+      && item.action?.launchFailure?.launchId === toast.action?.launchFailure?.launchId
       && item.action?.url === toast.action?.url);
     if (isDuplicate) return;
     const item = { ...toast, title: engine.keyOf(toast.title, toast.params), message: engine.isDiagnostic(toast.message) ? toast.message : engine.keyOf(toast.message, toast.params),
@@ -284,7 +299,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
     set({ toasts: [...get().toasts, item].slice(-maxVisible) });
     // Reports stay reachable until dismissed; technical details must not
     // disappear while the user is reading or trying to open the report.
-    if (!item.reportPath && !engine.diagnosticReportPath(item.message)) {
+    if (!item.reportPath && !item.action?.launchFailure && !engine.diagnosticReportPath(item.message)) {
       window.setTimeout(() => get().dismissToast(item.id), toast.brief ? 2000 : preferences?.durationMs ?? 5000);
     }
   },

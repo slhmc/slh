@@ -1,5 +1,8 @@
 import { desktopPlatform } from "./lib/platformAppearance";
+import { interfaceZoom } from "./lib/interfaceScale";
+import { animationConfig } from "./lib/animationSettings";
 import { LauncherUpdateDialog, requestLauncherUpdate } from "./components/common/LauncherUpdateDialog";
+import { LaunchDiagnosisDialog } from "./components/common/LaunchDiagnosisDialog";
 import { useUiText } from "./i18n/UiText";
 import { useServerLibraryStore } from "./stores/serverLibraryStore";
 import { buildTheme } from "./lib/theme";
@@ -44,6 +47,16 @@ function StartupRoute() {
 function RememberSection() {
   const bootstrap = useAppStore((state) => state.bootstrap);
   const location = useLocation();
+
+  useEffect(() => {
+    const general = bootstrap?.settings.general;
+    const match = location.pathname.match(/^\/settings\/([a-z-]+)$/);
+    const allowed = ["general", "appearance", "minecraft", "java", "bedrock", "accounts", "servers", "storage", "downloads", "notifications", "sync", "console", "privacy", "advanced"];
+    const section = match?.[1];
+    if (!general?.rememberSettingsSection || !section || !allowed.includes(section) || general.lastSettingsSection === section) return;
+    useAppStore.setState(state => state.bootstrap ? { bootstrap: { ...state.bootstrap, settings: { ...state.bootstrap.settings, general: { ...state.bootstrap.settings.general, lastSettingsSection: section } } } } : {});
+    void command("remember_section", { section: `settings:${section}` }).catch(() => undefined);
+  }, [bootstrap, location.pathname]);
 
   useEffect(() => {
     if (!bootstrap?.settings.general.rememberSection) return;
@@ -100,8 +113,19 @@ function AppContent() {
     bootstrap?.settings.downloads.curseforgeDirectory);
   useEffect(() => {
     document.documentElement.dataset.platformUi = desktopPlatform();
+    document.documentElement.dataset.smoothAnimations = String(bootstrap?.settings.appearance.iconMorphing !== false);
     document.documentElement.dataset.systemControls = String(bootstrap?.settings.general.platformCustomization === true && bootstrap.settings.appearance.systemControls === true);
-  }, [bootstrap?.settings.general.platformCustomization, bootstrap?.settings.appearance.systemControls]);
+  }, [bootstrap?.settings.general.platformCustomization, bootstrap?.settings.appearance.systemControls, bootstrap?.settings.appearance.iconMorphing]);
+  useEffect(() => {
+    const root = document.documentElement;
+    const buttons = animationConfig(bootstrap?.settings.appearance, "buttons");
+    const icons = animationConfig(bootstrap?.settings.appearance, "icons");
+    root.dataset.buttonAnimations = String(buttons.enabled);
+    root.dataset.iconAnimations = String(icons.enabled);
+    root.style.setProperty("--motion-button-press", `${100 / buttons.speed}ms`);
+    root.style.setProperty("--motion-button-color", `${140 / buttons.speed}ms`);
+    root.style.setProperty("--motion-spinner-duration", `${1 / icons.speed}s`);
+  }, [bootstrap?.settings.appearance.animationSpeed, bootstrap?.settings.appearance.animationSettings, bootstrap?.settings.appearance.iconMorphing]);
   const error = useAppStore((state) => state.error);
   const receiveProgress = useAppStore((state) => state.receiveProgress);
   const receiveLaunchState = useAppStore((state) => state.receiveLaunchState);
@@ -188,8 +212,13 @@ function AppContent() {
     };
   }, []);
   useEffect(() => {
-    if (!bootstrap || !isTauri) return;
-    void getCurrentWebview().setZoom(bootstrap.settings.appearance.scalePercent / 100).catch(() => undefined);
+    if (!bootstrap) return;
+    const factor = interfaceZoom(bootstrap.settings.appearance.scalePercent);
+    if (isTauri) void getCurrentWebview().setZoom(factor).catch(() => undefined);
+    else {
+      document.body.style.zoom = String(factor);
+      document.body.style.height = `${100 / factor}dvh`;
+    }
   }, [bootstrap?.settings.appearance.scalePercent]);
   useEffect(() => {
     if (!bootstrap || bootstrap.settings.general.keyboardZoom === false) return;
@@ -286,6 +315,7 @@ function AppContent() {
           </Routes></Suspense>
           <FirstRun />
           <LauncherUpdateDialog />
+          <LaunchDiagnosisDialog />
         </HashRouter>
     </div>
   );

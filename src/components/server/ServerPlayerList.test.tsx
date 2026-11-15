@@ -23,3 +23,29 @@ it("adds a player using automatic identity resolution", async () => {
   fireEvent.click(screen.getByRole("button", { name: "localServers.confirm" }));
   await waitFor(() => expect(mocks.command).toHaveBeenCalledWith("edit_server_players", expect.objectContaining({ request: expect.objectContaining({ kind: "whitelist", name: "Alex", identityProvider: "auto", expectedRevision: "r1" }) })));
 });
+
+it("keeps an existing add form usable during a refresh", async () => {
+  const lists = { whitelist: [], operators: [], bannedPlayers: [], bannedIps: [], revisions: { whitelist: "r1", operators: "r1", bannedPlayers: "r1", bannedIps: "r1" }, whitelistEnabled: false, operatorLevel: 4, runtimeState: "running" };
+  mocks.command.mockResolvedValueOnce(lists).mockImplementation(() => new Promise(() => {}));
+  render(<ServerPlayerList server={{ id: "fixture", status: "running" } as LocalServer} kind="whitelist" />);
+  fireEvent.click(await screen.findByText("serverPlayers.addActions.whitelist"));
+  const input = screen.getByLabelText("serverPlayers.name");
+  fireEvent.change(input, { target: { value: "Alex" } });
+  fireEvent.click(screen.getByRole("button", { name: "serverPlayers.refresh" }));
+  expect(input.hasAttribute("disabled")).toBe(false);
+  expect(screen.getByRole("button", { name: "serverPlayers.add" }).hasAttribute("disabled")).toBe(false);
+  expect((input as HTMLInputElement).value).toBe("Alex");
+});
+
+it("shows only player details while retaining the stored UUID for removal", async () => {
+  const uuid = "12345678-1234-1234-1234-123456789abc";
+  const lists = { whitelist: [{ name: "Alex", uuid }], operators: [], bannedPlayers: [], bannedIps: [], revisions: { whitelist: "r1", operators: "r1", bannedPlayers: "r1", bannedIps: "r1" }, whitelistEnabled: false, operatorLevel: 4, runtimeState: "stopped" };
+  mocks.command.mockResolvedValue(lists);
+  render(<ServerPlayerList server={{ id: "fixture", status: "stopped" } as LocalServer} kind="whitelist" />);
+  expect(await screen.findByText("Alex")).toBeTruthy();
+  expect(screen.queryByText(uuid)).toBeNull();
+  expect(document.querySelector("img")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "serverPlayers.removeNamed" }));
+  fireEvent.click(screen.getByRole("button", { name: "localServers.confirm" }));
+  await waitFor(() => expect(mocks.command).toHaveBeenCalledWith("edit_server_players", expect.objectContaining({ request: expect.objectContaining({ action: "remove", name: "Alex", uuid }) })));
+});

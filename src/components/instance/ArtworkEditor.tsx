@@ -1,0 +1,89 @@
+import { ArrowLeft, ArrowRight, Square, Image as ImageIcon } from "../icons";
+import { getCurrentWebview } from "@tauri-apps/api/webview";
+import { command, isTauri } from "../../lib/tauri";
+import { useEffect, useMemo, useRef, useState, type ComponentType } from "react";
+import * as icons from "pixelarticons/react";
+import { readArtwork, writeArtwork, type Artwork, artworkTransform, type ArtworkTransform } from "../../lib/artwork";
+import { useUiText } from "../../i18n/UiText";
+import { Dialog } from "../common/Dialog";
+import { Button } from "../common/Controls";
+import { ColorInput } from "../common/ColorInput";
+import { useAppStore } from "../../stores/appStore";
+import { InstanceArtwork } from "./InstanceArtwork";
+import type { Instance } from "../../lib/types";
+import common from "../common/Common.module.css";
+import styles from "./ArtworkEditor.module.css";
+type EditorSnapshot={art:Artwork;bg:string;fg:string};
+const entries=Object.entries(icons).filter(([key,value])=>key!=="default"&&typeof value==="function");
+export function ArtworkEditor({iconKey,background,foreground,onChange,compact=false}:{iconKey:string;background:string;foreground:string;onChange:(key:string,bg:string,fg:string)=>void | Promise<void>;compact?:boolean}) {
+ const t=useUiText();const [open,setOpen]=useState(false);const [art,setArt]=useState<Artwork>(()=>readArtwork(iconKey));const [bg,setBg]=useState(background);const [fg,setFg]=useState(foreground);const [query,setQuery]=useState("");const [limit,setLimit]=useState(80);const [error,setError]=useState("");const [busy,setBusy]=useState(false);
+ const confirmEnabled=useAppStore(s=>s.bootstrap?.settings.general.confirmDestructiveActions!==false);
+ const [selected,setSelected]=useState(true);const [discard,setDiscard]=useState(false);const [dragOver,setDragOver]=useState(false);
+ const [past,setPast]=useState<EditorSnapshot[]>([]);const [future,setFuture]=useState<EditorSnapshot[]>([]);
+ const gesture=useRef<EditorSnapshot|null>(null);const latest=useRef<EditorSnapshot|null>(null);
+ const initial=useRef<EditorSnapshot|null>(null);const current=useMemo(()=>({art,bg,fg}),[art,bg,fg]);const previous=useRef(current);latest.current=current;const restoring=useRef(false);
+ useEffect(()=>{if(!open){previous.current=current;return;}if(previous.current===current)return;if(gesture.current!==null){previous.current=current;return;}if(restoring.current){restoring.current=false;}else{const snapshot=previous.current;setPast(p=>[...p,snapshot].slice(-100));setFuture([]);}previous.current=current;},[current,open]);
+ const restore=(state:EditorSnapshot)=>{restoring.current=true;setArt(state.art);setBg(state.bg);setFg(state.fg);};
+ const undo=()=>{if(!past.length)return;setFuture(f=>[current,...f]);restore(past[past.length-1]);setPast(p=>p.slice(0,-1));};
+ const redo=()=>{if(!future.length)return;setPast(p=>[...p,current]);restore(future[0]);setFuture(f=>f.slice(1));};
+ useEffect(()=>{if(!open||discard||busy)return;const keyboard=(e:KeyboardEvent)=>{if(!(e.ctrlKey||e.metaKey)||!root.current?.closest("dialog")?.contains(document.activeElement))return;const key=e.code==="KeyZ"?"z":e.code==="KeyY"?"y":e.key.toLowerCase();if(key!=="z"&&key!=="y")return;e.preventDefault();if(key==="y"||e.shiftKey)redo();else undo();};document.addEventListener("keydown",keyboard);return()=>document.removeEventListener("keydown",keyboard);},[open,discard,busy,current,past,future]);
+ const close=()=>{if(busy||!open)return;if(open&&JSON.stringify(current)!==JSON.stringify(initial.current)&&confirmEnabled){setDiscard(true);return;}setOpen(false);};
+ const root=useRef<HTMLDivElement>(null);const fileInput=useRef<HTMLInputElement>(null);
+ useEffect(()=>{if(!open)return;const outside=(e:PointerEvent)=>{if(!stage.current?.contains(e.target as Node))setSelected(false);};document.addEventListener("pointerdown",outside);return()=>document.removeEventListener("pointerdown",outside);},[open]);
+ const stage=useRef<HTMLDivElement>(null);
+ const drag=useRef<{x:number;y:number;art:ArtworkTransform;handle:string;angle:number}|null>(null);
+ const [gallery,setGallery]=useState(false);const [help,setHelp]=useState(false);
+ const [variant,setVariant]=useState<"rectangle"|"square">("rectangle");
+ const geometry=artworkTransform(art,variant==="square");
+ const patchGeometry=(value:Partial<ArtworkTransform>)=>setArt(a=>variant==="square"&&a.separate!==false?{...a,square:{...artworkTransform(a,true),...value},zoom:1,fit:"fill"}:{...a,...value,zoom:1,fit:"fill"});
+ useEffect(()=>{const el=stage.current;if(!open||!el)return;const wheel=(e:WheelEvent)=>{if(!e.ctrlKey)return;e.preventDefault();const factor=e.deltaY<0?1.05:1/1.05;patchGeometry({width:Math.max(5,Math.min(1000,geometry.width*factor)),height:Math.max(5,Math.min(1000,geometry.height*factor))});};el.addEventListener("wheel",wheel,{passive:false});return()=>el.removeEventListener("wheel",wheel);},[open,art,variant]);
+ const patch=(value:Partial<Artwork>)=>setArt(a=>{const next={...a,...value};if("image" in value || "icon" in value)next.square={width:next.width??80,height:next.height??80,x:next.x,y:next.y,rotation:next.rotation??0};return next;});
+ useEffect(()=>{
+  if(!open||!isTauri)return;
+  let disposed=false;
+  const listener=getCurrentWebview().onDragDropEvent(event=>{
+   if(event.payload.type!=="drop"||busy)return;
+   const path=event.payload.paths[0];if(!path)return;
+   setBusy(true);setError("");
+   void command<string>("read_artwork_image",{path}).then(async image=>{
+    const photo=new window.Image();
+    await new Promise<void>((resolve,reject)=>{photo.onload=()=>resolve();photo.onerror=reject;photo.src=image;});
+    if(disposed)return;
+    const aspect=photo.naturalWidth/photo.naturalHeight;
+    patch({image,imageName:path.split(/[\\/]/).pop(),fit:"fill",width:aspect>=1?80:80*aspect,height:aspect>=1?80/aspect:80,square:undefined,rotation:0,zoom:1,x:50,y:50});
+    setSelected(true);
+   }).catch(()=>{if(!disposed)setError(t("art.fileError"));}).finally(()=>{if(!disposed)setBusy(false);});
+  });
+  return()=>{disposed=true;void listener.then(stop=>stop());};
+ },[open]);
+ const load=async(file?:File)=>{if(!file)return;setSelected(true);setError("");if(file.size>8*1024*1024||!["image/png","image/jpeg","image/webp"].includes(file.type)){setError(t("art.fileError"));return;}setBusy(true);try{const image=await createImageBitmap(file);if(image.width>16384||image.height>16384){image.close();throw Error();}const canvas=document.createElement("canvas");const ratio=Math.min(1,512/Math.max(image.width,image.height));canvas.width=Math.max(1,Math.round(image.width*ratio));canvas.height=Math.max(1,Math.round(image.height*ratio));canvas.getContext("2d")!.drawImage(image,0,0,canvas.width,canvas.height);image.close();const data=canvas.toDataURL("image/png");if(data.length>1500000)throw Error();const aspect=canvas.width/canvas.height;patch({image:data,imageName:file.name,fit:"fill",width:aspect>=1?80:80*aspect,height:aspect>=1?80/aspect:80,square:undefined,rotation:0,zoom:1,x:50,y:50});}catch{setError(t("art.fileError"));}finally{setBusy(false);}};
+ const previewKey=useMemo(()=>writeArtwork(art),[art]);
+ const previewInstance={loaderType:"vanilla",iconKey:previewKey,iconBackground:bg,iconForeground:fg} as Instance;
+ const begin=(e:React.PointerEvent<HTMLDivElement>,handle:string)=>{e.preventDefault();e.stopPropagation();gesture.current=current;setSelected(true);e.currentTarget.setPointerCapture(e.pointerId);const rect=stage.current!.getBoundingClientRect();drag.current={x:e.clientX,y:e.clientY,art:{...geometry},handle,angle:Math.atan2(e.clientY-(rect.top+rect.height*geometry.y/100),e.clientX-(rect.left+rect.width*geometry.x/100))};};
+ const finish=()=>{drag.current=null;if(gesture.current!==null&&gesture.current!==latest.current){const snapshot=gesture.current;setPast(p=>[...p,snapshot].slice(-100));setFuture([]);}gesture.current=null;};
+ const move=(e:React.PointerEvent<HTMLDivElement>)=>{const d=drag.current;if(!d||!e.currentTarget.hasPointerCapture(e.pointerId)||!stage.current)return;const rect=stage.current.getBoundingClientRect();const base=Math.min(rect.width,rect.height);const dx=(e.clientX-d.x)/base*100,dy=(e.clientY-d.y)/base*100;
+ if(d.handle==="rotate"){const angle=Math.atan2(e.clientY-(rect.top+rect.height*d.art.y/100),e.clientX-(rect.left+rect.width*d.art.x/100));patchGeometry({rotation:((d.art.rotation+(angle-d.angle)*180/Math.PI+540)%360+360)%360-180});return;}
+ if(d.handle==="move"){const snap=(v:number)=>Math.abs(v-50)<2?50:Math.max(0,Math.min(100,v));patchGeometry({x:snap(d.art.x+dx*base/rect.width),y:snap(d.art.y+dy*base/rect.height)});return;}
+ const radians=d.art.rotation*Math.PI/180;const localX=dx*Math.cos(radians)+dy*Math.sin(radians),localY=-dx*Math.sin(radians)+dy*Math.cos(radians);
+ const w=d.art.width??60,h=d.art.height??60;let nw=w+(d.handle.includes("e")?localX*2:d.handle.includes("w")?-localX*2:0),nh=h+(d.handle.includes("s")?localY*2:d.handle.includes("n")?-localY*2:0);
+ if(!e.shiftKey){const factor=Math.abs(nw/w-1)>Math.abs(nh/h-1)?nw/w:nh/h;nw=w*factor;nh=h*factor;}
+ patchGeometry({width:Math.max(5,Math.min(1000,nw)),height:Math.max(5,Math.min(1000,nh))});};
+ return <><Button className={compact?styles.compactTrigger:undefined} aria-label={compact?t("art.edit"):undefined} title={compact?t("art.edit"):undefined} onClick={()=>{const next=readArtwork(iconKey);setArt(next);setBg(background);setFg(foreground);setError("");setPast([]);setFuture([]);initial.current={art:next,bg:background,fg:foreground};previous.current=initial.current;setSelected(true);setOpen(true);}}><InstanceArtwork instance={{loaderType:"vanilla",iconKey,iconBackground:background,iconForeground:foreground} as Instance} size="small" />{compact?null:t("art.edit")}</Button>
+ <Dialog open={open} title={t("art.edit")} width="large" onClose={close} footer={<><Button onClick={close}>{t("common.cancel","Cancel")}</Button><Button variant="primary" disabled={busy} onClick={async()=>{setBusy(true);try{await onChange(writeArtwork(art),bg,fg);setOpen(false);}catch{setError(t("art.saveError"));}finally{setBusy(false);}}}>{t("art.apply")}</Button></>}>
+ <div ref={root} inert={busy} className={styles.layout}>
+<div className={styles.preview}>
+<div className={styles.toolbar}> <div className={styles.variants}><Button title={`${t("art.undo")} (Ctrl+Z)`} disabled={!past.length||busy} onClick={undo}><ArrowLeft size={18}/>{t("art.undo")}</Button><Button title={`${t("art.redo")} (Ctrl+Shift+Z / Ctrl+Y)`} disabled={!future.length||busy} onClick={redo}><ArrowRight size={18}/>{t("art.redo")}</Button></div><div className={styles.variants}><Button aria-label={t("art.rectangle")} title={t("art.rectangle")} aria-pressed={variant==="rectangle"} onClick={()=>setVariant("rectangle")}><ImageIcon size={18}/><span className={styles.variantLabel}>{t("art.rectangle")}</span></Button><Button aria-label={t("art.square")} title={t("art.square")} aria-pressed={variant==="square"} onClick={()=>setVariant("square")}><Square size={18}/><span className={styles.variantLabel}>{t("art.square")}</span></Button></div></div>
+ <div className={styles.workspace}><div ref={stage} data-artwork-stage={variant} onPointerDown={()=>setSelected(false)} className={styles.stage} style={{aspectRatio:variant==="square"?1:1.6}}><InstanceArtwork instance={previewInstance} size="large" variant={variant} />
+ <div data-artwork-selection="true" className={`${styles.selection} ${selected?styles.selected:""}`} style={{left:`${geometry.x}%`,top:`${geometry.y}%`,width:`${geometry.width*art.zoom/(variant==="square"?1:1.6)}%`,height:`${geometry.height*art.zoom}%`,transform:`translate(-50%,-50%) rotate(${geometry.rotation}deg)`}} onPointerDown={e=>begin(e,"move")} onPointerMove={move} onPointerUp={e=>{e.stopPropagation();finish();}} onPointerCancel={e=>{e.stopPropagation();finish();}}>
+ <div data-rotate-handle="top" className={styles.rotateTop} onPointerDown={e=>begin(e,"rotate")} onPointerMove={move} onPointerUp={e=>{e.stopPropagation();finish();}} onPointerCancel={e=>{e.stopPropagation();finish();}} />{["nw","n","ne","e","se","s","sw","w"].map(handle=><div key={handle} className={`${styles.handle} ${styles[handle]}`} data-resize-handle={handle} onPointerDown={e=>begin(e,handle)} onPointerMove={move} onPointerUp={e=>{e.stopPropagation();finish();}} onPointerCancel={e=>{e.stopPropagation();finish();}} />)}{["nw","ne","se","sw"].map(corner=><div key={corner} data-rotate-handle={corner} className={`${styles.rotate} ${styles[corner]}`} onPointerDown={e=>begin(e,"rotate")} onPointerMove={move} onPointerUp={e=>{e.stopPropagation();finish();}} />)}
+ </div>{selected&&geometry.x===50?<span className={styles.guideX}/>:null}{selected&&geometry.y===50?<span className={styles.guideY}/>:null}</div></div>
+ <div className={styles.previews}><div><span>{t("art.rectangle")}</span><InstanceArtwork instance={previewInstance} size="large" variant="rectangle" /></div><div><span>{t("art.square")}</span><InstanceArtwork instance={previewInstance} size="icon" variant="square" /></div></div>
+ </div><div className={styles.controls}>
+ <section className={styles.section}><h3>{t("art.content")}</h3><Button onClick={()=>setGallery(v=>!v)}>{t("art.chooseIcon")}</Button>
+ {gallery?<><input className={common.input} aria-label={t("art.search")} placeholder={t("art.search")} value={query} onChange={e=>{setQuery(e.target.value);setLimit(80);}}/><div className={styles.icons} onScroll={e=>{const el=e.currentTarget;if(el.scrollHeight-el.scrollTop-el.clientHeight<100)setLimit(v=>v+80);}}>{entries.filter(([name])=>name.toLowerCase().includes(query.toLowerCase())).slice(0,limit).map(([name,Source])=>{const Icon=Source as ComponentType<{width:number;height:number}>;return <button className={common.secondaryButton} type="button" key={name} title={name} aria-label={name} aria-pressed={art.icon===`pixel:${name}`} onClick={()=>{patch({icon:`pixel:${name}`,image:undefined,fit:"fill",width:80,height:80,zoom:1,x:50,y:50});setSelected(true);}}><Icon width={40} height={40}/></button>;})}</div></>:null}
+ <div className={`${styles.drop} ${dragOver?styles.dragOver:""}`} onDragOver={e=>{e.preventDefault();setDragOver(true);}} onDragLeave={()=>setDragOver(false)} onDrop={e=>{e.preventDefault();setDragOver(false);void load(e.dataTransfer.files[0]);}}><Button disabled={busy} onClick={()=>fileInput.current?.click()}>{busy?t("common.loading"):t(art.image?"art.changePhoto":"art.photo")}</Button>{art.image?<Button onClick={()=>patch({image:undefined,imageName:undefined,width:80,height:80,zoom:1,x:50,y:50})}>{t("art.remove")}</Button>:null}<input ref={fileInput} hidden type="file" accept="image/png,image/jpeg,image/webp" disabled={busy} onChange={e=>{void load(e.target.files?.[0]);e.target.value="";}}/>{art.image&&art.imageName?<span className={styles.fileName}>{art.imageName}</span>:null}</div>{error?<p role="alert">{error}</p>:null}
+ </section>
+ <section className={styles.section}><h3>{t("art.size")}</h3><label className={common.checkLabel}><input type="checkbox" checked={art.separate===true} onChange={e=>setArt(a=>({...a,...(!e.target.checked?artworkTransform(a,variant==="square"):{}),separate:e.target.checked,square:artworkTransform(a,variant==="square")}))}/>{t("art.separate")}</label><div className={styles.numbers}>{(["width","height","x","y","rotation"] as const).map(key=><label key={key}>{t(`art.${key}`)}<input className={common.input} type="number" min={key==="rotation"?-360:key==="x"||key==="y"?0:5} max={key==="rotation"?360:key==="x"||key==="y"?100:1000} value={Math.round(geometry[key])} onChange={e=>patchGeometry({[key]:Math.max(key==="rotation"?-360:key==="x"||key==="y"?0:5,Math.min(key==="rotation"?360:key==="x"||key==="y"?100:1000,Number(e.target.value)))})}/></label>)}</div><div className={styles.resets}><Button onClick={()=>patchGeometry({x:50,y:50})}>{t("art.resetPosition")}</Button><Button onClick={()=>{if(!art.image){patchGeometry({width:80,height:80});return;}const photo=new window.Image();photo.onload=()=>{const ratio=photo.naturalWidth/photo.naturalHeight;patchGeometry({width:ratio>=1?80:80*ratio,height:ratio>=1?80/ratio:80});};photo.src=art.image;}}>{t("art.resetSize")}</Button><Button onClick={()=>patchGeometry({rotation:0})}>{t("art.resetRotation")}</Button></div></section>
+ <section className={styles.section}><h3>{t("installation.texts.background","Background")}</h3><div className={styles.colors}><label>{t("installation.texts.icon","Icon")}<ColorInput disabled={!!art.image} value={fg} onChange={e=>setFg(e.target.value)}/></label><hr className={styles.separator}/><label>{t("installation.texts.background","Background")}<ColorInput value={bg} onChange={e=>setBg(e.target.value)}/></label><label>{t("art.second")}<ColorInput value={art.second} onChange={e=>patch({second:e.target.value})}/></label></div>{art.image?<label className={common.checkLabel}><input type="checkbox" checked={art.blur} onChange={e=>patch({blur:e.target.checked})}/>{t("art.blur")}</label>:null}<label className={common.checkLabel}><input type="checkbox" checked={art.gradient} onChange={e=>patch({gradient:e.target.checked})}/>{t("art.gradient")}</label>{art.gradient?<label>{t("art.angle")}<input type="range" min={0} max={360} value={art.angle} onChange={e=>patch({angle:Number(e.target.value)})}/></label>:null}</section>
+ </div><div className={styles.help}><Button aria-label={t("art.help")} aria-expanded={help} onClick={()=>setHelp(v=>!v)}>?</Button>{help?<div role="note">{t("art.helpText")}</div>:null}</div></div></Dialog><Dialog open={discard&&open} title={t("art.discardTitle")} onClose={()=>setDiscard(false)} footer={<><Button onClick={()=>setDiscard(false)}>{t("common.cancel")}</Button><Button variant="danger" onClick={()=>{setDiscard(false);setOpen(false);}}>{t("art.discard")}</Button></>}><p>{t("art.discardDescription")}</p></Dialog></>;
+}

@@ -1,0 +1,32 @@
+import { expect, test } from "@playwright/test";
+for (const width of [800, 1440]) test(`artwork trigger stays inside its column at ${width}`, async ({ page }) => {
+  await page.setViewportSize({ width, height: width === 800 ? 560 : 900 });
+  await page.goto("/#/library");
+  await page.getByRole("button", { name: "New instance", exact: true }).waitFor();
+  await page.evaluate(async () => {
+    const { command } = await import("/src/lib/tauri.ts");
+    const { useAppStore } = await import("/src/stores/appStore.ts");
+    await command("update_setting", { key: "general", value: { ...useAppStore.getState().bootstrap!.settings.general, language: "ru-RU" } });
+    await useAppStore.getState().refresh();
+  });
+  await expect(page.locator("html")).toHaveAttribute("lang", "ru-RU");
+  await page.evaluate(async () => (await import("/src/stores/appStore.ts")).useAppStore.getState().setCreateWizardOpen(true));
+  const wizard = page.getByRole("dialog").first();
+  const trigger = wizard.getByRole("button", { name: "Настроить значок", exact: true });
+  await trigger.scrollIntoViewIfNeeded();
+  const bounds = await trigger.boundingBox();
+  expect(bounds).toBeTruthy();
+  expect(bounds!.width).toBeLessThanOrEqual(73);
+  expect(bounds!.height).toBeLessThanOrEqual(73);
+  const input = wizard.getByLabel("Название сборки", { exact: true });
+  const inputBounds = await input.boundingBox();
+  expect(inputBounds).toBeTruthy();
+  expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(inputBounds!.x);
+  await page.screenshot({ path: `artifacts/ui/artwork-trigger-${width}.png` });
+  await trigger.focus();
+  await page.keyboard.press("Enter");
+  const editor = page.getByRole("dialog", { name: "Настроить значок", exact: true });
+  await expect(editor).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(editor).not.toBeVisible();
+});

@@ -1,3 +1,6 @@
+import { useEffect, useRef, useState } from "react";
+import * as pixelIcons from "pixelarticons/react";
+import { readArtwork, artworkTransform } from "../../lib/artwork";
 import { LibraryArtwork } from "../common/LibraryChrome";
 import type { ComponentType } from "react";
 import {
@@ -50,13 +53,22 @@ export function instanceArtworkColors(instance: Instance) {
   };
 }
 
-export function InstanceArtwork({ instance, size = "card" }: { instance: Instance; size?: "small" | "card" | "large" | "icon" }) {
-  const choice = instanceIconChoices.find((item) => item.key === instance.iconKey) ?? instanceIconChoices[0];
+export function InstanceArtwork({ instance, size = "card", variant }: { instance: Instance; size?: "small" | "card" | "large" | "icon"; variant?: "square" | "rectangle" }) {
+  const art = readArtwork(instance.iconKey);
+  const ref=useRef<HTMLDivElement>(null);const [aspect,setAspect]=useState(1.6);
+  useEffect(()=>{const el=ref.current;if(!el || typeof ResizeObserver === "undefined")return;const observer=new ResizeObserver(()=>{if(el.clientHeight)setAspect(el.clientWidth/el.clientHeight);});observer.observe(el);return()=>observer.disconnect();},[]);
+  const transform=artworkTransform(art,variant ? variant==="square" : size==="small"||size==="icon");
+  const choice = instanceIconChoices.find((item) => item.key === art.icon) ?? instanceIconChoices[0];
   const colors = instanceArtworkColors(instance);
-  const Icon = choice.Icon;
+  const Icon = (art.icon.startsWith("pixel:") ? (pixelIcons as unknown as Record<string, ComponentType<PixelIconProps>>)[art.icon.slice(6)] : undefined) ?? choice.Icon;
   return (
-    <LibraryArtwork size={size} className={styles[instance.loaderType]} style={{ background: colors.background, color: colors.foreground }} aria-hidden="true">
-      <Icon size={size === "large" ? 48 : size === "small" ? 19 : 30} />
+    <LibraryArtwork ref={ref} size={size} className={styles[instance.loaderType]} style={{ background: art.gradient ? `linear-gradient(${art.angle}deg, ${colors.background}, ${art.second})` : colors.background, color: colors.foreground }} aria-hidden="true">
+      {art.image && art.blur ? <img src={art.image} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",filter:"blur(12px)",transform:"scale(1.2)"}} /> : null}
+      <span style={{position:"absolute",left:`${transform.x}%`,top:`${transform.y}%`,width:`${transform.width/Math.max(1,aspect)}%`,height:`${transform.height/Math.max(1,1/aspect)}%`,transform:`translate(-50%,-50%) rotate(${transform.rotation}deg) scale(${art.zoom})`,display:"grid",placeItems:"center"}}>
+        {art.image ? <img src={art.image} alt="" style={{width:"100%",height:"100%",minWidth:0,minHeight:0,display:"block",objectFit:art.fit,pointerEvents:"none"}} /> : <svg viewBox="0 0 24 24" preserveAspectRatio="none" style={{width:"100%",height:"100%",minWidth:0,minHeight:0,display:"block"}}><Icon size={24}/></svg>}
+      </span>
     </LibraryArtwork>
   );
 }
+
+export const defaultArtworkColors = fallbackColors.vanilla;

@@ -22,6 +22,14 @@ const ALLOWED_SETTING_KEYS: &[&str] = &[
 
 /// Navigation must not overwrite resource preferences from a newer UI snapshot.
 pub async fn remember_section(pool: &SqlitePool, section: &str) -> AppResult<()> {
+    if let Some(subsection) = section.strip_prefix("settings:") {
+        if !matches!(subsection, "general" | "appearance" | "minecraft" | "java" | "bedrock" | "accounts" | "servers" | "storage" | "downloads" | "notifications" | "sync" | "console" | "privacy" | "advanced") {
+            return Err(AppError::InvalidInput("Invalid remembered settings section".into()));
+        }
+        sqlx::query("UPDATE settings SET value_json = json_set(value_json, '$.lastSettingsSection', ?), updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE key = 'general' AND json_extract(value_json, '$.rememberSettingsSection') = 1")
+            .bind(subsection).execute(pool).await?;
+        return Ok(());
+    }
     if !matches!(section, "home" | "library" | "discover" | "servers" | "local-servers") {
         return Err(AppError::InvalidInput("Invalid remembered section".into()));
     }
@@ -49,7 +57,7 @@ pub async fn update(pool: &SqlitePool, key: &str, value: Value) -> AppResult<Val
         ));
     }
     if key == "general" {
-        validate_optional_booleans(&value, &["rustMinecraft", "confirmDestructiveActions", "platformCustomization"])?;
+        validate_optional_booleans(&value, &["rustMinecraft", "confirmDestructiveActions", "platformCustomization", "ctrlPanelDrag"])?;
         if let Some(policy) = value.get("webview") {
             let policy: crate::webview_settings::WebviewSettings = serde_json::from_value(policy.clone())
                 .map_err(|e| AppError::InvalidInput(format!("Invalid WebView2 settings: {e}")))?;
@@ -187,7 +195,24 @@ fn validate_java(value: &Value) -> AppResult<()> {
 }
 
 fn validate_appearance(value: &Value) -> AppResult<()> {
-    validate_optional_booleans(value, &["fitProjectTitles", "systemControls"])?;
+
+    validate_optional_booleans(value, &["fitProjectTitles", "systemControls", "instanceActionsAsList", "serverActionsAsList", "iconMorphing"])?;
+    let valid_speed = |speed: &Value| speed.as_f64().is_some_and(|speed| speed.is_finite() && (0.1..=10.0).contains(&speed));
+    if value.get("animationSpeed").is_some_and(|speed| !valid_speed(speed)) {
+        return Err(AppError::InvalidInput("Animation speed must be between 0.1 and 10".into()));
+    }
+    if let Some(settings) = value.get("animationSettings") {
+        let settings = settings.as_object().ok_or_else(|| AppError::InvalidInput("Animation settings must be an object".into()))?;
+        for (kind, settings) in settings {
+            if !["icons", "buttons", "switches", "dialogs"].contains(&kind.as_str()) || !settings.is_object() {
+                return Err(AppError::InvalidInput("Invalid animation kind".into()));
+            }
+            validate_optional_booleans(settings, &["enabled"])?;
+            if settings.get("speed").is_some_and(|speed| !valid_speed(speed)) {
+                return Err(AppError::InvalidInput("Animation speed must be between 0.1 and 10".into()));
+            }
+        }
+    }
     for (field, allowed) in [("windowControlsStyle", &["auto", "windows", "macos", "linux"][..]), ("windowControlsSide", &["auto", "left", "right"][..])] {
         if value.get(field).is_some_and(|v| !v.as_str().is_some_and(|s| allowed.contains(&s))) {
             return Err(AppError::InvalidInput(format!("Invalid {field}")));
@@ -426,6 +451,7 @@ mod tests {
         let mut general = database::setting(&pool, "general").await.unwrap();
         general["rememberSection"] = Value::Bool(true);
         general["keyboardZoom"] = Value::Bool(false);
+        general["ctrlPanelDrag"] = Value::Bool(true);
         let mut policy = crate::webview_settings::WebviewSettings::default();
         policy.enabled = true;
         general["webview"] = serde_json::to_value(&policy).unwrap();
@@ -514,6 +540,28 @@ mod tests {
             ,"scalePercent":100
         });
         assert!(validate_appearance(&valid).is_ok());
+        for speed in [0.1, 0.5, 1.0, 2.0, 10.0] {
+            let mut selected = valid.clone();
+            selected["animationSpeed"] = serde_json::json!(speed);
+            selected["animationSettings"] = serde_json::json!({"icons":{"enabled":false,"speed":speed}});
+            assert!(validate_appearance(&selected).is_ok());
+        }
+        for speed in [serde_json::json!(0.09), serde_json::json!(10.01), serde_json::json!("1")] {
+            let mut selected = valid.clone();
+            selected["animationSpeed"] = speed.clone();
+            assert!(validate_appearance(&selected).is_err());
+            selected.as_object_mut().unwrap().remove("animationSpeed");
+            selected["animationSettings"] = serde_json::json!({"dialogs":{"speed":speed}});
+            assert!(validate_appearance(&selected).is_err());
+        }
+        for enabled in [serde_json::json!(true), serde_json::json!(false)] {
+            let mut selected = valid.clone();
+            selected["iconMorphing"] = enabled;
+            assert!(validate_appearance(&selected).is_ok());
+        }
+        let mut invalid_morphing = valid.clone();
+        invalid_morphing["iconMorphing"] = serde_json::json!("false");
+        assert!(validate_appearance(&invalid_morphing).is_err());
         for mode in 0..=2 {
             let mut selected = valid.clone();
             selected["homeCharacterMode"] = serde_json::json!(mode);

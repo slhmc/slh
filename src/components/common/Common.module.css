@@ -14,7 +14,7 @@
   text-align: center;
   line-height: 1.4;
   cursor: pointer;
-  transition: color 140ms ease, background 140ms ease, border-color 140ms ease, box-shadow 140ms ease, transform 100ms ease;
+  transition: color var(--motion-button-color, 140ms) ease, background var(--motion-button-color, 140ms) ease, border-color var(--motion-button-color, 140ms) ease, box-shadow var(--motion-button-color, 140ms) ease, transform var(--motion-button-press, 100ms) ease;
 }
 
 .button:disabled,

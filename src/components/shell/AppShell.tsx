@@ -1,3 +1,4 @@
+import { useInterfaceRegions } from "../../lib/useInterfaceRegions";
 import { ConfirmationProvider } from "../common/ConfirmationProvider";
 import { Outlet } from "react-router-dom";
 import { lazy, Suspense, useCallback, useState } from "react";
@@ -14,6 +15,7 @@ import styles from "./AppShell.module.css";
 import { useAppStore } from "../../stores/appStore";
 
 export function AppShell() {
+  const dock=useInterfaceRegions();
   const bootstrap = useAppStore((state) => state.bootstrap);
   const compactHeader = bootstrap?.settings.general.compactHeader === true;
   const wizardOpen = useAppStore((state) => state.createWizardOpen);
@@ -46,6 +48,7 @@ export function AppShell() {
           <Outlet />
         </main>
       </div>
+      {dock?<div className={`${styles.dockTarget} ${styles[`dock_${dock}`]}`} aria-hidden="true"/>:null}
       <ActivityBar />
       <AccountPopover />
       {wizardOpen ? <Suspense fallback={null}><CreateInstanceWizard /></Suspense> : null}

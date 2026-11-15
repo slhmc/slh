@@ -357,15 +357,7 @@ pub async fn save_icon(
             }
         }
     }
-    if icon["key"].as_str().is_some_and(|s| {
-        ![
-            "cube", "package", "blocks", "sword", "tree", "star", "gamepad", "globe", "coffee",
-            "image", "server", "tools",
-        ]
-        .contains(&s)
-    }) {
-        return Err(AppError::InvalidInput("Invalid icon".into()));
-    }
+    if let Some(key) = icon["key"].as_str() { crate::instances::validate_icon(key)?; }
     let mut tx = state.database.begin().await?;
     sqlx::query("INSERT OR IGNORE INTO server_library_entries(server_id) VALUES (?)")
         .bind(id)

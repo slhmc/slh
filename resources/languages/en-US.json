@@ -513,15 +513,55 @@
     "orderNotSaved": "Instance order was not saved"
   },
   "settings": {
+    "animationSpeed": "Animation speed",
+    "animationOptions": "Animation settings",
+    "animationSpeedHint": "Higher values play faster. Individual speeds override the overall speed.",
+    "animationTypeSpeed": "{name}: speed",
+    "animationReset": "Reset animations",
+    "animationKinds": {
+      "icons": "Icons",
+      "buttons": "Buttons",
+      "switches": "Switches",
+      "dialogs": "Windows"
+    },
+    "iconMorphing": "Smooth animations",
+    "iconMorphingHint": "Animate icons, buttons, switches and dialog entrances.",
+    "ctrlPanelDrag": "Move panels with Ctrl",
+    "ctrlPanelDragHint": "Hold Ctrl and drag navigation, tabs or a side panel to an edge.",
     "character3d": "3D character settings",
     "syncRust": "Sync with Rust instances",
     "syncRustDescription": "Include Rust instances in shared options, servers and other configured mappings.",
     "rustMinecraft": "Minecraft on Rust",
     "rustMinecraftDescription": "Show compatible Horizon releases from GitHub. Requires Windows x64, Vulkan and a Microsoft account with Minecraft. Java is selected for preparation according to the release.",
     "horizonFaq": "FAQ?",
+    "syncSetup": {
+      "chooseManual": "Choose a build",
+      "servers": "Server list",
+      "options": "Minecraft settings",
+      "intro": "Share selected files between your builds on this computer.",
+      "create": "Create sync",
+      "configured": "Configured syncs",
+      "empty": "No syncs yet",
+      "emptyHint": "For example, share your server list between builds. Start with Create sync.",
+      "content": "1. What to share",
+      "targets": "2. Which builds",
+      "source": "3. Where to take the first copy",
+      "sourceHint": "Choose the build whose files should be shared first. Existing files may be replaced; SLH creates backups.",
+      "sharedHint": "Shared folder uses files already stored in SLH shared storage. It can be empty.",
+      "auto": "After creation, files sync before launch and after exit, and when builds are created or imported.",
+      "advanced": "Additional sync settings",
+      "worldRisk": "World sync can replace saves. Enable world mappings in Additional sync settings; every new world sync requires confirmation.",
+      "selected": "{count} selected builds",
+      "manual": "Manual update source",
+      "remove": "Remove sync",
+      "enabled": "Sync enabled"
+    },
     "character": {
       "title": "Home character",
       "description": "3D animates the character. Image shows your skin in a fixed pose. Off hides the character.",
+      "compactDescription": "3D, image or off.",
+      "offShort": "Off",
+      "fpsLabel": "FPS",
       "followCursor": "Follow cursor",
       "mode2": "2 · 3D",
       "mode1": "1 · Image",
@@ -546,6 +586,8 @@
     "advanced": "Advanced",
     "language": "Language",
     "languageDescription": "Add translations to data/languages. Changes are applied automatically.",
+    "rememberSettings": "Remember settings section",
+    "rememberSettingsDescription": "Open the last visited settings page.",
     "rememberLast": "Remember last section",
     "rememberLastDescription": "Return to your previous main view after restart.",
     "hideOnLaunch": "Hide while Minecraft runs",
@@ -558,6 +600,7 @@
     "interfaceScaleDescription": "Changes the whole launcher without changing the Minecraft resolution.",
     "interfaceFont": "Interface font",
     "interfaceFontDescription": "The selected font applies immediately. Local files are copied to data/fonts and loaded without restarting.",
+    "instanceActionsAsList": "Show actions as a list",
     "minimalism": "Minimalism",
     "minimalismDescription": "Hide secondary labels and descriptions while keeping essential controls and icons.",
     "navigationMenu": "Settings navigation",
@@ -874,7 +917,10 @@
     "servers": "Servers",
     "errorReports": "Error reports",
     "errorReportsDescription": "Local reports for installation failures, downloads and game crashes are saved in the crash folder.",
-    "openCrashFolder": "Open crash folder"
+    "openCrashFolder": "Open crash folder",
+    "animationButtonsHint": "Slight compression when pressed and smooth color changes.",
+    "actionListOptions": "Action display settings",
+    "actionListHint": "Choose list or grid actions separately. The main switch changes both."
   },
   "legacy": {
     "Sum of process working sets, including WebView2; shared pages may be counted more than once.": "Sum of process working sets, including WebView2; shared pages may be counted more than once.",
@@ -2164,6 +2210,7 @@
     }
   },
   "installation": {
+    "noMatchingVersions": "No matching versions",
     "horizonVersionsHint": "Only Minecraft versions supported by verified Horizon releases are listed.",
     "horizonCompatibleRelease": "Compatible Horizon release available",
     "horizonClient": "Horizon client",
@@ -2947,7 +2994,7 @@
       "installing": "Installing",
       "starting": "Starting",
       "running": "Running",
-      "stopping": "Saving and stopping",
+      "stopping": "Stopping",
       "stopped": "Stopped",
       "failed": "Error",
       "unmanaged": "Running · control lost"
@@ -3252,7 +3299,9 @@
     "applying": "Applying server command…",
     "liveIdentityHintV2": "The running server resolves players by name. If a player cannot be found, join the server first and try again. OP level is set by the server.",
     "liveUnavailable": "Start the server through SLH to apply live changes. If control was lost, restart it through SLH.",
-    "commandUnconfirmedV2": "The server did not confirm the change. Check its console and authentication; if the player has not joined before, join first."
+    "commandUnconfirmedV2": "The server did not confirm the change. Check its console and authentication; if the player has not joined before, join first.",
+    "liveLevelHint": "Minecraft assigns new operators permission level {level} while running. Change individual levels with the server stopped.",
+    "unsupportedCompatibility": "Standard access lists require a verified Java core and release 1.7.6 or later. This core or version is unsupported; use its own player management."
   },
   "serverMetrics": {
     "title": "Server load",
@@ -3348,7 +3397,9 @@
     "ruleExample": "minecraft:keep_inventory",
     "launchHint": "Java and launch arguments can be edited after stopping. Memory limits are saved separately for the next start.",
     "nativeMemory": "Automatic (Horizon native engine)",
-    "fireHint": "Fire spread radius: 0 disables spreading; -1 removes the distance limit."
+    "fireHint": "Fire spread radius: 0 disables spreading; -1 removes the distance limit.",
+    "requestHint": "Choose a new value, then Apply. These controls do not show the current world values; review the server response below the applied setting.",
+    "unsupportedCompatibility": "Built-in world commands are unavailable for this core or version. Use its own console commands."
   },
   "audit": {
     "deleteInstanceWarning": "Delete this instance and all its files, including worlds? This cannot be undone.",
@@ -3395,5 +3446,224 @@
     "previous": "Previous",
     "next": "Next",
     "close": "Close"
+  },
+  "launchDiagnosis": {
+    "title": "Minecraft stopped unexpectedly",
+    "details": "Show diagnosis",
+    "lastFailure": "Last launch error",
+    "logs": "Open log",
+    "evidence": "Matching log lines",
+    "exitCode": "Exit code: {code}",
+    "actions": {
+      "settings": "Open instance settings",
+      "mods": "Open mods",
+      "logs": "Open log"
+    },
+    "causes": {
+      "java": {
+        "title": "Java version mismatch",
+        "advice": "The log reports code compiled for a newer Java version. Check the Java selected for this instance and the requirements of its mods."
+      },
+      "memory": {
+        "title": "Memory allocation failed",
+        "advice": "Check the instance memory limit and available system memory. Close other programs before increasing the limit; this error can also involve native or graphics memory."
+      },
+      "dependencies": {
+        "title": "A mod dependency is missing or unsupported",
+        "advice": "The loader reports a required dependency. Check the named mod and required version in the log, then install a compatible dependency."
+      },
+      "duplicateMods": {
+        "title": "Duplicate mods detected",
+        "advice": "The loader reports duplicate mod IDs. Check the files in Mods and disable the extra copy after checking which version the pack requires."
+      },
+      "graphics": {
+        "title": "Graphics initialization failed",
+        "advice": "The log reports a window or OpenGL error. Check the graphics driver and the Minecraft version’s graphics requirements."
+      },
+      "mods": {
+        "title": "Mod loading failed",
+        "advice": "The log reports a mod compatibility or Mixin error. Check the listed requirements and recent changes. A mod mentioned in the stack trace is not necessarily the cause."
+      },
+      "jvmArguments": {
+        "title": "Launch arguments were rejected",
+        "advice": "The log reports an invalid or repeated launch option. Check custom JVM arguments. If the error names a game option such as gameDir, update SLH and attach the report if it happens again."
+      },
+      "unknown": {
+        "title": "The cause could not be determined",
+        "advice": "No supported error pattern was found in the captured launch log. Open the log and check the final errors; the exit code alone does not identify the cause."
+      }
+    }
+  },
+  "art": {
+    "changePhoto": "Change photo",
+    "help": "Help",
+    "helpText": "Drag to move; drag handles to resize. Hold Shift to stretch. Drag the top handle or outside a corner to rotate. Ctrl + wheel changes size. Objects snap to the center. Ctrl + Z undoes, Ctrl + Y or Ctrl + Shift + Z redoes.",
+    "undo": "Undo",
+    "redo": "Redo",
+    "photo": "Choose photo",
+    "saveError": "Could not save artwork. Try again.",
+    "discardTitle": "Discard artwork changes?",
+    "discard": "Discard changes",
+    "discardDescription": "Your changes in this editor have not been saved.",
+    "basic": {
+      "cube": "Block",
+      "package": "Pack",
+      "blocks": "Mods",
+      "sword": "Sword",
+      "tree": "Tree",
+      "star": "Star",
+      "gamepad": "Game",
+      "globe": "World"
+    },
+    "square": "Square icon",
+    "rectangle": "Rectangular icon",
+    "separate": "Edit square and rectangular icons separately",
+    "rotation": "Rotation (°)",
+    "resetPosition": "Reset position",
+    "resetSize": "Reset size",
+    "resetRotation": "Reset rotation",
+    "reset": "Reset to defaults",
+    "resizeHint": "Drag to move. Drag handles to resize; hold Shift to stretch. Drag outside a corner to rotate. Ctrl + wheel scales the image.",
+    "content": "Icon or photo",
+    "chooseIcon": "Choose icon",
+    "size": "Size and position",
+    "width": "Width (%)",
+    "height": "Height (%)",
+    "center": "Center",
+    "screen": "Pick from screen",
+    "edit": "Edit artwork",
+    "apply": "Apply",
+    "color": "Choose color",
+    "saturation": "Saturation and brightness",
+    "hue": "Hue",
+    "picker": "Color picker",
+    "launcher": "SLH",
+    "system": "System",
+    "drop": "Drop a PNG, JPEG or WebP image here, or choose a file (up to 8 MB)",
+    "fileError": "Could not read the image. Choose a PNG, JPEG or WebP file up to 8 MB.",
+    "remove": "Remove photo",
+    "fit": "Image fit",
+    "cover": "Fill and crop",
+    "contain": "Fit entire image",
+    "fill": "Stretch",
+    "blur": "Blurred photo background",
+    "zoom": "Zoom",
+    "x": "Horizontal position",
+    "y": "Vertical position",
+    "search": "Search icons by name",
+    "more": "Show more icons",
+    "second": "Second color",
+    "gradient": "Gradient background",
+    "angle": "Gradient angle",
+    "dither": "Dithering"
+  },
+  "bedrock": {
+    "useSharedData": "Use shared data",
+    "worldProfileUnavailable": "Import this world in Minecraft. SLH could not identify a unique player folder.",
+    "packageConflict": "Another version of this Bedrock package is installed in Windows. Select the installed version in SLH. Installing this version alongside it is not supported.",
+    "versionChanged": "Windows has updated or replaced this Bedrock package. Select the currently installed version in SLH before launching.",
+    "isolationUnavailable": "Isolated profiles are not supported for official Bedrock packages. Choose Shared Store data to continue.",
+    "closeBeforeImport": "Close Minecraft before importing Bedrock content.",
+    "packVersionIncompatible": "This pack requires a newer Minecraft version. Choose a compatible file.",
+    "invalidWorld": "This file does not contain a valid Bedrock world.",
+    "importFailed": "The Bedrock content could not be imported.",
+    "contentInstalled": "Content installed",
+    "enableInWorld": "Enable the packs in your world's settings in Minecraft.",
+    "sharedDataNotice": "Bedrock uses shared game data. Worlds and packs are shared between profiles of the same channel."
+  },
+  "packFinder": {
+    "title": "Find a modpack",
+    "random": "Random",
+    "optional": "Minecraft Java modpacks. Every question is optional — one genre is enough.",
+    "find": "Find my modpack",
+    "genre": "What would you like to play?",
+    "any": "No preference",
+    "technical": "Version, loader and catalog",
+    "topic": "Name or topic",
+    "both": "Both catalogs",
+    "searching": "Looking for your next world…",
+    "winner": "Your best match",
+    "randomResult": "A random discovery",
+    "similar": "Similar modpacks",
+    "another": "Another match",
+    "edit": "Change answers",
+    "why": "Why this modpack",
+    "randomHint": "A random modpack from available catalogs. All answers are ignored.",
+    "partial": "Some searches were unavailable: {providers}. Results use the catalogs that responded.",
+    "noResults": "No match found",
+    "noResultsHint": "Remove a preference, change the topic, or try Random.",
+    "noMore": "No more similar modpacks in this selection. Change your answers or try Random.",
+    "catalogPick": "A popular modpack from the selected catalog. Add preferences for a closer match.",
+    "sizeHint": "Mod counts come from author descriptions when available. Missing counts are not treated as matches.",
+    "modCount": "The author describes {count} mods; the selected release may differ.",
+    "sizeUnknown": "The catalog does not provide a mod count for this pack. Its size preference could not be verified.",
+    "lightweight": "Tagged as lightweight",
+    "offline": "The catalogs could not be reached. Check your connection or try another catalog.",
+    "questions": {
+      "size": "How many mods?",
+      "difficulty": "How much of a challenge?",
+      "activity": "What do you enjoy doing?",
+      "progression": "What kind of progression?",
+      "company": "Who will you play with?"
+    },
+    "genres": {
+      "adventure": "Adventure",
+      "technology": "Technology",
+      "magic": "Magic",
+      "rpg": "RPG",
+      "survival": "Survival",
+      "skyblock": "Skyblock",
+      "horror": "Horror",
+      "cozy": "Cozy & farming",
+      "pokemon": "Pokémon",
+      "vanilla": "Vanilla & optimization"
+    },
+    "options": {
+      "small": "Up to 100 mods",
+      "medium": "101–250 mods",
+      "large": "More than 250 mods",
+      "relaxed": "Relaxed",
+      "challenging": "Expert / challenging",
+      "exploration": "Exploration",
+      "building": "Building & decorating",
+      "automation": "Factories & automation",
+      "combat": "Combat & bosses",
+      "quests": "Quests & a clear path",
+      "sandbox": "Open sandbox",
+      "solo": "Solo",
+      "friends": "With friends"
+    }
+  },
+  "serverTemplates": {
+    "location": "Folders and ports",
+    "playersHint": "These players are added only when creating a new server. Profiles are resolved using its online/offline mode. Save the template after editing.",
+    "whitelistHint": "New servers accept only players in this list when enabled. Existing servers keep their settings.",
+    "worldHint": "Seed, world type and structure generation affect newly generated worlds. Changing them does not recreate an existing world. The world folder selects which world loads on the next start.",
+    "coreHint": "Stop the server to change its core or version. Saving this change installs the selected files; worlds and plugins remain in place. Downgrading Minecraft may make an existing world incompatible.",
+    "changeCore": "Install selected core",
+    "changeCoreHint": "The selected core and Minecraft version will be installed. Existing worlds are retained. Back up the world before changing Minecraft versions; older versions may not open it.",
+    "nextStart": "Settings for the next start",
+    "worldCommands": "World commands",
+    "horizonPinned": "Create a separate Horizon server to use another runtime version. This experimental runtime cannot be replaced in place.",
+    "creationPlayersHint": "These lists apply only to this new server.",
+    "unsupportedField": "This setting is unavailable for the selected core or version.",
+    "clearUnsupported": "Remove inherited entries and turn off the whitelist, or choose a supported core and version.",
+    "creationWhitelistHint": "When enabled, only players in the whitelist can join."
+  },
+  "packRandom": {
+    "hint": "Pick genres and a download count. Any selected genre can match; leave them empty for all genres.",
+    "downloads": "Download count",
+    "target": "Number of downloads",
+    "modes": {
+      "any": "Any count",
+      "more": "More than X",
+      "less": "Less than X",
+      "closest": "As close to X as possible"
+    },
+    "pick": "Choose a modpack",
+    "scope": "Uses available catalogs. Closest selects the nearest download count among the matching projects found.",
+    "invalidDownloads": "Enter a whole number of downloads, zero or higher.",
+    "empty": "No matching modpack found. Change the genres or download count and try again.",
+    "missingProject": "This project is no longer available in this session. Choose another modpack with Random."
   }
 }

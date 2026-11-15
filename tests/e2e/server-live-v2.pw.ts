@@ -50,7 +50,7 @@ test("manual RAM values save while running and remain after reload", async ({ pa
 
 test("live world settings send validated commands and versioned or custom gamerules", async ({ page }) => {
   await workspace(page, true);
-  await page.getByRole("tab", { name: "Live world settings", exact: true }).click();
+  await page.getByRole("tab", { name: "World commands", exact: true }).click();
   for (const [label, value, command] of [["Difficulty", "hard", "difficulty hard"], ["Default game mode", "creative", "defaultgamemode creative"], ["Weather", "rain", "weather rain"], ["Time of day", "noon", "time set noon"]]) {
     const select = page.getByRole("combobox", { name: label, exact: true });
     await select.selectOption(value);
@@ -80,7 +80,7 @@ test("live controls and confirmation work in light row layout at 800 pixels", as
   if (await compact.getAttribute("aria-checked") === "true") await compact.click();
   await workspace(page, true);
   await page.setViewportSize({ width: 800, height: 560 });
-  await page.getByRole("tab", { name: "Live world settings", exact: true }).click();
+  await page.getByRole("tab", { name: "World commands", exact: true }).click();
   const border = page.getByRole("spinbutton", { name: "World border diameter", exact: true });
   await border.fill("1000");
   const row = page.locator('[class*="settingRow"]').filter({ has: border });
@@ -94,7 +94,7 @@ test("live controls and confirmation work in light row layout at 800 pixels", as
   await page.screenshot({ path: "artifacts/server-live-v2-light-rows-800.png", animations: "disabled" });
 });
 
-for (const [locale, label] of [["en-US", "Live world settings"], ["ru-RU", "Управление миром"], ["de-DE", "Welt im laufenden Betrieb"]]) {
+for (const [locale, label] of [["en-US", "World commands"], ["ru-RU", "Команды мира"], ["de-DE", "Weltbefehle"]]) {
   test(`${locale} live settings use launcher layout at both sizes`, async ({ page }) => {
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.goto("/#/settings/general"); await page.locator("[data-language-selector]").selectOption(locale);
