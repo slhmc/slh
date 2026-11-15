@@ -115,4 +115,4 @@ npm run tauri:dev
 
 ## Лицензия
 
-GNU General Public License v3.0. См. [LICENSE](LICENSE).
+GPL v3. См. [LICENSE](LICENSE).
